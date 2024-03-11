@@ -1,5 +1,3 @@
-let dcLocal = null;
-let dcRemote = null;
 const config = {
     iceServers: [
         {
@@ -34,18 +32,18 @@ peerLocal.onicecandidate = function(e){
 peerLocal.onnegotiationneeded = function(e) {
     console.log('peerLocal', 'onnegotiationneeded', e);
 };
-dcLocal = peerLocal.createDataChannel('rtcdc');
-dcLocal.onopen = function(e) {
+window.dcLocal = peerLocal.createDataChannel('rtcdc');
+window.dcLocal.onopen = function(e) {
     console.log('dcLocal', 'onopen', e);
     console.log('dcLocal.send("message") to send from server');
 };
-dcLocal.onmessage = function(e) {
+window.dcLocal.onmessage = function(e) {
     console.log('dcLocal', 'onmessage', e.data);
 };
-dcLocal.onerror = function(e) {
+window.dcLocal.onerror = function(e) {
     console.error('dcLocal', 'onerror', e);
 };
-dcLocal.onclose = function(e) {
+window.dcLocal.onclose = function(e) {
     console.log('dcLocal', 'onclose', e);
 };
 

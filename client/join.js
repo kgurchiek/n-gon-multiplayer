@@ -1,4 +1,3 @@
-let dcRemote = null;
 const config = {
     iceServers: [
         {
@@ -17,19 +16,19 @@ peerRemote.onconnectionstatechange = function(e) {
 peerRemote.ondatachannel = function(e) {
     // peerLocal started a data channel, so connect to it here
     console.log('peerRemote', 'ondatachannel', e);
-    dcRemote = e.channel;
-    dcRemote.onopen = function(e) {
+    window.dcRemote = e.channel;
+    window.dcRemote.onopen = function(e) {
         console.log('dcRemote', 'onopen', e);
         console.log('dcRemote.send("message") to send from remote');
 
     };
-    dcRemote.onmessage = function(e) {
+    window.dcRemote.onmessage = function(e) {
         console.log('dcRemote', 'onmessage', e.data);
     };
-    dcRemote.onerror = function(e) {
+    window.dcRemote.onerror = function(e) {
         console.error('dcRemote', 'onerror', e);
     };
-    dcRemote.onclose = function(e) {
+    window.dcRemote.onclose = function(e) {
         console.log('dcRemote', 'onclose', e);
     };
 
