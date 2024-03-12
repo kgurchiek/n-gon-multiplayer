@@ -23,13 +23,37 @@
                 console.log('dcRemote', 'onopen', e);
                 console.log('dcRemote.send("message") to send from remote');
             };
-            window.dcRemote.onmessage = function(message) {
-                console.log('dcRemote', 'onmessage', message.data);
-                const id = message.data[0];
-                let data = message.data.substring(1);
-                if (id == '\x00') {
-                    data = JSON.parse(data);
-                    for (const value in data) player1[value] = data[value];
+            window.dcRemote.onmessage = async (message) => {
+                // console.log('dcRemote', 'onmessage', message.data);
+                const data = new DataView(await message.data.arrayBuffer());
+                const id = new Uint8Array(data.buffer)[0];
+                if (id == 0) {
+                    // rotation
+                    player1.angle = data.getFloat32(1);
+                }
+                if (id == 1) {
+                    // movement
+                    player1.angle = data.getFloat32(1);
+                    player1.onGround = new Uint8Array(data.buffer)[5] == 1;
+                    player1.pos.x = data.getFloat32(6);
+                    player1.pos.y = data.getFloat32(10);
+                    player1.Vx = data.getFloat32(14);
+                    player1.Vy = data.getFloat32(18);
+                    player1.walk_cycle = data.getFloat32(22);
+                    player1.yOff = data.getFloat32(26);
+                }
+                if (id == 2) {
+                    // set field
+                    player1.fieldMode = new Uint8Array(data.buffer)[1];
+                }
+                if (id == 3) {
+                    // toggle field
+                    player1.fieldOn = new Uint8Array(data.buffer)[1] == 1;
+                    console.log(new Uint8Array(data.buffer)[1], new Uint8Array(data.buffer)[1] == 1)
+                }
+                if (id == 4) {
+                    // energy update
+                    player1.energy = data.getFloat32(1);
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -111,6 +135,42 @@
             player1.knee.y = (l / d) * (player1.foot.y - player1.hip.y) + (h / d) * (player1.foot.x - player1.hip.x) + player1.hip.y;
         },
         color: { hue: 0, sat: 0, light: 100 },
+        drawField: () => {
+            if (m.holdingTarget) {
+                ctx.fillStyle = "rgba(110,170,200," + (player1.energy * (0.05 + 0.05 * Math.random())) + ")";
+                ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
+            } else {
+                ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
+                ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
+            }
+            // const off = 2 * Math.cos(simulation.cycle * 0.1)
+            const range = m.fieldRange;
+            ctx.beginPath();
+            ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * m.fieldArc, player1.angle + Math.PI * m.fieldArc, false);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            let eye = 13;
+            let aMag = 0.75 * Math.PI * m.fieldArc
+            let a = player1.angle + aMag
+            let cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
+            let cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
+            ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle))
+            a = player1.angle - aMag
+            cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
+            cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
+            ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * m.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * m.fieldArc))
+            ctx.fill();
+    
+            //draw random lines in field for cool effect
+            let offAngle = player1.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
+            ctx.beginPath();
+            eye = 15;
+            ctx.moveTo(player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle));
+            ctx.lineTo(player1.pos.x + range * Math.cos(offAngle), player1.pos.y + range * Math.sin(offAngle));
+            ctx.strokeStyle = "rgba(120,170,255,0.6)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        },
         drawLeg: (stroke) => {
             if (player1.angle > -Math.PI / 2 && player1.angle < Math.PI / 2) {
                 player1.flipLegs = 1;
@@ -151,6 +211,9 @@
             ctx.stroke();
             ctx.restore();
         },
+        energy: 1,
+        fieldMode: 0,
+        fieldOn: false,
         fillColor: null,
         fillColorDark: null,
         flipLegs: -1,
@@ -176,10 +239,22 @@
     grd.addColorStop(1, player1.fillColor);
     player1.bodyGradient = grd;
 
+    let oldM = {
+        angle: m.angle,
+        energy: m.energy,
+        fieldMode: m.fieldMode,
+        fieldOn: input.field,
+        onGround: false,
+        pos: { x: 0, y: 0 },
+        Vx: 0,
+        Vy: 0,
+        walk_cycle: 0,
+        yOff: 70
+    }
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
         oldStartGame();
-        simulation.ephemera.push({ name: 'Player2', count: 0, do: () => {
+        simulation.ephemera.push({ name: 'player1', count: 0, do: () => {
             ctx.fillStyle = player1.fillColor;
             ctx.save();
             ctx.globalAlpha = (player1.immuneCycle < m.cycle) ? 1 : 0.5;
@@ -199,9 +274,66 @@
             ctx.stroke();
             ctx.restore();
             powerUps.boost.draw();
+
+            if (player1.fieldOn) player1.drawField();
         }})
-        simulation.ephemera.push({ name: 'Movement Broadcast', count: 0, do: () => {
-            dcRemote.send(`\x00${JSON.stringify({ angle: m.angle, pos: m.pos, onGround: m.onGround, Vx: m.Vx, walk_cycle: m.walk_cycle, yOff: m.yOff })}`);
+        simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
+            if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
+                // movement
+                const data = new Uint8Array(new ArrayBuffer(30));
+                data[0] = 1;
+                data[5] = m.onGround ? 1 : 0;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.angle);
+                dataView.setFloat32(6, m.pos.x);
+                dataView.setFloat32(10, m.pos.y);
+                dataView.setFloat32(14, m.Vx);
+                dataView.setFloat32(18, m.Vy);
+                dataView.setFloat32(22, m.walk_cycle);
+                dataView.setFloat32(26, m.yOff);
+                dcRemote.send(dataView);
+            } else if (m.angle != oldM.angle) {
+                // rotation
+                const data = new Uint8Array(new ArrayBuffer(5));
+                data[0] = 0;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.angle);
+                dcRemote.send(dataView);
+            }
+            if (m.fieldMode != oldM.fieldMode) {
+                // set field
+                const data = new Uint8Array(new ArrayBuffer(2));
+                data[0] = 2;
+                data[1] = m.fieldMode ? 1 : 0;
+                dcRemote.send(new DataView(data.buffer));
+            }
+            if (input.field != oldM.fieldOn) {
+                // toggle field
+                const data = new Uint8Array(new ArrayBuffer(2));
+                data[0] = 3;
+                data[1] = input.field;
+                dcRemote.send(new DataView(data.buffer));
+            }
+            if (m.energy != oldM.energy) {
+                // energy update
+                const data = new Uint8Array(new ArrayBuffer(5));
+                data[0] = 4;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.energy);
+                dcRemote.send(dataView);
+            }
+            oldM = {
+                angle: m.angle,
+                energy: m.energy,
+                fieldMode: m.fieldMode,
+                fieldOn: input.field,
+                onGround: false,
+                pos: { x: 0, y: 0 },
+                Vx: 0,
+                Vy: 0,
+                walk_cycle: 0,
+                yOff: 70
+            }
         }})
     }
 })();
