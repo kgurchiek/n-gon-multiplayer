@@ -64,6 +64,7 @@
             if (id == 2) {
                 // set field
                 player2.fieldMode = new Uint8Array(data.buffer)[1];
+                player2.fieldMeterColor = new TextDecoder('utf-8').decode(data.buffer.slice(3, new Uint8Array(data.buffer)[2] + 3));
             }
             if (id == 3) {
                 // toggle field
@@ -72,6 +73,10 @@
             if (id == 4) {
                 // energy update
                 player2.energy = data.getFloat32(1);
+            }
+            if (id == 5) {
+                // max energy update
+                player2.maxEnergy = data.getFloat32(1);
             }
         };
         window.dcLocal.onerror = function(e) {
@@ -215,7 +220,25 @@
             ctx.stroke();
             ctx.restore();
         },
+        drawRegenEnergy: (bgColor = "rgba(0, 0, 0, 0.4)", range = 60) => {
+            if (player2.energy < player2.maxEnergy) {
+                // m.regenEnergy();
+                ctx.fillStyle = bgColor;
+                const xOff = player2.pos.x - player2.radius * player2.maxEnergy;
+                const yOff = player2.pos.y - 50;
+                ctx.fillRect(xOff, yOff, range * player2.maxEnergy, 10);
+                ctx.fillStyle = player2.fieldMeterColor;
+                ctx.fillRect(xOff, yOff, range * player2.energy, 10);
+            } else if (player2.energy > player2.maxEnergy + 0.05 || player2.fieldOn) {
+                ctx.fillStyle = bgColor;
+                const xOff = player2.pos.x - player2.radius * player2.energy;
+                const yOff = player2.pos.y - 50;
+                ctx.fillStyle = player2.fieldMeterColor;
+                ctx.fillRect(xOff, yOff, range * player2.energy, 10);
+            }
+        },
         energy: 1,
+        fieldMeterColor: '#0cf',
         fieldMode: 0,
         fieldOn: false,
         fillColor: null,
@@ -228,8 +251,10 @@
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
         legLength1: 55,
         legLength2: 45,
+        maxEnergy: 1,
         onGround: false,
         pos: { x: 0, y: 0 },
+        radius: 30,
         stepSize: 0,
         Vx: 0,
         Vy: 0,
@@ -246,8 +271,10 @@
     let oldM = {
         angle: m.angle,
         energy: m.energy,
+        fieldMeterColor: m.fieldMeterColor,
         fieldMode: m.fieldMode,
         fieldOn: input.field,
+        maxEnergy: m.maxEnergy,
         onGround: false,
         pos: { x: 0, y: 0 },
         Vx: 0,
@@ -280,6 +307,7 @@
             powerUps.boost.draw();
 
             if (player2.fieldOn) player2.drawField();
+            player2.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
@@ -304,11 +332,14 @@
                 dataView.setFloat32(1, m.angle);
                 dcLocal.send(dataView);
             }
-            if (m.fieldMode != oldM.fieldMode) {
+            if (m.fieldMode != oldM.fieldMode || m.fieldMeterColor != oldM.fieldMeterColor) {
                 // set field
-                const data = new Uint8Array(new ArrayBuffer(2));
+                const textEncoder = new TextEncoder('utf-8');
+                const data = new Uint8Array(new ArrayBuffer(3 + textEncoder.encode(m.fieldMeterColor).length));
                 data[0] = 2;
                 data[1] = m.fieldMode ? 1 : 0;
+                data[2] = textEncoder.encode(m.fieldMeterColor).length;
+                data.set(textEncoder.encode(m.fieldMeterColor), 3);
                 dcLocal.send(new DataView(data.buffer));
             }
             if (input.field != oldM.fieldOn) {
@@ -326,12 +357,22 @@
                 dataView.setFloat32(1, m.energy);
                 dcLocal.send(dataView);
             }
+            if (m.maxEnergy != oldM.maxEnergy) {
+                // max energy update
+                const data = new Uint8Array(new ArrayBuffer(5))
+                data[0] = 5;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.maxEnergy);
+                dcLocal.send(dataView);
+            }
             
             oldM = {
                 angle: m.angle,
                 energy: m.energy,
+                fieldMeterColor: m.fieldMeterColor,
                 fieldMode: m.fieldMode,
                 fieldOn: input.field,
+                maxEnergy: m.maxEnergy,
                 onGround: false,
                 pos: { x: 0, y: 0 },
                 Vx: 0,
