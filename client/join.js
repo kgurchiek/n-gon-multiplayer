@@ -370,7 +370,12 @@
         },
         {
             // time dilation
-            drawField: () => {},
+            drawField: () => {
+                ctx.globalCompositeOperation = "saturation";
+                ctx.fillStyle = "#ccc";
+                ctx.fillRect(-50000, -50000, 100000, 100000);
+                ctx.globalCompositeOperation = "source-over";
+            },
             fieldMeterColor: '#3fe',
             fieldRange: 155
         },
