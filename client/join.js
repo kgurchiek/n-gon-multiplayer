@@ -47,6 +47,8 @@
                     player1.fieldMode = new Uint8Array(data.buffer)[1];
                     player1.fieldMeterColor = fieldData[player1.fieldMode].fieldMeterColor;
                     player1.fieldRange = fieldData[player1.fieldMode].fieldRange;
+                    player1.fieldPosition = { x: player1.pos.x, y: player1.pos.y };
+                    player1.fieldAngle = player1.angle;
                 }
                 if (id == 3) {
                     // toggle field
@@ -59,6 +61,11 @@
                 if (id == 5) {
                     // max energy update
                     player1.maxEnergy = data.getFloat32(1);
+                }
+                if (id == 6) {
+                    // inputs (up/down)
+                    player1.input.up = new Uint8Array(data.buffer)[1] == 1;
+                    player1.input.down = new Uint8Array(data.buffer)[2] == 1;
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -226,7 +233,17 @@
         },
         {
             // negative mass
-            drawField: () => {},
+            drawField: () => {
+                if (player1.input.down) player1.fieldDrawRadius = player1.fieldDrawRadius * 0.97 + 400 * 0.03;
+                else if (player1.input.up) player1.fieldDrawRadius = player1.fieldDrawRadius * 0.97 + 850 * 0.03;
+                else player1.fieldDrawRadius = player1.fieldDrawRadius * 0.97 + 650 * 0.03;
+                ctx.beginPath();
+                ctx.arc(player1.pos.x, player1.pos.y, player1.fieldDrawRadius, 0, 2 * Math.PI);
+                ctx.fillStyle = "#f5f5ff";
+                ctx.globalCompositeOperation = "difference";
+                ctx.fill();
+                ctx.globalCompositeOperation = "source-over";
+            },
             fieldMeterColor: '#333',
             fieldRange: 100
         },
@@ -356,10 +373,12 @@
         },
         energy: 1,
         fieldAngle: 0,
+        fieldDrawRadius: 0,
         fieldMeterColor: '#0cf',
         fieldMode: 0,
         fieldOn: false,
         fieldPosition: { x: 0, y: 0 },
+        fieldRange: 155,
         fillColor: null,
         fillColorDark: null,
         flipLegs: -1,
@@ -367,6 +386,7 @@
         height: 42,
         hip: { x: 12, y: 24 },
         immuneCycle: 0,
+        input: { up: false, down: false },
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
         legLength1: 55,
         legLength2: 45,
@@ -392,6 +412,7 @@
         energy: m.energy,
         fieldMode: m.fieldMode,
         fieldOn: input.field,
+        input: { up: input.up, down: input.down },
         maxEnergy: m.maxEnergy,
         onGround: false,
         pos: { x: 0, y: 0 },
@@ -481,12 +502,21 @@
                 dataView.setFloat32(1, m.maxEnergy);
                 dcRemote.send(dataView);
             }
+            if (input.up != oldM.input.up || input.down != oldM.input.down) {
+                // inputs (up/down)
+                const data = new Uint8Array(new ArrayBuffer(3));
+                data[0] = 6;
+                data[1] = input.up ? 1 : 0;
+                data[2] = input.down ? 1 : 0;
+                dcRemote.send(new DataView(data.buffer));
+            }
             
             oldM = {
                 angle: m.angle,
                 energy: m.energy,
                 fieldMode: m.fieldMode,
                 fieldOn: input.field,
+                input: { up: input.up, down: input.down },
                 maxEnergy: m.maxEnergy,
                 onGround: false,
                 pos: { x: 0, y: 0 },
