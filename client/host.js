@@ -64,7 +64,7 @@
             if (id == 2) {
                 // set field
                 player2.fieldMode = new Uint8Array(data.buffer)[1];
-                player2.fieldMeterColor = new TextDecoder('utf-8').decode(data.buffer.slice(3, new Uint8Array(data.buffer)[2] + 3));
+                player2.fieldMeterColor = fieldData[player2.fieldMode].fieldMeterColor;
             }
             if (id == 3) {
                 // toggle field
@@ -120,6 +120,53 @@
             console.log('disconnected');
         }
     });
+
+    const fieldData = [
+        {
+            // field emitter
+            fieldMeterColor: '#0cf'
+        },
+        {
+            // standing wave
+            fieldMeterColor: '#0cf'
+        },
+        {
+            // perfect diamagnetism
+            fieldMeterColor: '#48f'
+        },
+        {
+            // negative mass
+            fieldMeterColor: '#333'
+        },
+        {
+            // molecular assembler
+            fieldMeterColor: '#ff0'
+        },
+        {
+            // plasma torch
+            fieldMeterColor: '#f0f'
+        },
+        {
+            // time dilation
+            fieldMeterColor: '#3fe'
+        },
+        {
+            // metamaterial cloaking
+            fieldMeterColor: '#333'
+        },
+        {
+            // pilot wave
+            fieldMeterColor: '#333'
+        },
+        {
+            // wormhole
+            fieldMeterColor: '#bbf'
+        },
+        {
+            // grappling hook
+            fieldMeterColor: '#0cf'
+        }
+    ]
 
     let player2 = {
         angle: 0,
@@ -271,7 +318,6 @@
     let oldM = {
         angle: m.angle,
         energy: m.energy,
-        fieldMeterColor: m.fieldMeterColor,
         fieldMode: m.fieldMode,
         fieldOn: input.field,
         maxEnergy: m.maxEnergy,
@@ -332,21 +378,19 @@
                 dataView.setFloat32(1, m.angle);
                 dcLocal.send(dataView);
             }
-            if (m.fieldMode != oldM.fieldMode || m.fieldMeterColor != oldM.fieldMeterColor) {
+            if (m.fieldMode != oldM.fieldMode) {
                 // set field
                 const textEncoder = new TextEncoder('utf-8');
-                const data = new Uint8Array(new ArrayBuffer(3 + textEncoder.encode(m.fieldMeterColor).length));
+                const data = new Uint8Array(new ArrayBuffer(2));
                 data[0] = 2;
-                data[1] = m.fieldMode ? 1 : 0;
-                data[2] = textEncoder.encode(m.fieldMeterColor).length;
-                data.set(textEncoder.encode(m.fieldMeterColor), 3);
+                data[1] = m.fieldMode;
                 dcLocal.send(new DataView(data.buffer));
             }
             if (input.field != oldM.fieldOn) {
                 // toggle field
                 const data = new Uint8Array(new ArrayBuffer(2));
                 data[0] = 3;
-                data[1] = input.field;
+                data[1] = input.field ? 1 : 0;
                 dcLocal.send(new DataView(data.buffer));
             }
             if (m.energy != oldM.energy) {
@@ -369,7 +413,6 @@
             oldM = {
                 angle: m.angle,
                 energy: m.energy,
-                fieldMeterColor: m.fieldMeterColor,
                 fieldMode: m.fieldMode,
                 fieldOn: input.field,
                 maxEnergy: m.maxEnergy,
