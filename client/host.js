@@ -146,7 +146,6 @@
                     ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
                     ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
                 }
-                // const off = 2 * Math.cos(simulation.cycle * 0.1)
                 const range = player2.fieldRange;
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * m.fieldArc, player2.angle + Math.PI * m.fieldArc, false);
@@ -245,31 +244,27 @@
         {
             // negative mass
             drawField: () => {
-                player2.FxAir = 0.016;
-                if (player2.input.down) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 400 * 0.03;
-                else if (player2.input.up) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 850 * 0.03;
-                else player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 650 * 0.03;
-                ctx.beginPath();
-                ctx.arc(player2.pos.x, player2.pos.y, player2.fieldDrawRadius, 0, 2 * Math.PI);
-                ctx.fillStyle = "#f5f5ff";
-                ctx.globalCompositeOperation = "difference";
-                ctx.fill();
-                ctx.globalCompositeOperation = "source-over";
-
-                // effect on player
                 if (player2.fieldOn) {
-                    const mag = player2.input.down ? 0.7 : player2.input.up ? 1.38 : 1.06; 
+                    player2.FxAir = 0.016;
+                    if (player2.input.down) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 400 * 0.03;
+                    else if (player2.input.up) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 850 * 0.03;
+                    else player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 650 * 0.03;
+                    ctx.beginPath();
+                    ctx.arc(player2.pos.x, player2.pos.y, player2.fieldDrawRadius, 0, 2 * Math.PI);
+                    ctx.fillStyle = "#f5f5ff";
+                    ctx.globalCompositeOperation = "difference";
+                    ctx.fill();
+                    ctx.globalCompositeOperation = "source-over";
+
+                    // effect on player
                     player2.FxAir = 0.005
                     const dist = Math.sqrt((player2.pos.x - m.pos.x) * (player2.pos.x - m.pos.x) + (player2.pos.y - m.pos.y) * (player2.pos.y - m.pos.y));
                     if (dist < player2.fieldDrawRadius) {
-                        m.Vy -= m.mass * (simulation.g * mag); //add a bit more then standard gravity
-                        if (input.left) { //blocks move horizontally with the same force as the player
-                            m.Vx -= player2.FxAir * m.mass / 10; // move player   left / a
-                        } else if (input.right) {
-                            m.Vx += player2.FxAir * m.mass / 10; //move player  right / d
-                        }
+                        if (player2.input.down) player.force.y -= 0.5 * player.mass * simulation.g;
+                        else if (player2.input.up) player.force.y -= 1.45 * player.mass * simulation.g;
+                        else player.force.y -= 1.07 * player.mass * simulation.g;
                     }
-                }
+                } else player2.fieldDrawRadius = 0;
             },
             fieldMeterColor: '#333',
             fieldRange: 155
@@ -284,7 +279,6 @@
                     ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
                     ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
                 }
-                // const off = 2 * Math.cos(simulation.cycle * 0.1)
                 const range = player2.fieldRange;
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * m.fieldArc, player2.angle + Math.PI * m.fieldArc, false);
