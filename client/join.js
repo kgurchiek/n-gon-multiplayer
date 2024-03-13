@@ -383,7 +383,66 @@
         },
         {
             // pilot wave
-            drawField: () => {},
+            drawField: () => {
+                if (player1.fieldOn) {
+                    if (player1.fieldDrawRadius == 0) {
+                        player1.fieldPosition = { x: player1.mouseInGame.x, y: player1.mouseInGame.y };
+                        player1.lastFieldPosition = { x: player1.mouseInGame.x, y: player1.mouseInGame.y };
+                    } else {
+                        const scale = 25;
+                        const bounds = {
+                            min: {
+                                x: player1.fieldPosition.x - scale,
+                                y: player1.fieldPosition.y - scale
+                            },
+                            max: {
+                                x: player1.fieldPosition.x + scale,
+                                y: player1.fieldPosition.y + scale
+                            }
+                        }
+                        const isInMap = Matter.Query.region(map, bounds).length
+
+                        player1.lastFieldPosition = { //used to find velocity of field changes
+                            x: player1.fieldPosition.x,
+                            y: player1.fieldPosition.y
+                        }
+                        const smooth = isInMap ? 0.985 : 0.96;
+                        player1.fieldPosition = { //smooth the mouse position
+                            x: player1.fieldPosition.x * smooth + player1.mouseInGame.x * (1 - smooth),
+                            y: player1.fieldPosition.y * smooth + player1.mouseInGame.y * (1 - smooth),
+                        }
+                    }
+
+                    const diff = Vector.sub(player1.fieldPosition, player1.lastFieldPosition)
+                    const speed = Vector.magnitude(diff)
+                    let radius, radiusSmooth
+                    if (Matter.Query.ray(map, player1.fieldPosition, player.position).length) { //is there something block the player's view of the field
+                        radius = 0
+                        radiusSmooth = Math.max(0, isInMap ? 0.96 - 0.02 * speed : 0.995); //0.99
+                    } else {
+                        radius = Math.max(50, 250 - 2 * speed)
+                        radiusSmooth = 0.97
+                    }
+                    player1.fieldDrawRadius = player1.fieldDrawRadius * radiusSmooth + radius * (1 - radiusSmooth)
+
+                    ctx.beginPath();
+                    const rotate = m.cycle * 0.008;
+                    player1.fieldPhase += 0.2
+                    const off1 = 1 + 0.06 * Math.sin(player1.fieldPhase);
+                    const off2 = 1 - 0.06 * Math.sin(player1.fieldPhase);
+                    ctx.beginPath();
+                    ctx.ellipse(player1.fieldPosition.x, player1.fieldPosition.y, 1.2 * player1.fieldDrawRadius * off1, 1.2 * player1.fieldDrawRadius * off2, rotate, 0, 2 * Math.PI);
+                    ctx.globalCompositeOperation = "exclusion";
+                    ctx.fillStyle = "#fff";
+                    ctx.fill();
+                    ctx.globalCompositeOperation = "source-over";
+                    ctx.beginPath();
+                    ctx.ellipse(player1.fieldPosition.x, player1.fieldPosition.y, 1.2 * player1.fieldDrawRadius * off1, 1.2 * player1.fieldDrawRadius * off2, rotate, 0, 2 * Math.PI * player1.energy / player1.maxEnergy);
+                    ctx.strokeStyle = "#000";
+                    ctx.lineWidth = 4;
+                    ctx.stroke();
+                } else player1.fieldDrawRadius = 0;
+            },
             fieldMeterColor: '#333',
             fieldRange: 155
         },
@@ -488,6 +547,7 @@
         fieldMeterColor: '#0cf',
         fieldMode: 0,
         fieldOn: false,
+        fieldPhase: 0,
         fieldPosition: { x: 0, y: 0 },
         fieldRange: 155,
         fillColor: null,
@@ -500,6 +560,7 @@
         immuneCycle: 0,
         input: { up: false, down: false, left: false, right: false },
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
+        lastFieldPosition: { x: 0, y: 0 },
         legLength1: 55,
         legLength2: 45,
         maxEnergy: 1,
@@ -524,7 +585,7 @@
         crouch: m.crouch,
         energy: m.energy,
         fieldMode: m.fieldMode,
-        fieldOn: input.field,
+        fieldOn: m.fieldOn,
         input: { up: input.up, down: input.down },
         maxEnergy: m.maxEnergy,
         mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
@@ -560,7 +621,7 @@
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player1.fieldOn || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3) fieldData[player1.fieldMode].drawField();
+            if (player1.fieldOn || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3 || player1.fieldMode == 8) fieldData[player1.fieldMode].drawField();
             player1.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
@@ -596,11 +657,11 @@
                 data[1] = m.fieldMode;
                 dcRemote.send(new DataView(data.buffer));
             }
-            if (input.field != oldM.fieldOn) {
+            if (m.fieldOn != oldM.fieldOn) {
                 // toggle field
                 const data = new Uint8Array(new ArrayBuffer(2));
                 data[0] = 3;
-                data[1] = input.field ? 1 : 0;
+                data[1] = m.fieldOn ? 1 : 0;
                 dcRemote.send(new DataView(data.buffer));
             }
             if (m.energy != oldM.energy) {
@@ -641,7 +702,7 @@
                 crouch: m.crouch,
                 energy: m.energy,
                 fieldMode: m.fieldMode,
-                fieldOn: input.field,
+                fieldOn: m.fieldOn,
                 input: { up: input.up, down: input.down },
                 maxEnergy: m.maxEnergy,
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
