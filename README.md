@@ -8,4 +8,4 @@
 | 03 | Toggle Field      | 1      | fieldOn (boolean) |
 | 04 | Energy Update     | 1      | energy (Float32) |
 | 05 | Max Energy Update | 1      | maxEnergy (Float32) |
-| 06 | Inputs (up/down)  | 2      | up (boolean), down (boolean) |
+| 06 | Inputs (up/down)  | 4      | up (boolean), down (boolean), left (boolean, right (boolean)) |

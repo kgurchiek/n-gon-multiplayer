@@ -66,6 +66,8 @@
                     // inputs (up/down)
                     player1.input.up = new Uint8Array(data.buffer)[1] == 1;
                     player1.input.down = new Uint8Array(data.buffer)[2] == 1;
+                    player1.input.left = new Uint8Array(data.buffer)[3] == 1;
+                    player1.input.right = new Uint8Array(data.buffer)[4] == 1;
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -234,6 +236,7 @@
         {
             // negative mass
             drawField: () => {
+                player1.FxAir = 0.016;
                 if (player1.input.down) player1.fieldDrawRadius = player1.fieldDrawRadius * 0.97 + 400 * 0.03;
                 else if (player1.input.up) player1.fieldDrawRadius = player1.fieldDrawRadius * 0.97 + 850 * 0.03;
                 else player1.fieldDrawRadius = player1.fieldDrawRadius * 0.97 + 650 * 0.03;
@@ -243,44 +246,58 @@
                 ctx.globalCompositeOperation = "difference";
                 ctx.fill();
                 ctx.globalCompositeOperation = "source-over";
+
+                // effect on player
+                if (player1.fieldOn) {
+                    player1.FxAir = 0.005
+                    const dist = Math.sqrt((player1.pos.x - m.pos.x) * (player1.pos.x - m.pos.x) + (player1.pos.y - m.pos.y) * (player1.pos.y - m.pos.y));
+                    if (dist < player1.fieldDrawRadius) {
+                        m.force.y -= m.mass * (simulation.g * mag); //add a bit more then standard gravity
+                        if (input.left) { //blocks move horizontally with the same force as the player
+                            m.force.x -= player1.FxAir * m.mass / 10; // move player   left / a
+                        } else if (input.right) {
+                            m.force.x += player1.FxAir * m.mass / 10; //move player  right / d
+                        }
+                    }
+                }
             },
             fieldMeterColor: '#333',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // molecular assembler
             drawField: () => {
                 if (m.holdingTarget) {
-                    ctx.fillStyle = "rgba(110,170,200," + (player2.energy * (0.05 + 0.05 * Math.random())) + ")";
+                    ctx.fillStyle = "rgba(110,170,200," + (player1.energy * (0.05 + 0.05 * Math.random())) + ")";
                     ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
                 } else {
-                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
+                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
                     ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
                 }
                 // const off = 2 * Math.cos(simulation.cycle * 0.1)
                 const range = m.fieldRange;
                 ctx.beginPath();
-                ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * m.fieldArc, player2.angle + Math.PI * m.fieldArc, false);
+                ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * m.fieldArc, player1.angle + Math.PI * m.fieldArc, false);
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 let eye = 13;
                 let aMag = 0.75 * Math.PI * m.fieldArc
-                let a = player2.angle + aMag
-                let cp1x = player2.pos.x + 0.6 * range * Math.cos(a)
-                let cp1y = player2.pos.y + 0.6 * range * Math.sin(a)
-                ctx.quadraticCurveTo(cp1x, cp1y, player2.pos.x + eye * Math.cos(player2.angle), player2.pos.y + eye * Math.sin(player2.angle))
-                a = player2.angle - aMag
-                cp1x = player2.pos.x + 0.6 * range * Math.cos(a)
-                cp1y = player2.pos.y + 0.6 * range * Math.sin(a)
-                ctx.quadraticCurveTo(cp1x, cp1y, player2.pos.x + 1 * range * Math.cos(player2.angle - Math.PI * m.fieldArc), player2.pos.y + 1 * range * Math.sin(player2.angle - Math.PI * m.fieldArc))
+                let a = player1.angle + aMag
+                let cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
+                let cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
+                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle))
+                a = player1.angle - aMag
+                cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
+                cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
+                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * m.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * m.fieldArc))
                 ctx.fill();
         
                 //draw random lines in field for cool effect
-                let offAngle = player2.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
+                let offAngle = player1.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
                 ctx.beginPath();
                 eye = 15;
-                ctx.moveTo(player2.pos.x + eye * Math.cos(player2.angle), player2.pos.y + eye * Math.sin(player2.angle));
-                ctx.lineTo(player2.pos.x + range * Math.cos(offAngle), player2.pos.y + range * Math.sin(offAngle));
+                ctx.moveTo(player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle));
+                ctx.lineTo(player1.pos.x + range * Math.cos(offAngle), player1.pos.y + range * Math.sin(offAngle));
                 ctx.strokeStyle = "rgba(120,170,255,0.6)";
                 ctx.lineWidth = 1;
                 ctx.stroke();
@@ -418,10 +435,11 @@
         fillColorDark: null,
         flipLegs: -1,
         foot: { x: 0, y: 0 },
+        FxAir: 0.016,
         height: 42,
         hip: { x: 12, y: 24 },
         immuneCycle: 0,
-        input: { up: false, down: false },
+        input: { up: false, down: false, left: false, right: false },
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
         legLength1: 55,
         legLength2: 45,
@@ -480,7 +498,7 @@
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player1.fieldOn || player1.fieldMode == 1 || player1.fieldMode == 2) fieldData[player1.fieldMode].drawField();
+            if (player1.fieldOn || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3) fieldData[player1.fieldMode].drawField();
             player1.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
@@ -543,6 +561,8 @@
                 data[0] = 6;
                 data[1] = input.up ? 1 : 0;
                 data[2] = input.down ? 1 : 0;
+                data[3] = input.left ? 1 : 0;
+                data[4] = input.right ? 1 : 0;
                 dcRemote.send(new DataView(data.buffer));
             }
             

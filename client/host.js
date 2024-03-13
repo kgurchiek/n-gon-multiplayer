@@ -85,6 +85,8 @@
                 // inputs (up/down)
                 player2.input.up = new Uint8Array(data.buffer)[1] == 1;
                 player2.input.down = new Uint8Array(data.buffer)[2] == 1;
+                player2.input.left = new Uint8Array(data.buffer)[3] == 1;
+                player2.input.right = new Uint8Array(data.buffer)[4] == 1;
             }
         };
         window.dcLocal.onerror = function(e) {
@@ -239,6 +241,7 @@
         {
             // negative mass
             drawField: () => {
+                player2.FxAir = 0.016;
                 if (player2.input.down) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 400 * 0.03;
                 else if (player2.input.up) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 850 * 0.03;
                 else player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 650 * 0.03;
@@ -248,9 +251,23 @@
                 ctx.globalCompositeOperation = "difference";
                 ctx.fill();
                 ctx.globalCompositeOperation = "source-over";
+
+                // effect on player
+                if (player2.fieldOn) {
+                    player2.FxAir = 0.005
+                    const dist = Math.sqrt((player2.pos.x - m.pos.x) * (player2.pos.x - m.pos.x) + (player2.pos.y - m.pos.y) * (player2.pos.y - m.pos.y));
+                    if (dist < player2.fieldDrawRadius) {
+                        m.force.y -= m.mass * (simulation.g * mag); //add a bit more then standard gravity
+                        if (input.left) { //blocks move horizontally with the same force as the player
+                            m.force.x -= player2.FxAir * m.mass / 10; // move player   left / a
+                        } else if (input.right) {
+                            m.force.x += player2.FxAir * m.mass / 10; //move player  right / d
+                        }
+                    }
+                }
             },
             fieldMeterColor: '#333',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // molecular assembler
@@ -423,10 +440,11 @@
         fillColorDark: null,
         flipLegs: -1,
         foot: { x: 0, y: 0 },
+        FxAir: 0.016,
         height: 42,
         hip: { x: 12, y: 24 },
         immuneCycle: 0,
-        input: { up: false, down: false },
+        input: { up: false, down: false, left: false, right: false },
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
         legLength1: 55,
         legLength2: 45,
@@ -485,7 +503,7 @@
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player2.fieldOn || player2.fieldMode == 1 || player2.fieldMode == 2) fieldData[player2.fieldMode].drawField();
+            if (player2.fieldOn || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3) fieldData[player2.fieldMode].drawField();
             player2.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
@@ -548,6 +566,8 @@
                 data[0] = 6;
                 data[1] = input.up ? 1 : 0;
                 data[2] = input.down ? 1 : 0;
+                data[3] = input.left ? 1 : 0;
+                data[4] = input.right ? 1 : 0;
                 dcLocal.send(new DataView(data.buffer));
             }
             
