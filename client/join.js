@@ -249,14 +249,15 @@
 
                 // effect on player
                 if (player1.fieldOn) {
-                    player1.FxAir = 0.005
+                    const mag = player1.input.down ? 0.7 : player1.input.up ? 1.38 : 1.06; 
+                    player1.FxAir = 0.005;
                     const dist = Math.sqrt((player1.pos.x - m.pos.x) * (player1.pos.x - m.pos.x) + (player1.pos.y - m.pos.y) * (player1.pos.y - m.pos.y));
                     if (dist < player1.fieldDrawRadius) {
-                        m.force.y -= m.mass * (simulation.g * mag); //add a bit more then standard gravity
+                        m.Vy -= m.mass * (simulation.g * mag); //add a bit more then standard gravity
                         if (input.left) { //blocks move horizontally with the same force as the player
-                            m.force.x -= player1.FxAir * m.mass / 10; // move player   left / a
+                            m.Vx -= player1.FxAir * m.mass / 10; // move player   left / a
                         } else if (input.right) {
-                            m.force.x += player1.FxAir * m.mass / 10; //move player  right / d
+                            m.Vx += player1.FxAir * m.mass / 10; //move player  right / d
                         }
                     }
                 }
