@@ -101,7 +101,7 @@
 
             if (message.data[0] == '\x00') {
                 if (state == 0) {
-                    alert(`Join code: ${message.data.substring(1)}\nPress "ok" before entring it on another device.`);
+                    alert(`Join code: ${message.data.substring(1)}\nPress "ok" before entering it on another device.`);
                     state++;
                 } else {
                     const peerRemoteAnswer = new RTCSessionDescription(JSON.parse(message.data.substring(1)));
