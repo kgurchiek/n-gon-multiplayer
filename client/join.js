@@ -46,11 +46,11 @@
                     // set field
                     player1.fieldMode = new Uint8Array(data.buffer)[1];
                     player1.fieldMeterColor = fieldData[player1.fieldMode].fieldMeterColor;
+                    player1.fieldRange = fieldData[player1.fieldMode].fieldRange;
                 }
                 if (id == 3) {
                     // toggle field
                     player1.fieldOn = new Uint8Array(data.buffer)[1] == 1;
-                    console.log(new Uint8Array(data.buffer)[1], new Uint8Array(data.buffer)[1] == 1)
                 }
                 if (id == 4) {
                     // energy update
@@ -120,47 +120,120 @@
     const fieldData = [
         {
             // field emitter
-            fieldMeterColor: '#0cf'
+            drawField: () => {
+                if (m.holdingTarget) {
+                    ctx.fillStyle = "rgba(110,170,200," + (player1.energy * (0.05 + 0.05 * Math.random())) + ")";
+                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
+                } else {
+                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
+                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
+                }
+                // const off = 2 * Math.cos(simulation.cycle * 0.1)
+                const range = m.fieldRange;
+                ctx.beginPath();
+                ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * m.fieldArc, player1.angle + Math.PI * m.fieldArc, false);
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                let eye = 13;
+                let aMag = 0.75 * Math.PI * m.fieldArc
+                let a = player1.angle + aMag
+                let cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
+                let cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
+                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle))
+                a = player1.angle - aMag
+                cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
+                cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
+                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * m.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * m.fieldArc))
+                ctx.fill();
+        
+                //draw random lines in field for cool effect
+                let offAngle = player1.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
+                ctx.beginPath();
+                eye = 15;
+                ctx.moveTo(player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle));
+                ctx.lineTo(player1.pos.x + range * Math.cos(offAngle), player1.pos.y + range * Math.sin(offAngle));
+                ctx.strokeStyle = "rgba(120,170,255,0.6)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            },
+            fieldMeterColor: '#0cf',
+            fieldRange: 100
         },
         {
             // standing wave
-            fieldMeterColor: '#0cf'
+            drawField: () => {
+                player1.harmonicRadius = 1; // TODO: changes with expansion tech
+                const fieldRange1 = (0.75 + 0.3 * Math.sin(m.cycle / 23)) * player1.fieldRange * player1.harmonicRadius
+                const fieldRange2 = (0.68 + 0.37 * Math.sin(m.cycle / 37)) * player1.fieldRange * player1.harmonicRadius
+                const fieldRange3 = (0.7 + 0.35 * Math.sin(m.cycle / 47)) * player1.fieldRange * player1.harmonicRadius
+                const netFieldRange = Math.max(fieldRange1, fieldRange2, fieldRange3)
+                ctx.fillStyle = "rgba(110,170,200," + Math.min(0.6, (0.04 + 0.7 * player1.energy * (0.1 + 0.11 * Math.random()))) + ")";
+                ctx.beginPath();
+                ctx.arc(player1.pos.x, player1.pos.y, fieldRange1, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(player1.pos.x, player1.pos.y, fieldRange2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(player1.pos.x, player1.pos.y, fieldRange3, 0, 2 * Math.PI);
+                ctx.fill();
+            },
+            fieldMeterColor: '#0cf',
+            fieldRange: 185
         },
         {
             // perfect diamagnetism
-            fieldMeterColor: '#48f'
+            drawField: () => {},
+            fieldMeterColor: '#48f',
+            fieldRange: 100
         },
         {
             // negative mass
-            fieldMeterColor: '#333'
+            drawField: () => {},
+            fieldMeterColor: '#333',
+            fieldRange: 100
         },
         {
             // molecular assembler
-            fieldMeterColor: '#ff0'
+            drawField: () => {},
+            fieldMeterColor: '#ff0',
+            fieldRange: 100
         },
         {
             // plasma torch
-            fieldMeterColor: '#f0f'
+            drawField: () => {},
+            fieldMeterColor: '#f0f',
+            fieldRange: 100
         },
         {
             // time dilation
-            fieldMeterColor: '#3fe'
+            drawField: () => {},
+            fieldMeterColor: '#3fe',
+            fieldRange: 100
         },
         {
             // metamaterial cloaking
-            fieldMeterColor: '#333'
+            drawField: () => {},
+            fieldMeterColor: '#333',
+            fieldRange: 100
         },
         {
             // pilot wave
-            fieldMeterColor: '#333'
+            drawField: () => {},
+            fieldMeterColor: '#333',
+            fieldRange: 100
         },
         {
             // wormhole
-            fieldMeterColor: '#bbf'
+            drawField: () => {},
+            fieldMeterColor: '#bbf',
+            fieldRange: 100
         },
         {
             // grappling hook
-            fieldMeterColor: '#0cf'
+            drawField: () => {},
+            fieldMeterColor: '#0cf',
+            fieldRange: 100
         }
     ]
 
@@ -187,42 +260,6 @@
             player1.knee.y = (l / d) * (player1.foot.y - player1.hip.y) + (h / d) * (player1.foot.x - player1.hip.x) + player1.hip.y;
         },
         color: { hue: 0, sat: 0, light: 100 },
-        drawField: () => {
-            if (m.holdingTarget) {
-                ctx.fillStyle = "rgba(110,170,200," + (player1.energy * (0.05 + 0.05 * Math.random())) + ")";
-                ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
-            } else {
-                ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
-                ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
-            }
-            // const off = 2 * Math.cos(simulation.cycle * 0.1)
-            const range = m.fieldRange;
-            ctx.beginPath();
-            ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * m.fieldArc, player1.angle + Math.PI * m.fieldArc, false);
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            let eye = 13;
-            let aMag = 0.75 * Math.PI * m.fieldArc
-            let a = player1.angle + aMag
-            let cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
-            let cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
-            ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle))
-            a = player1.angle - aMag
-            cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
-            cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
-            ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * m.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * m.fieldArc))
-            ctx.fill();
-    
-            //draw random lines in field for cool effect
-            let offAngle = player1.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
-            ctx.beginPath();
-            eye = 15;
-            ctx.moveTo(player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle));
-            ctx.lineTo(player1.pos.x + range * Math.cos(offAngle), player1.pos.y + range * Math.sin(offAngle));
-            ctx.strokeStyle = "rgba(120,170,255,0.6)";
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        },
         drawLeg: (stroke) => {
             if (player1.angle > -Math.PI / 2 && player1.angle < Math.PI / 2) {
                 player1.flipLegs = 1;
@@ -348,7 +385,7 @@
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player1.fieldOn) player1.drawField();
+            if (player1.fieldOn || player1.fieldMode == 1 || player1.fieldMode == 2) fieldData[player1.fieldMode].drawField();
             player1.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
