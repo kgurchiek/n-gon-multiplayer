@@ -88,6 +88,10 @@
                 player2.input.left = new Uint8Array(data.buffer)[3] == 1;
                 player2.input.right = new Uint8Array(data.buffer)[4] == 1;
             }
+            if (id == 7) {
+                // toggle crouch
+                player2.crouch = new Uint8Array(data.buffer)[1] == 1;
+            }
         };
         window.dcLocal.onerror = function(e) {
             console.error('dcLocal', 'onerror', e);
@@ -143,7 +147,7 @@
                     ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
                 }
                 // const off = 2 * Math.cos(simulation.cycle * 0.1)
-                const range = m.fieldRange;
+                const range = player2.fieldRange;
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * m.fieldArc, player2.angle + Math.PI * m.fieldArc, false);
                 ctx.lineWidth = 2;
@@ -281,7 +285,7 @@
                     ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
                 }
                 // const off = 2 * Math.cos(simulation.cycle * 0.1)
-                const range = m.fieldRange;
+                const range = player2.fieldRange;
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * m.fieldArc, player2.angle + Math.PI * m.fieldArc, false);
                 ctx.lineWidth = 2;
@@ -309,43 +313,95 @@
                 ctx.stroke();
             },
             fieldMeterColor: '#ff0',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // plasma torch
-            drawField: () => {},
+            drawField: () => {
+                let range = 120 + (player2.crouch ? 400 : 300) * Math.sqrt(Math.random()) // TODO: can change with tech
+                const path = [
+                    {
+                        x: player2.pos.x + 20 * Math.cos(player2.angle),
+                        y: player2.pos.y + 20 * Math.sin(player2.angle)
+                    },
+                    {
+                        x: player2.pos.x + range * Math.cos(player2.angle),
+                        y: player2.pos.y + range * Math.sin(player2.angle)
+                    }
+                ];
+                //check for collisions
+                let best = {
+                    x: null,
+                    y: null,
+                    dist2: Infinity,
+                    who: null,
+                    v1: null,
+                    v2: null
+                };
+                best = vertexCollision(path[0], path[1], [mob, map, body]);
+                if (best.dist2 != Infinity) { //if hitting something
+                    path[path.length - 1] = { x: best.x, y: best.y };
+                }
+
+                //draw blowtorch laser beam
+                ctx.strokeStyle = "rgba(255,0,255,0.1)"
+                ctx.lineWidth = 14
+                ctx.beginPath();
+                ctx.moveTo(path[0].x, path[0].y);
+                ctx.lineTo(path[1].x, path[1].y);
+                ctx.stroke();
+                ctx.strokeStyle = "#f0f";
+                ctx.lineWidth = 2
+                ctx.stroke();
+
+                //draw electricity
+                const Dx = Math.cos(player2.angle);
+                const Dy = Math.sin(player2.angle);
+                let x = player2.pos.x + 20 * Dx;
+                let y = player2.pos.y + 20 * Dy;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                const step = Vector.magnitude(Vector.sub(path[0], path[1])) / 10
+                for (let i = 0; i < 8; i++) {
+                    x += step * (Dx + 1.5 * (Math.random() - 0.5))
+                    y += step * (Dy + 1.5 * (Math.random() - 0.5))
+                    ctx.lineTo(x, y);
+                }
+                ctx.lineWidth = 2 * Math.random();
+                ctx.stroke();
+            },
             fieldMeterColor: '#f0f',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // time dilation
             drawField: () => {},
             fieldMeterColor: '#3fe',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // metamaterial cloaking
             drawField: () => {},
             fieldMeterColor: '#333',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // pilot wave
             drawField: () => {},
             fieldMeterColor: '#333',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // wormhole
             drawField: () => {},
             fieldMeterColor: '#bbf',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // grappling hook
             drawField: () => {},
             fieldMeterColor: '#0cf',
-            fieldRange: 100
+            fieldRange: 155
         }
     ]
 
@@ -372,6 +428,7 @@
             player2.knee.y = (l / d) * (player2.foot.y - player2.hip.y) + (h / d) * (player2.foot.x - player2.hip.x) + player2.hip.y;
         },
         color: { hue: 0, sat: 0, light: 100 },
+        crouch: false,
         drawLeg: (stroke) => {
             if (player2.angle > -Math.PI / 2 && player2.angle < Math.PI / 2) {
                 player2.flipLegs = 1;
@@ -468,6 +525,7 @@
 
     let oldM = {
         angle: m.angle,
+        crouch: m.crouch,
         energy: m.energy,
         fieldMode: m.fieldMode,
         fieldOn: input.field,
@@ -571,9 +629,17 @@
                 data[4] = input.right ? 1 : 0;
                 dcLocal.send(new DataView(data.buffer));
             }
+            if (m.crouch != oldM.crouch) {
+                // toggle crouch
+                const data = new Uint8Array(new ArrayBuffer(2));
+                data[0] = 7;
+                data[1] = m.crouch ? 1 : 0;
+                dcLocal.send(new DataView(data.buffer));
+            }
             
             oldM = {
                 angle: m.angle,
+                crouch: m.crouch,
                 energy: m.energy,
                 fieldMode: m.fieldMode,
                 fieldOn: input.field,
