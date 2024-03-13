@@ -162,7 +162,7 @@
                 ctx.stroke();
             },
             fieldMeterColor: '#0cf',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // standing wave
@@ -188,9 +188,46 @@
         },
         {
             // perfect diamagnetism
-            drawField: () => {},
+            drawField: () => {
+                const wave = Math.sin(m.cycle * 0.022);
+                player2.fieldRange = 180 + 12 * wave; // TODO: changes with Miessner Effect tech
+                player2.fieldArc = 0.35 + 0.045 * wave; // TODO: changes with Miessner Effect tech
+                if (player2.fieldOn) {
+                    player2.fieldPosition = { x: player2.pos.x, y: player2.pos.y };
+                    player2.fieldAngle = player2.angle;
+                    ctx.fillStyle = `rgba(110,150,220, ${0.27 + 0.2 * Math.random() - 0.1 * wave})`
+                    ctx.strokeStyle = `rgba(110,150,220, ${0.4 + 0.5 * Math.random()})`
+                    ctx.beginPath();
+                    ctx.arc(player2.pos.x, player2.pos.y, player2.fieldRange, player2.angle - Math.PI * player2.fieldArc, player2.angle + Math.PI * player2.fieldArc, false);
+                    ctx.lineWidth = 2.5 - 1.5 * wave;
+                    ctx.stroke();
+                    const curve = 0.57 + 0.04 * wave
+                    const aMag = (1 - curve * 1.2) * Math.PI * player2.fieldArc
+                    let a = player2.angle + aMag
+                    let cp1x = player2.pos.x + curve * player2.fieldRange * Math.cos(a)
+                    let cp1y = player2.pos.y + curve * player2.fieldRange * Math.sin(a)
+                    ctx.quadraticCurveTo(cp1x, cp1y, player2.pos.x + 30 * Math.cos(player2.angle), player2.pos.y + 30 * Math.sin(player2.angle))
+                    a = player2.angle - aMag
+                    cp1x = player2.pos.x + curve * player2.fieldRange * Math.cos(a)
+                    cp1y = player2.pos.y + curve * player2.fieldRange * Math.sin(a)
+                    ctx.quadraticCurveTo(cp1x, cp1y, player2.pos.x + 1 * player2.fieldRange * Math.cos(player2.angle - Math.PI * player2.fieldArc), player2.pos.y + 1 * player2.fieldRange * Math.sin(player2.angle - Math.PI * player2.fieldArc))
+                    ctx.fill();
+                } else {
+                    ctx.fillStyle = `rgba(110,150,220, ${0.27 + 0.2 * Math.random() - 0.1 * wave})`
+                    ctx.strokeStyle = `rgba(110,180,255, ${0.4 + 0.5 * Math.random()})`
+                    ctx.beginPath();
+                    ctx.arc(player2.fieldPosition.x, player2.fieldPosition.y, player2.fieldRange, player2.fieldAngle - Math.PI * player2.fieldArc, player2.fieldAngle + Math.PI * player2.fieldArc, false);
+                    ctx.lineWidth = 2.5 - 1.5 * wave;
+                    ctx.stroke();
+                    const curve = 0.8 + 0.06 * wave
+                    const aMag = (1 - curve * 1.2) * Math.PI * player2.fieldArc
+                    let a = player2.fieldAngle + aMag
+                    ctx.quadraticCurveTo(player2.fieldPosition.x + curve * player2.fieldRange * Math.cos(a), player2.fieldPosition.y + curve * player2.fieldRange * Math.sin(a), player2.fieldPosition.x + 1 * player2.fieldRange * Math.cos(player2.fieldAngle - Math.PI * player2.fieldArc), player2.fieldPosition.y + 1 * player2.fieldRange * Math.sin(player2.fieldAngle - Math.PI * player2.fieldArc))
+                    ctx.fill();
+                }
+            },
             fieldMeterColor: '#48f',
-            fieldRange: 100
+            fieldRange: 180
         },
         {
             // negative mass
@@ -323,9 +360,11 @@
             }
         },
         energy: 1,
+        fieldAngle: 0,
         fieldMeterColor: '#0cf',
         fieldMode: 0,
         fieldOn: false,
+        fieldPosition: { x: 0, y: 0 },
         fillColor: null,
         fillColorDark: null,
         flipLegs: -1,
