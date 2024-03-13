@@ -421,7 +421,7 @@
                     const diff = Vector.sub(player2.fieldPosition, player2.lastFieldPosition)
                     const speed = Vector.magnitude(diff)
                     let radius, radiusSmooth
-                    if (Matter.Query.ray(map, player2.fieldPosition, player.position).length) { //is there something block the player's view of the field
+                    if (Matter.Query.ray(map, player2.fieldPosition, player2.pos).length) { //is there something block the player's view of the field
                         radius = 0
                         radiusSmooth = Math.max(0, isInMap ? 0.96 - 0.02 * speed : 0.995); //0.99
                     } else {
@@ -453,9 +453,99 @@
         },
         {
             // wormhole
-            drawField: () => {},
+            drawField: () => {
+                const scale = 60;
+                const justPastMouse = Vector.add(Vector.mult(Vector.normalise(Vector.sub(player2.mouseInGame, player2.pos)), 50), player2.mouseInGame)
+                const sub = Vector.sub(player2.mouseInGame, player2.pos);
+                const mag = Vector.magnitude(sub);
+                if (player2.fieldOn) {
+
+                    this.drain = 0.05 + 0.005 * Math.sqrt(mag)
+                    const unit = Vector.perp(Vector.normalise(sub))
+                    const where = { x: player2.pos.x + 30 * Math.cos(player2.angle), y: player2.pos.y + 30 * Math.sin(player2.angle) }
+                    player2.fieldRange = 0.97 * player2.fieldRange + 0.03 * (50 + 10 * Math.sin(simulation.cycle * 0.025))
+                    const edge2a = Vector.add(Vector.mult(unit, 1.5 * player2.fieldRange), player2.mouseInGame)
+                    const edge2b = Vector.add(Vector.mult(unit, -1.5 * player2.fieldRange), player2.mouseInGame)
+                    ctx.beginPath();
+                    ctx.moveTo(where.x, where.y)
+                    ctx.bezierCurveTo(where.x, where.y, player2.mouseInGame.x, player2.mouseInGame.y, edge2a.x, edge2a.y);
+                    ctx.moveTo(where.x, where.y)
+                    ctx.bezierCurveTo(where.x, where.y, player2.mouseInGame.x, player2.mouseInGame.y, edge2b.x, edge2b.y);
+                    if (
+                        mag > 250 && player2.energy > this.drain &&
+                        (tech.isWormholeMapIgnore || Matter.Query.ray(map, player2.pos, justPastMouse).length === 0) &&
+                        Matter.Query.region(map, {
+                            min: {
+                                x: player2.mouseInGame.x - scale,
+                                y: player2.mouseInGame.y - scale
+                            },
+                            max: {
+                                x: player2.mouseInGame.x + scale,
+                                y: player2.mouseInGame.y + scale
+                            }
+                        }).length === 0
+                    ) {
+                        player2.hole.isReady = true;
+                        ctx.lineWidth = 1
+                        ctx.strokeStyle = "#000"
+                        ctx.stroke();
+                    } else {
+                        player2.hole.isReady = false;
+                        ctx.lineWidth = 1
+                        ctx.strokeStyle = "#000"
+                        ctx.lineDashOffset = 30 * Math.random()
+                        ctx.setLineDash([20, 40]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                } else if (
+                    player2.hole.isReady && mag > 250 && player2.energy > this.drain &&
+                    (tech.isWormholeMapIgnore || Matter.Query.ray(map, player2.pos, justPastMouse).length === 0) &&
+                    Matter.Query.region(map, {
+                        min: {
+                            x: player2.mouseInGame.x - scale,
+                            y: player2.mouseInGame.y - scale
+                        },
+                        max: {
+                            x: player2.mouseInGame.x + scale,
+                            y: player2.mouseInGame.y + scale
+                        }
+                    }).length === 0
+                ) {
+                    player2.hole.isReady = false;
+                    player2.fieldRange = 0;
+                    player2.hole.isOn = true;
+                    player2.hole.pos1.x = player2.pos.x;
+                    player2.hole.pos1.y = player2.pos.y;
+                    player2.hole.pos2.x = player2.mouseInGame.x;
+                    player2.hole.pos2.y = player2.mouseInGame.y;
+                    player2.hole.angle = Math.atan2(sub.y, sub.x);
+                    player2.hole.unit = Vector.perp(Vector.normalise(sub));
+                }
+
+                if (player2.hole.isOn) {
+                    player2.fieldRange = 0.97 * player2.fieldRange + 0.03 * (50 + 10 * Math.sin(simulation.cycle * 0.025))
+                    const semiMajorAxis = player2.fieldRange + 30
+                    const edge1a = Vector.add(Vector.mult(player2.hole.unit, semiMajorAxis), player2.hole.pos1)
+                    const edge1b = Vector.add(Vector.mult(player2.hole.unit, -semiMajorAxis), player2.hole.pos1)
+                    const edge2a = Vector.add(Vector.mult(player2.hole.unit, semiMajorAxis), player2.hole.pos2)
+                    const edge2b = Vector.add(Vector.mult(player2.hole.unit, -semiMajorAxis), player2.hole.pos2)
+                    ctx.beginPath();
+                    ctx.moveTo(edge1a.x, edge1a.y)
+                    ctx.bezierCurveTo(player2.hole.pos1.x, player2.hole.pos1.y, player2.hole.pos2.x, player2.hole.pos2.y, edge2a.x, edge2a.y);
+                    ctx.lineTo(edge2b.x, edge2b.y)
+                    ctx.bezierCurveTo(player2.hole.pos2.x, player2.hole.pos2.y, player2.hole.pos1.x, player2.hole.pos1.y, edge1b.x, edge1b.y);
+                    ctx.fillStyle = `rgba(255,255,255,${200 / player2.fieldRange / player2.fieldRange})` //"rgba(0,0,0,0.1)"
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.ellipse(player2.hole.pos1.x, player2.hole.pos1.y, player2.fieldRange, semiMajorAxis, player2.hole.angle, 0, 2 * Math.PI)
+                    ctx.ellipse(player2.hole.pos2.x, player2.hole.pos2.y, player2.fieldRange, semiMajorAxis, player2.hole.angle, 0, 2 * Math.PI)
+                    ctx.fillStyle = `rgba(255,255,255,${32 / player2.fieldRange})`
+                    ctx.fill();
+                }
+            },
             fieldMeterColor: '#bbf',
-            fieldRange: 155
+            fieldRange: 0
         },
         {
             // grappling hook
@@ -562,6 +652,14 @@
         FxAir: 0.016,
         height: 42,
         hip: { x: 12, y: 24 },
+        hole: {
+            isOn: false,
+            isReady: true,
+            pos1: { x: 0, y: 0 },
+            pos2: { x: 0, y: 0 },
+            angle: 0,
+            unit: { x: 0, y: 0 },
+        },
         immuneCycle: 0,
         input: { up: false, down: false, left: false, right: false },
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
@@ -626,7 +724,7 @@
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player2.fieldOn || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8) fieldData[player2.fieldMode].drawField();
+            if (player2.fieldOn || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9) fieldData[player2.fieldMode].drawField();
             player2.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
