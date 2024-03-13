@@ -25,7 +25,7 @@
             };
             window.dcRemote.onmessage = async (message) => {
                 // console.log('dcRemote', 'onmessage', message.data);
-                const data = new DataView(await message.data.arrayBuffer());
+                const data = typeof message.data.arrayBuffer == 'function' ? new DataView(await message.data.arrayBuffer()) : new DataView(message.data);
                 const id = new Uint8Array(data.buffer)[0];
                 if (id == 0) {
                     // rotation
@@ -249,9 +249,44 @@
         },
         {
             // molecular assembler
-            drawField: () => {},
+            drawField: () => {
+                if (m.holdingTarget) {
+                    ctx.fillStyle = "rgba(110,170,200," + (player2.energy * (0.05 + 0.05 * Math.random())) + ")";
+                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
+                } else {
+                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
+                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
+                }
+                // const off = 2 * Math.cos(simulation.cycle * 0.1)
+                const range = m.fieldRange;
+                ctx.beginPath();
+                ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * m.fieldArc, player2.angle + Math.PI * m.fieldArc, false);
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                let eye = 13;
+                let aMag = 0.75 * Math.PI * m.fieldArc
+                let a = player2.angle + aMag
+                let cp1x = player2.pos.x + 0.6 * range * Math.cos(a)
+                let cp1y = player2.pos.y + 0.6 * range * Math.sin(a)
+                ctx.quadraticCurveTo(cp1x, cp1y, player2.pos.x + eye * Math.cos(player2.angle), player2.pos.y + eye * Math.sin(player2.angle))
+                a = player2.angle - aMag
+                cp1x = player2.pos.x + 0.6 * range * Math.cos(a)
+                cp1y = player2.pos.y + 0.6 * range * Math.sin(a)
+                ctx.quadraticCurveTo(cp1x, cp1y, player2.pos.x + 1 * range * Math.cos(player2.angle - Math.PI * m.fieldArc), player2.pos.y + 1 * range * Math.sin(player2.angle - Math.PI * m.fieldArc))
+                ctx.fill();
+        
+                //draw random lines in field for cool effect
+                let offAngle = player2.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
+                ctx.beginPath();
+                eye = 15;
+                ctx.moveTo(player2.pos.x + eye * Math.cos(player2.angle), player2.pos.y + eye * Math.sin(player2.angle));
+                ctx.lineTo(player2.pos.x + range * Math.cos(offAngle), player2.pos.y + range * Math.sin(offAngle));
+                ctx.strokeStyle = "rgba(120,170,255,0.6)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            },
             fieldMeterColor: '#ff0',
-            fieldRange: 100
+            fieldRange: 155
         },
         {
             // plasma torch
