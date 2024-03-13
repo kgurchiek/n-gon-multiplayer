@@ -29,18 +29,20 @@
                 const id = new Uint8Array(data.buffer)[0];
                 if (id == 0) {
                     // rotation
-                    player1.angle = data.getFloat32(1);
+                    player1.mouseInGame.x = data.getFloat32(1);
+                    player1.mouseInGame.y = data.getFloat32(5);
                 }
                 if (id == 1) {
                     // movement
-                    player1.angle = data.getFloat32(1);
+                    player1.mouseInGame.x = data.getFloat32(1);
+                    player1.mouseInGame.y = data.getFloat32(6);
                     player1.onGround = new Uint8Array(data.buffer)[5] == 1;
-                    player1.pos.x = data.getFloat32(6);
-                    player1.pos.y = data.getFloat32(10);
-                    player1.Vx = data.getFloat32(14);
-                    player1.Vy = data.getFloat32(18);
-                    player1.walk_cycle = data.getFloat32(22);
-                    player1.yOff = data.getFloat32(26);
+                    player1.pos.x = data.getFloat32(10);
+                    player1.pos.y = data.getFloat32(14);
+                    player1.Vx = data.getFloat32(18);
+                    player1.Vy = data.getFloat32(22);
+                    player1.walk_cycle = data.getFloat32(26);
+                    player1.yOff = data.getFloat32(30);
                 }
                 if (id == 2) {
                     // set field
@@ -501,6 +503,7 @@
         legLength1: 55,
         legLength2: 45,
         maxEnergy: 1,
+        mouseInGame: { x: 0, y: 0 },
         onGround: false,
         pos: { x: 0, y: 0 },
         radius: 30,
@@ -518,13 +521,13 @@
     player1.bodyGradient = grd;
 
     let oldM = {
-        angle: m.angle,
         crouch: m.crouch,
         energy: m.energy,
         fieldMode: m.fieldMode,
         fieldOn: input.field,
         input: { up: input.up, down: input.down },
         maxEnergy: m.maxEnergy,
+        mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
         onGround: false,
         pos: { x: 0, y: 0 },
         Vx: 0,
@@ -535,7 +538,8 @@
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
         oldStartGame();
-        simulation.ephemera.push({ name: 'player1', count: 0, do: () => {
+        simulation.ephemera.push({ name: 'Player1', count: 0, do: () => {
+            player1.angle = Math.atan2(player1.mouseInGame.y - player1.pos.y, player1.mouseInGame.x - player1.pos.x);
             ctx.fillStyle = player1.fillColor;
             ctx.save();
             ctx.globalAlpha = (player1.immuneCycle < m.cycle) ? 1 : 0.5;
@@ -562,24 +566,26 @@
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
                 // movement
-                const data = new Uint8Array(new ArrayBuffer(30));
+                const data = new Uint8Array(new ArrayBuffer(34));
                 data[0] = 1;
                 data[5] = m.onGround ? 1 : 0;
                 const dataView = new DataView(data.buffer);
-                dataView.setFloat32(1, m.angle);
-                dataView.setFloat32(6, m.pos.x);
-                dataView.setFloat32(10, m.pos.y);
-                dataView.setFloat32(14, m.Vx);
-                dataView.setFloat32(18, m.Vy);
-                dataView.setFloat32(22, m.walk_cycle);
-                dataView.setFloat32(26, m.yOff);
+                dataView.setFloat32(1, simulation.mouseInGame.x);
+                dataView.setFloat32(6, simulation.mouseInGame.y);
+                dataView.setFloat32(10, m.pos.x);
+                dataView.setFloat32(14, m.pos.y);
+                dataView.setFloat32(18, m.Vx);
+                dataView.setFloat32(22, m.Vy);
+                dataView.setFloat32(26, m.walk_cycle);
+                dataView.setFloat32(30, m.yOff);
                 dcRemote.send(dataView);
-            } else if (m.angle != oldM.angle) {
+            } else if (simulation.mouseInGame.x != oldM.mouseInGame.x || simulation.mouseInGame.y != oldM.mouseInGame.y) {
                 // rotation
-                const data = new Uint8Array(new ArrayBuffer(5));
+                const data = new Uint8Array(new ArrayBuffer(9));
                 data[0] = 0;
                 const dataView = new DataView(data.buffer);
-                dataView.setFloat32(1, m.angle);
+                dataView.setFloat32(1, simulation.mouseInGame.x);
+                dataView.setFloat32(5, simulation.mouseInGame.y);
                 dcRemote.send(dataView);
             }
             if (m.fieldMode != oldM.fieldMode) {
@@ -632,13 +638,13 @@
             }
             
             oldM = {
-                angle: m.angle,
                 crouch: m.crouch,
                 energy: m.energy,
                 fieldMode: m.fieldMode,
                 fieldOn: input.field,
                 input: { up: input.up, down: input.down },
                 maxEnergy: m.maxEnergy,
+                mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: false,
                 pos: { x: 0, y: 0 },
                 Vx: 0,
