@@ -80,9 +80,13 @@
                     player1.input.right = new Uint8Array(data.buffer)[4] == 1;
                     player1.input.field = new Uint8Array(data.buffer)[5] == 1;
                 }
-                if (id == 7) {
+                if (id == 9) {
                     // toggle crouch
                     player1.crouch = new Uint8Array(data.buffer)[1] == 1;
+                }
+                if (id == 10) {
+                    // toggle cloak
+                    player1.cloak = new Uint8Array(data.buffer)[1] == 1;
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -263,13 +267,13 @@
                     ctx.globalCompositeOperation = "source-over";
 
                     // effect on player
-                    player1.FxAir = 0.005;
-                    const dist = Math.sqrt((player1.pos.x - m.pos.x) * (player1.pos.x - m.pos.x) + (player1.pos.y - m.pos.y) * (player1.pos.y - m.pos.y));
-                    if (dist < player1.fieldDrawRadius) {
-                        if (player1.input.down) player.force.y -= 0.5 * player.mass * simulation.g;
-                        else if (player1.input.up) player.force.y -= 1.45 * player.mass * simulation.g;
-                        else player.force.y -= 1.07 * player.mass * simulation.g;
-                    }
+                    // player1.FxAir = 0.005;
+                    // const dist = Math.sqrt((player1.pos.x - m.pos.x) * (player1.pos.x - m.pos.x) + (player1.pos.y - m.pos.y) * (player1.pos.y - m.pos.y));
+                    // if (dist < player1.fieldDrawRadius) {
+                    //     if (player1.input.down) player.force.y -= 0.5 * player.mass * simulation.g;
+                    //     else if (player1.input.up) player.force.y -= 1.45 * player.mass * simulation.g;
+                    //     else player.force.y -= 1.07 * player.mass * simulation.g;
+                    // }
                 } else player1.fieldDrawRadius = 0;
             },
             fieldMeterColor: '#333',
@@ -554,10 +558,10 @@
         {
             // grappling hook
             drawField: () => {
-                // console.log(player2.input.field, player2.fieldCDcycle, m.cycle)
-                if (player2.input.field && player2.fieldCDcycle < m.cycle) {
-                    b.multiplayerGrapple({ x: player2.pos.x + 40 * Math.cos(player2.angle), y: player2.pos.y + 40 * Math.sin(player2.angle) }, player2.angle, player2);
-                    if (player2.fieldCDcycle < m.cycle + 20) player2.fieldCDcycle = m.cycle + 20;
+                // console.log(player1.input.field, player1.fieldCDcycle, m.cycle)
+                if (player1.input.field && player1.fieldCDcycle < m.cycle) {
+                    b.multiplayerGrapple({ x: player1.pos.x + 40 * Math.cos(player1.angle), y: player1.pos.y + 40 * Math.sin(player1.angle) }, player1.angle, player1);
+                    if (player1.fieldCDcycle < m.cycle + 20) player1.fieldCDcycle = m.cycle + 20;
                 }
             },
             fieldMeterColor: '#0cf',
@@ -596,6 +600,20 @@
                 player1.flipLegs = -1;
             }
             ctx.save();
+
+            if (player1.isCloak) {
+                ctx.globalAlpha *= 2;
+                ctx.scale(player1.flipLegs, 1); //leg lines
+                ctx.beginPath();
+                ctx.moveTo(player1.hip.x, player1.hip.y);
+                ctx.lineTo(player1.knee.x, player1.knee.y);
+                ctx.lineTo(player1.foot.x, player1.foot.y);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 10;
+                ctx.stroke();
+                ctx.globalAlpha /= 2;
+            }
+
             ctx.scale(player1.flipLegs, 1); //leg lines
             ctx.beginPath();
             ctx.moveTo(player1.hip.x, player1.hip.y);
@@ -606,13 +624,44 @@
             ctx.stroke();
 
             //toe lines
+            if (player1.isCloak) {
+                ctx.globalAlpha *= 2;
+                ctx.beginPath();
+                ctx.moveTo(player1.foot.x, player1.foot.y);
+                ctx.lineTo(player1.foot.x - 14, player1.foot.y + 5);
+                ctx.moveTo(player1.foot.x, player1.foot.y);
+                ctx.lineTo(player1.foot.x + 14, player1.foot.y + 5);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 8;
+                ctx.stroke();
+                ctx.globalAlpha /= 2;
+            }
+
             ctx.beginPath();
             ctx.moveTo(player1.foot.x, player1.foot.y);
             ctx.lineTo(player1.foot.x - 14, player1.foot.y + 5);
             ctx.moveTo(player1.foot.x, player1.foot.y);
             ctx.lineTo(player1.foot.x + 14, player1.foot.y + 5);
+            ctx.strokeStyle = stroke;
             ctx.lineWidth = 4;
             ctx.stroke();
+
+            if (player1.isCloak) {
+                ctx.globalAlpha *= 2;
+                //hip joint
+                ctx.beginPath();
+                ctx.arc(player1.hip.x, player1.hip.y, 9, 0, 2 * Math.PI);
+                //knee joint
+                ctx.moveTo(player1.knee.x + 5, player1.knee.y);
+                ctx.arc(player1.knee.x, player1.knee.y, 5, 0, 2 * Math.PI);
+                //foot joint
+                ctx.moveTo(player1.foot.x + 4, player1.foot.y + 1);
+                ctx.arc(player1.foot.x, player1.foot.y + 1, 4, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 6;
+                ctx.stroke();
+                ctx.globalAlpha /= 2;
+            }
 
             //hip joint
             ctx.beginPath();
@@ -625,6 +674,7 @@
             ctx.arc(player1.foot.x, player1.foot.y + 1, 4, 0, 2 * Math.PI);
             ctx.fillStyle = player1.fillColor;
             ctx.fill();
+            ctx.strokeStyle = stroke;
             ctx.lineWidth = 2;
             ctx.stroke();
             ctx.restore();
@@ -674,6 +724,7 @@
         },
         immuneCycle: 0,
         input: { up: false, down: false, left: false, right: false, field: false },
+        isCloak: false,
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
         lastFieldPosition: { x: 0, y: 0 },
         legLength1: 55,
@@ -704,6 +755,7 @@
         fieldOn: m.fieldOn,
         health: m.health,
         input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
+        isCloak: m.isCloak,
         maxEnergy: m.maxEnergy,
         maxHealth: m.maxHealth,
         mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
@@ -1037,7 +1089,7 @@
             player1.angle = Math.atan2(player1.mouseInGame.y - player1.pos.y, player1.mouseInGame.x - player1.pos.x);
             ctx.fillStyle = player1.fillColor;
             ctx.save();
-            ctx.globalAlpha = (player1.immuneCycle < m.cycle) ? 1 : 0.5;
+            ctx.globalAlpha = player1.isCloak ? 0.25 : player1.immuneCycle < m.cycle ? 1 : 0.5;
             ctx.translate(player1.pos.x, player1.pos.y);
             player1.calcLeg(Math.PI, -3);
             player1.drawLeg("#4a4a4a");
@@ -1144,8 +1196,15 @@
             if (m.crouch != oldM.crouch) {
                 // toggle crouch
                 const data = new Uint8Array(new ArrayBuffer(2));
-                data[0] = 7;
+                data[0] = 9;
                 data[1] = m.crouch ? 1 : 0;
+                dcRemote.send(new DataView(data.buffer));
+            }
+            if (m.isCloak != oldM.isCloak) {
+                // toggle cloak
+                const data = new Uint8Array(new ArrayBuffer(2));
+                data[0] = 10;
+                data[1] = m.isCloak ? 1 : 0;
                 dcRemote.send(new DataView(data.buffer));
             }
             
@@ -1156,6 +1215,7 @@
                 fieldOn: m.fieldOn,
                 health: m.health,
                 input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
+                isCloak: m.isCloak,
                 maxEnergy: m.maxEnergy,
                 maxHealth: m.maxHealth,
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },

@@ -11,3 +11,5 @@
 | 06 | Energy Update     | 1      | energy (Float32) |
 | 07 | Max Energy Update | 1      | maxEnergy (Float32) |
 | 08 | Inputs            | 5      | up (boolean), down (boolean), left (boolean), right (boolean), field (boolean) |
+| 09 | Toggle Crouch     | 1      | crouched (boolean)
+| 10 | Toggle Cloak      | 1      | isCloak (boolean)
