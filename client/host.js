@@ -282,13 +282,13 @@
                     ctx.globalCompositeOperation = "source-over";
 
                     // effect on player
-                    // player2.FxAir = 0.005
-                    // const dist = Math.sqrt((player2.pos.x - m.pos.x) * (player2.pos.x - m.pos.x) + (player2.pos.y - m.pos.y) * (player2.pos.y - m.pos.y));
-                    // if (dist < player2.fieldDrawRadius) {
-                    //     if (player2.input.down) player.force.y -= 0.5 * player.mass * simulation.g;
-                    //     else if (player2.input.up) player.force.y -= 1.45 * player.mass * simulation.g;
-                    //     else player.force.y -= 1.07 * player.mass * simulation.g;
-                    // }
+                    player2.FxAir = 0.005
+                    const dist = Math.sqrt((player2.pos.x - m.pos.x) * (player2.pos.x - m.pos.x) + (player2.pos.y - m.pos.y) * (player2.pos.y - m.pos.y));
+                    if (dist < player2.fieldDrawRadius) {
+                        if (player2.input.down) player.force.y -= 0.5 * player.mass * simulation.g;
+                        else if (player2.input.up) player.force.y -= 1.45 * player.mass * simulation.g;
+                        else player.force.y -= 1.07 * player.mass * simulation.g;
+                    }
                 } else player2.fieldDrawRadius = 0;
             },
             fieldMeterColor: '#333',
