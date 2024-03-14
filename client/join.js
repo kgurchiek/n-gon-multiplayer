@@ -86,7 +86,13 @@
                 }
                 if (id == 10) {
                     // toggle cloak
-                    player1.cloak = new Uint8Array(data.buffer)[1] == 1;
+                    player1.isCloak = new Uint8Array(data.buffer)[1] == 1;
+                }
+                if (id == 12) {
+                    // sync
+                    simulation.difficultyMode = new Uint8Array(data.buffer)[1];
+                    Math.initialSeed = new TextDecoder('utf-8').decode(data.buffer.slice(3, new Uint8Array(data.buffer)[2] + 3));
+                    Math.seed = Math.abs(Math.hash(Math.initialSeed));
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -767,8 +773,24 @@
         yOff: 70
     }
     const oldStartGame = simulation.startGame;
-    simulation.startGame = () => {
+    simulation.startGame = async () => {
+        // sync request
+        Math.initialSeed = null;
+        const data = new Uint8Array(new ArrayBuffer(1));
+        data[0] = 11;
+        dcRemote.send(new DataView(data.buffer));
+        
+        // wait for sync
+        await new Promise(async resolve => {
+            while (Math.initialSeed == null) await new Promise(res => setTimeout(res, 100));
+            resolve();
+        })
+
+        const oldDifficulty = simulation.difficultyMode;
         oldStartGame();
+        simulation.difficultyMode = oldDifficulty;
+        const difficulty = simulation.isCheating ? "testing" : level.difficultyText()
+        document.title = `n-gon: (${difficulty})`;
 
         b.multiplayerGrapple = (where, angle, otherPlayer) => {
             const me = bullet.length;

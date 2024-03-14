@@ -107,6 +107,16 @@
                 // toggle cloak
                 player2.isCloak = new Uint8Array(data.buffer)[1] == 1;
             }
+            if (id == 11) {
+                // sync request
+                const textEncoder = new TextEncoder('utf-8');
+                const data = new Uint8Array(new ArrayBuffer(3 + textEncoder.encode(Math.initialSeed).length));
+                data[0] = 12;
+                data[1] = simulation.difficultyMode;
+                data[2] = textEncoder.encode(Math.initialSeed).length;
+                data.set(textEncoder.encode(Math.initialSeed), 3);
+                dcLocal.send(new DataView(data.buffer));
+            }
         };
         window.dcLocal.onerror = function(e) {
             console.error('dcLocal', 'onerror', e);
