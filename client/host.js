@@ -71,10 +71,6 @@
                 player2.fieldPosition = { x: player2.pos.x, y: player2.pos.y };
                 player2.fieldAngle = player2.angle;
             }
-            if (id == 3) {
-                // toggle field
-                player2.fieldOn = new Uint8Array(data.buffer)[1] == 1;
-            }
             if (id == 4) {
                 // health update
                 player2.health = data.getFloat32(1);
@@ -229,7 +225,7 @@
                 const wave = Math.sin(m.cycle * 0.022);
                 player2.fieldRange = 180 + 12 * wave; // TODO: changes with Miessner Effect tech
                 player2.fieldArc = 0.35 + 0.045 * wave; // TODO: changes with Miessner Effect tech
-                if (player2.fieldOn) {
+                if (player2.input.field) {
                     player2.fieldPosition = { x: player2.pos.x, y: player2.pos.y };
                     player2.fieldAngle = player2.angle;
                     ctx.fillStyle = `rgba(110,150,220, ${0.27 + 0.2 * Math.random() - 0.1 * wave})`
@@ -269,7 +265,7 @@
         {
             // negative mass
             drawField: () => {
-                if (player2.fieldOn) {
+                if (player2.input.field) {
                     player2.FxAir = 0.016;
                     if (player2.input.down) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 400 * 0.03;
                     else if (player2.input.up) player2.fieldDrawRadius = player2.fieldDrawRadius * 0.97 + 850 * 0.03;
@@ -412,7 +408,7 @@
         {
             // pilot wave
             drawField: () => {
-                if (player2.fieldOn) {
+                if (player2.input.field) {
                     if (player2.fieldDrawRadius == 0) {
                         player2.fieldPosition = { x: player2.mouseInGame.x, y: player2.mouseInGame.y };
                         player2.lastFieldPosition = { x: player2.mouseInGame.x, y: player2.mouseInGame.y };
@@ -481,7 +477,7 @@
                 const justPastMouse = Vector.add(Vector.mult(Vector.normalise(Vector.sub(player2.mouseInGame, player2.pos)), 50), player2.mouseInGame)
                 const sub = Vector.sub(player2.mouseInGame, player2.pos);
                 const mag = Vector.magnitude(sub);
-                if (player2.fieldOn) {
+                if (player2.input.field) {
 
                     this.drain = 0.05 + 0.005 * Math.sqrt(mag)
                     const unit = Vector.perp(Vector.normalise(sub))
@@ -704,7 +700,7 @@
                 ctx.fillRect(xOff, yOff, range * player2.maxEnergy, 10);
                 ctx.fillStyle = player2.fieldMeterColor;
                 ctx.fillRect(xOff, yOff, range * player2.energy, 10);
-            } else if (player2.energy > player2.maxEnergy + 0.05 || player2.fieldOn) {
+            } else if (player2.energy > player2.maxEnergy + 0.05 || player2.input.field) {
                 ctx.fillStyle = bgColor;
                 const xOff = player2.pos.x - player2.radius * player2.energy;
                 const yOff = player2.pos.y - 50;
@@ -718,7 +714,6 @@
         fieldDrawRadius: 0,
         fieldMeterColor: '#0cf',
         fieldMode: 0,
-        fieldOn: false,
         fieldPhase: 0,
         fieldPosition: { x: 0, y: 0 },
         fieldRange: 155,
@@ -768,7 +763,6 @@
         crouch: m.crouch,
         energy: m.energy,
         fieldMode: m.fieldMode,
-        fieldOn: m.fieldOn,
         health: m.health,
         input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
         isCloak: m.isCloak,
@@ -1123,7 +1117,7 @@
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player2.fieldOn || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10) fieldData[player2.fieldMode].drawField();
+            if (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10) fieldData[player2.fieldMode].drawField();
             player2.drawRegenEnergy();
 
             if (player2.isCloak) {
@@ -1165,13 +1159,6 @@
                 const data = new Uint8Array(new ArrayBuffer(2));
                 data[0] = 2;
                 data[1] = m.fieldMode;
-                dcLocal.send(new DataView(data.buffer));
-            }
-            if (m.fieldOn != oldM.fieldOn) {
-                // toggle field
-                const data = new Uint8Array(new ArrayBuffer(2));
-                data[0] = 3;
-                data[1] = m.fieldOn ? 1 : 0;
                 dcLocal.send(new DataView(data.buffer));
             }
             if (m.health != oldM.health) {
@@ -1236,7 +1223,6 @@
                 crouch: m.crouch,
                 energy: m.energy,
                 fieldMode: m.fieldMode,
-                fieldOn: m.fieldOn,
                 health: m.health,
                 input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field},
                 isCloak: m.isCloak,
