@@ -51,6 +51,7 @@
                     player1.fieldRange = fieldData[player1.fieldMode].fieldRange;
                     player1.fieldPosition = { x: player1.pos.x, y: player1.pos.y };
                     player1.fieldAngle = player1.angle;
+                    player1.fieldArc = 0.2;
                 }
                 if (id == 4) {
                     // health update
@@ -160,11 +161,11 @@
                 }
                 const range = player1.fieldRange;
                 ctx.beginPath();
-                ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * m.fieldArc, player1.angle + Math.PI * m.fieldArc, false);
+                ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * player1.fieldArc, player1.angle + Math.PI * player1.fieldArc, false);
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 let eye = 13;
-                let aMag = 0.75 * Math.PI * m.fieldArc
+                let aMag = 0.75 * Math.PI * player1.fieldArc
                 let a = player1.angle + aMag
                 let cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
                 let cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
@@ -172,11 +173,11 @@
                 a = player1.angle - aMag
                 cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
                 cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
-                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * m.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * m.fieldArc))
+                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * player1.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * player1.fieldArc))
                 ctx.fill();
         
                 //draw random lines in field for cool effect
-                let offAngle = player1.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
+                let offAngle = player1.angle + 1.7 * Math.PI * player1.fieldArc * (Math.random() - 0.5);
                 ctx.beginPath();
                 eye = 15;
                 ctx.moveTo(player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle));
@@ -293,11 +294,11 @@
                 }
                 const range = player1.fieldRange;
                 ctx.beginPath();
-                ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * m.fieldArc, player1.angle + Math.PI * m.fieldArc, false);
+                ctx.arc(player1.pos.x, player1.pos.y, range, player1.angle - Math.PI * player1.fieldArc, player1.angle + Math.PI * player1.fieldArc, false);
                 ctx.lineWidth = 2;
                 ctx.stroke();
                 let eye = 13;
-                let aMag = 0.75 * Math.PI * m.fieldArc
+                let aMag = 0.75 * Math.PI * player1.fieldArc
                 let a = player1.angle + aMag
                 let cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
                 let cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
@@ -305,11 +306,11 @@
                 a = player1.angle - aMag
                 cp1x = player1.pos.x + 0.6 * range * Math.cos(a)
                 cp1y = player1.pos.y + 0.6 * range * Math.sin(a)
-                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * m.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * m.fieldArc))
+                ctx.quadraticCurveTo(cp1x, cp1y, player1.pos.x + 1 * range * Math.cos(player1.angle - Math.PI * player1.fieldArc), player1.pos.y + 1 * range * Math.sin(player1.angle - Math.PI * player1.fieldArc))
                 ctx.fill();
         
                 //draw random lines in field for cool effect
-                let offAngle = player1.angle + 1.7 * Math.PI * m.fieldArc * (Math.random() - 0.5);
+                let offAngle = player1.angle + 1.7 * Math.PI * player1.fieldArc * (Math.random() - 0.5);
                 ctx.beginPath();
                 eye = 15;
                 ctx.moveTo(player1.pos.x + eye * Math.cos(player1.angle), player1.pos.y + eye * Math.sin(player1.angle));
@@ -716,6 +717,7 @@
         },
         energy: 1,
         fieldAngle: 0,
+        fieldArc: 0.2,
         fieldCDcycle: 0,
         fieldDrawRadius: 0,
         fieldMeterColor: '#0cf',
