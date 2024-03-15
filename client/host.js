@@ -161,13 +161,8 @@
         {
             // field emitter
             drawField: () => {
-                if (m.holdingTarget) {
-                    ctx.fillStyle = "rgba(110,170,200," + (player2.energy * (0.05 + 0.05 * Math.random())) + ")";
-                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
-                } else {
-                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
-                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
-                }
+                ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
+                ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")";
                 const range = player2.fieldRange;
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * player2.fieldArc, player2.angle + Math.PI * player2.fieldArc, false);
@@ -294,13 +289,8 @@
         {
             // molecular assembler
             drawField: () => {
-                if (m.holdingTarget) {
-                    ctx.fillStyle = "rgba(110,170,200," + (player2.energy * (0.05 + 0.05 * Math.random())) + ")";
-                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
-                } else {
-                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
-                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")" //"#9bd" //"rgba(110, 200, 235, " + (0.5 + 0.1 * Math.random()) + ")"
-                }
+                ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
+                ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")";
                 const range = player2.fieldRange;
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, range, player2.angle - Math.PI * player2.fieldArc, player2.angle + Math.PI * player2.fieldArc, false);
@@ -841,16 +831,16 @@
                     drawStringControlMagnitude: 1000 + 1000 * Math.random(),
                     drawStringFlip: (Math.round(Math.random()) ? 1 : -1),
                     attached: false,
-                    glowColor: tech.hookNails ? "rgba(200,0,0,0.07)" : tech.isHarmReduce ? "rgba(50,100,255,0.1)" : "rgba(0,200,255,0.07)",
+                    glowColor: /*tech.hookNails ? "rgba(200,0,0,0.07)" : tech.isHarmReduce ? "rgba(50,100,255,0.1)" :*/ "rgba(0,200,255,0.07)",
                     collisionFilter: {
                         category: cat.bullet,
-                        mask: tech.isShieldPierce ? cat.body | cat.mob | cat.mobBullet : cat.body | cat.mob | cat.mobBullet | cat.mobShield,
+                        mask: false /*tech.isShieldPierce*/ ? cat.body | cat.mob | cat.mobBullet : cat.body | cat.mob | cat.mobBullet | cat.mobShield,
                     },
                     minDmgSpeed: 4,
                     // lookFrequency: Math.floor(7 + Math.random() * 3),
                     density: 0.004, //0.001 is normal for blocks,  0.004 is normal for harpoon
                     drain: 0.001,
-                    powerUpDamage: tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle,
+                    powerUpDamage: false, //tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle,
                     draw() {
                         // draw rope
                         const where = { x: otherPlayer.pos.x + 30 * Math.cos(otherPlayer.angle), y: otherPlayer.pos.y + 30 * Math.sin(otherPlayer.angle) }
@@ -908,52 +898,52 @@
                         ctx.fill();
                     },
                     beforeDmg(who) {
-                        if (tech.isShieldPierce && who.isShielded) { //disable shields
-                            who.isShielded = false
-                            requestAnimationFrame(() => {
-                                who.isShielded = true
-                            });
-                        }
+                        // if (tech.isShieldPierce && who.isShielded) { //disable shields
+                        //     who.isShielded = false
+                        //     requestAnimationFrame(() => {
+                        //         who.isShielded = true
+                        //     });
+                        // }
                         if (otherPlayer.fieldCDcycle < m.cycle + 40) otherPlayer.fieldCDcycle = m.cycle + 40  //extra long cooldown on hitting mobs
-                        if (tech.hookNails) {
-                            b.targetedNail(this.position, tech.hookNails)
-                            const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
-                            for (let i = 0; i < 4; i++) b.nail(this.position, { x: 10.5 * Math.cos(ANGLE), y: 10.5 * Math.sin(ANGLE) }, 1.2)
-                        }
+                        // if (tech.hookNails) {
+                        //     b.targetedNail(this.position, tech.hookNails)
+                        //     const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
+                        //     for (let i = 0; i < 4; i++) b.nail(this.position, { x: 10.5 * Math.cos(ANGLE), y: 10.5 * Math.sin(ANGLE) }, 1.2)
+                        // }
                         // if (this.powerUpDamage) this.density = 2 * 0.004 //double damage after pick up power up for 8 seconds
     
     
-                        if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) {
-                            Matter.Body.setDensity(this, 1.8 * 0.004); //+90% damage after pick up power up for 8 seconds
-                        } else if (tech.isHarpoonFullHealth && who.health === 1) {
-                            Matter.Body.setDensity(this, 2.11 * 0.004); //+90% damage if mob has full health do
-                            simulation.ephemera.push({
-                                name: "grapple outline",
-                                count: 3, //cycles before it self removes
-                                vertices: this.vertices,
-                                do() {
-                                    this.count--
-                                    if (this.count < 0) simulation.removeEphemera(this.name)
+                        // if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) {
+                        //     Matter.Body.setDensity(this, 1.8 * 0.004); //+90% damage after pick up power up for 8 seconds
+                        // } else if (tech.isHarpoonFullHealth && who.health === 1) {
+                        //     Matter.Body.setDensity(this, 2.11 * 0.004); //+90% damage if mob has full health do
+                        //     simulation.ephemera.push({
+                        //         name: "grapple outline",
+                        //         count: 3, //cycles before it self removes
+                        //         vertices: this.vertices,
+                        //         do() {
+                        //             this.count--
+                        //             if (this.count < 0) simulation.removeEphemera(this.name)
     
-                                    ctx.beginPath();
-                                    ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
-                                    for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
-                                    ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                                    ctx.lineJoin = "miter"
-                                    ctx.miterLimit = 20;
-                                    ctx.lineWidth = 40;
-                                    ctx.strokeStyle = "rgba(255,0,100,0.35)";
-                                    ctx.stroke();
-                                    ctx.lineWidth = 10;
-                                    ctx.strokeStyle = `#f07`;
-                                    ctx.stroke();
-                                    ctx.lineJoin = "round"
-                                    ctx.miterLimit = 5
-                                    ctx.fillStyle = "#000"
-                                    ctx.fill();
-                                },
-                            })
-                        }
+                        //             ctx.beginPath();
+                        //             ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+                        //             for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
+                        //             ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
+                        //             ctx.lineJoin = "miter"
+                        //             ctx.miterLimit = 20;
+                        //             ctx.lineWidth = 40;
+                        //             ctx.strokeStyle = "rgba(255,0,100,0.35)";
+                        //             ctx.stroke();
+                        //             ctx.lineWidth = 10;
+                        //             ctx.strokeStyle = `#f07`;
+                        //             ctx.stroke();
+                        //             ctx.lineJoin = "round"
+                        //             ctx.miterLimit = 5
+                        //             ctx.fillStyle = "#000"
+                        //             ctx.fill();
+                        //         },
+                        //     })
+                        // }
     
     
                         this.retract()
@@ -967,7 +957,7 @@
                         }
                     },
                     onEnd() {
-                        if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || otherPlayer.health !== otherPlayer.maxHealth || tech.isOverHeal)) {
+                        if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || otherPlayer.health !== otherPlayer.maxHealth /*|| tech.isOverHeal*/)) {
                             let index = null //find index
                             for (let i = 0, len = powerUp.length; i < len; ++i) if (powerUp[i] === this.caughtPowerUp) index = i
                             if (index !== null) powerUp.splice(index, 1);
@@ -990,30 +980,30 @@
                         if (Vector.magnitude(Vector.sub(this.position, otherPlayer.pos)) < returnRadius) { //near player
                             this.endCycle = 0;
                             //recoil on catching grapple
-                            const momentum = Vector.mult(Vector.sub(this.velocity, player.velocity), (otherPlayer.crouch ? 0.0001 : 0.0002))
+                            // const momentum = Vector.mult(Vector.sub(this.velocity, player.velocity), (otherPlayer.crouch ? 0.0001 : 0.0002))
                             if (this.pickUpTarget) {
-                                if (tech.isReel && this.blockDist > 150) {
-                                    // console.log(0.0003 * Math.min(this.blockDist, 1000))
-                                    otherPlayer.energy += 0.0009 * Math.min(this.blockDist, 800) //max 0.352 energy
-                                    simulation.drawList.push({ //add dmg to draw queue
-                                        x: otherPlayer.pos.x,
-                                        y: otherPlayer.pos.y,
-                                        radius: 10,
-                                        color: otherPlayer.fieldMeterColor,
-                                        time: simulation.drawTime
-                                    });
-                                }
-                                m.holdingTarget = this.pickUpTarget
+                                // if (tech.isReel && this.blockDist > 150) {
+                                //     // console.log(0.0003 * Math.min(this.blockDist, 1000))
+                                //     otherPlayer.energy += 0.0009 * Math.min(this.blockDist, 800) //max 0.352 energy
+                                //     simulation.drawList.push({ //add dmg to draw queue
+                                //         x: otherPlayer.pos.x,
+                                //         y: otherPlayer.pos.y,
+                                //         radius: 10,
+                                //         color: otherPlayer.fieldMeterColor,
+                                //         time: simulation.drawTime
+                                //     });
+                                // }
+                                // m.holdingTarget = this.pickUpTarget
                                 // give block to player after it returns
-                                m.isHolding = true;
+                                // m.isHolding = true;
                                 //conserve momentum when player mass changes
-                                totalMomentum = Vector.add(Vector.mult(player.velocity, player.mass), Vector.mult(Vector.normalise(this.velocity), 15 * Math.min(20, this.pickUpTarget.mass)))
-                                Matter.Body.setVelocity(player, Vector.mult(totalMomentum, 1 / (m.defaultMass + this.pickUpTarget.mass)));
+                                // totalMomentum = Vector.add(Vector.mult(player.velocity, player.mass), Vector.mult(Vector.normalise(this.velocity), 15 * Math.min(20, this.pickUpTarget.mass)))
+                                // Matter.Body.setVelocity(player, Vector.mult(totalMomentum, 1 / (m.defaultMass + this.pickUpTarget.mass)));
     
-                                m.definePlayerMass(m.defaultMass + this.pickUpTarget.mass * m.holdingMassScale)
+                                // m.definePlayerMass(m.defaultMass + this.pickUpTarget.mass * m.holdingMassScale)
                                 //make block collide with nothing
-                                m.holdingTarget.collisionFilter.category = 0;
-                                m.holdingTarget.collisionFilter.mask = 0;
+                                // m.holdingTarget.collisionFilter.category = 0;
+                                // m.holdingTarget.collisionFilter.mask = 0;
                                 this.pickUpTarget = null
                             }
                         } else {
@@ -1036,7 +1026,7 @@
                             for (let i = 0, len = powerUp.length; i < len; ++i) {
                                 const radius = powerUp[i].circleRadius + 50
                                 if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius) {
-                                    if (powerUp[i].name !== "heal" || m.health !== m.maxHealth || tech.isOverHeal) {
+                                    if (powerUp[i].name !== "heal" || otherPlayer.health !== otherPlayer.maxHealth /*|| tech.isOverHeal*/) {
                                         this.caughtPowerUp = powerUp[i]
                                         Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
                                         Matter.Body.setPosition(powerUp[i], this.vertices[2])
@@ -1062,12 +1052,12 @@
                         if (otherPlayer.input.field && Matter.Query.collides(this, map).length) {
                             Matter.Body.setPosition(this, Vector.add(this.position, { x: -20 * Math.cos(this.angle), y: -20 * Math.sin(this.angle) }))
                             if (Matter.Query.collides(this, map).length) {
-                                if (tech.hookNails) {
-                                    b.targetedNail(this.position, tech.hookNails)
-                                    const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
-                                    for (let i = 0; i < 4; i++) b.nail(this.position, { x: 10.5 * Math.cos(ANGLE), y: 10.5 * Math.sin(ANGLE) }, 1.2)
+                                // if (tech.hookNails) {
+                                //     b.targetedNail(this.position, tech.hookNails)
+                                //     const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
+                                //     for (let i = 0; i < 4; i++) b.nail(this.position, { x: 10.5 * Math.cos(ANGLE), y: 10.5 * Math.sin(ANGLE) }, 1.2)
     
-                                }
+                                // }
                                 this.attached = true
                                 Matter.Body.setVelocity(this, { x: 0, y: 0 });
                                 Matter.Sleeping.set(this, true)
