@@ -595,6 +595,22 @@
         },
         color: { hue: 0, sat: 0, light: 100 },
         crouch: false,
+        drawHealthbar: () => {
+            if (player1.health < player1.maxHealth) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                const xOff = player1.pos.x - 40 * player1.maxHealth;
+                const yOff = player1.pos.y - 70;
+                ctx.fillRect(xOff, yOff, 80 * player1.maxHealth, 10);
+                ctx.fillStyle = '#09f5a6';
+                ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
+            } else if (player1.health > player1.maxHealth + 0.05 || player1.input.field) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                const xOff = player1.pos.x - 40 * player1.health;
+                const yOff = player1.pos.y - 70;
+                ctx.fillStyle = '#09f5a6';
+                ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
+            }
+        },
         drawLeg: (stroke) => {
             if (player1.angle > -Math.PI / 2 && player1.angle < Math.PI / 2) {
                 player1.flipLegs = 1;
@@ -1125,6 +1141,7 @@
             powerUps.boost.draw();
 
             if (player1.input.field || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3 || player1.fieldMode == 8 || player1.fieldMode == 9 || player1.fieldMode == 10) fieldData[player1.fieldMode].drawField();
+            player1.drawHealthbar();
             player1.drawRegenEnergy();
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
