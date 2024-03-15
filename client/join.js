@@ -785,6 +785,7 @@
         simulation.difficultyMode = oldDifficulty;
         const difficulty = simulation.isCheating ? "testing" : level.difficultyText()
         document.title = `n-gon: (${difficulty})`;
+        Math.random = Math.seededRandom;
 
         b.multiplayerGrapple = (where, angle, otherPlayer) => {
             const me = bullet.length;
