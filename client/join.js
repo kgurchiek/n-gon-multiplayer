@@ -474,7 +474,7 @@
                     ctx.bezierCurveTo(where.x, where.y, player1.mouseInGame.x, player1.mouseInGame.y, edge2b.x, edge2b.y);
                     if (
                         mag > 250 && player1.energy > this.drain &&
-                        (tech.isWormholeMapIgnore || Matter.Query.ray(map, player1.pos, justPastMouse).length === 0) &&
+                        (/*tech.isWormholeMapIgnore ||*/ Matter.Query.ray(map, player1.pos, justPastMouse).length === 0) &&
                         Matter.Query.region(map, {
                             min: {
                                 x: player1.mouseInGame.x - scale,
@@ -501,7 +501,7 @@
                     }
                 } else if (
                     player1.hole.isReady && mag > 250 && player1.energy > this.drain &&
-                    (tech.isWormholeMapIgnore || Matter.Query.ray(map, player1.pos, justPastMouse).length === 0) &&
+                    (/*tech.isWormholeMapIgnore ||*/ Matter.Query.ray(map, player1.pos, justPastMouse).length === 0) &&
                     Matter.Query.region(map, {
                         min: {
                             x: player1.mouseInGame.x - scale,
