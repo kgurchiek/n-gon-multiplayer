@@ -247,6 +247,30 @@ b.multiplayerPulse = (charge, angle, where) => {
     }
 }
 
+b.multiplayerGrenade = (where, angle, size, crouch) => {
+    const me = bullet.length;
+    bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
+    bullet[me].multiplayer = true;
+    Matter.Body.setDensity(bullet[me], 0.0003);
+    bullet[me].explodeRad = 300 * size; //+ 100 * tech.isBlockExplode;
+    bullet[me].onEnd = b.grenadeEnd
+    bullet[me].minDmgSpeed = 1;
+    bullet[me].beforeDmg = function () {
+        this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
+    };
+    speed = crouch ? 43 : 32
+    Matter.Body.setVelocity(bullet[me], {
+        x: m.Vx / 2 + speed * Math.cos(angle),
+        y: m.Vy / 2 + speed * Math.sin(angle)
+    });
+    bullet[me].endCycle = simulation.cycle + Math.floor(crouch ? 120 : 80); //* tech.bulletsLastLonger;
+    bullet[me].restitution = 0.4;
+    bullet[me].do = function () {
+        this.force.y += this.mass * 0.0025; //extra gravity for harder arcs
+    };
+    Composite.add(engine.world, bullet[me]); //add bullet to world
+}
+
 b.multiplayerGrapple = (where, angle, otherPlayer) => {
     const me = bullet.length;
     const returnRadius = 100
@@ -662,6 +686,10 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                 if (id == 14) {
                     // pulse
                     b.multiplayerPulse(data.getFloat32(1), data.getFloat32(5), { x: data.getFloat32(9), y: data.getFloat32(13) });
+                }
+                if (id == 15) {
+                    // grenade
+                    b.multiplayerGrenade({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getFloat32(9), data.getFloat32(13), new Uint8Array(data.buffer)[17] == 1);
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -1601,6 +1629,447 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
         dcRemote.send(dataView);
 
         oldPulse(charge, angle, where);
+    }
+
+    b.setGrenadeMode = () => {
+        grenadeDefault = function (where = {
+            x: m.pos.x + 30 * Math.cos(m.angle),
+            y: m.pos.y + 30 * Math.sin(m.angle)
+        }, angle = m.angle, size = 1) {
+            const me = bullet.length;
+            bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
+            Matter.Body.setDensity(bullet[me], 0.0003);
+            bullet[me].explodeRad = 300 * size + 100 * tech.isBlockExplode;
+            bullet[me].onEnd = b.grenadeEnd
+            bullet[me].minDmgSpeed = 1;
+            bullet[me].beforeDmg = function () {
+                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
+            };
+            speed = m.crouch ? 43 : 32
+            Matter.Body.setVelocity(bullet[me], {
+                x: m.Vx / 2 + speed * Math.cos(angle),
+                y: m.Vy / 2 + speed * Math.sin(angle)
+            });
+            bullet[me].endCycle = simulation.cycle + Math.floor(m.crouch ? 120 : 80) * tech.bulletsLastLonger;
+            bullet[me].restitution = 0.4;
+            bullet[me].do = function () {
+                this.force.y += this.mass * 0.0025; //extra gravity for harder arcs
+            };
+            Composite.add(engine.world, bullet[me]); //add bullet to world
+        }
+        grenadeRPG = function (where = {
+            x: m.pos.x + 30 * Math.cos(m.angle),
+            y: m.pos.y + 30 * Math.sin(m.angle)
+        }, angle = m.angle, size = 1) {
+            const me = bullet.length;
+            bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
+            Matter.Body.setDensity(bullet[me], 0.0003);
+            bullet[me].explodeRad = 300 * size + 100 * tech.isBlockExplode;
+            bullet[me].onEnd = b.grenadeEnd
+            bullet[me].minDmgSpeed = 1;
+            bullet[me].beforeDmg = function () {
+                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
+            };
+            speed = m.crouch ? 46 : 32
+            Matter.Body.setVelocity(bullet[me], {
+                x: m.Vx / 2 + speed * Math.cos(angle),
+                y: m.Vy / 2 + speed * Math.sin(angle)
+            });
+            Composite.add(engine.world, bullet[me]); //add bullet to world
+
+            bullet[me].endCycle = simulation.cycle + 70 * tech.bulletsLastLonger;
+            bullet[me].frictionAir = 0.07;
+            const MAG = 0.015
+            bullet[me].thrust = {
+                x: bullet[me].mass * MAG * Math.cos(angle),
+                y: bullet[me].mass * MAG * Math.sin(angle)
+            }
+            bullet[me].do = function () {
+                this.force.x += this.thrust.x;
+                this.force.y += this.thrust.y;
+                if (Matter.Query.collides(this, map).length || Matter.Query.collides(this, body).length) {
+                    this.endCycle = 0; //explode if touching map or blocks
+                }
+            };
+        }
+        grenadeRPGVacuum = function (where = {
+            x: m.pos.x + 30 * Math.cos(m.angle),
+            y: m.pos.y + 30 * Math.sin(m.angle)
+        }, angle = m.angle, size = 1) {
+            const me = bullet.length;
+            bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
+            Matter.Body.setDensity(bullet[me], 0.0003);
+            bullet[me].explodeRad = 350 * size + Math.floor(Math.random() * 50) + tech.isBlockExplode * 100
+            bullet[me].onEnd = b.grenadeEnd
+            bullet[me].minDmgSpeed = 1;
+            bullet[me].beforeDmg = function () {
+                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
+            };
+            speed = m.crouch ? 46 : 32
+            Matter.Body.setVelocity(bullet[me], {
+                x: m.Vx / 2 + speed * Math.cos(angle),
+                y: m.Vy / 2 + speed * Math.sin(angle)
+            });
+            Composite.add(engine.world, bullet[me]); //add bullet to world
+            bullet[me].endCycle = simulation.cycle + 70 * tech.bulletsLastLonger;
+            bullet[me].frictionAir = 0.07;
+            bullet[me].suckCycles = 40
+            const MAG = 0.015
+            bullet[me].thrust = {
+                x: bullet[me].mass * MAG * Math.cos(angle),
+                y: bullet[me].mass * MAG * Math.sin(angle)
+            }
+            bullet[me].suck = function () {
+                const suck = (who, radius = this.explodeRad * 3.2) => {
+                    for (i = 0, len = who.length; i < len; i++) {
+                        const sub = Vector.sub(this.position, who[i].position);
+                        const dist = Vector.magnitude(sub);
+                        if (dist < radius && dist > 150 && !who.isInvulnerable && who[i] !== this) {
+                            knock = Vector.mult(Vector.normalise(sub), mag * who[i].mass / Math.sqrt(dist));
+                            who[i].force.x += knock.x;
+                            who[i].force.y += knock.y;
+                        }
+                    }
+                }
+                let mag = 0.1
+                if (simulation.cycle > this.endCycle - 5) {
+                    mag = -0.22
+                    suck(mob, this.explodeRad * 3)
+                    suck(body, this.explodeRad * 2)
+                    suck(powerUp, this.explodeRad * 1.5)
+                    suck(bullet, this.explodeRad * 1.5)
+                    suck([player], this.explodeRad * 1.3)
+                } else {
+                    mag = 0.11
+                    suck(mob, this.explodeRad * 3)
+                    suck(body, this.explodeRad * 2)
+                    suck(powerUp, this.explodeRad * 1.5)
+                    suck(bullet, this.explodeRad * 1.5)
+                    suck([player], this.explodeRad * 1.3)
+                }
+
+                Matter.Body.setVelocity(this, {
+                    x: 0,
+                    y: 0
+                }); //keep bomb in place
+                //draw suck
+                const radius = 2.75 * this.explodeRad * (this.endCycle - simulation.cycle) / this.suckCycles
+                ctx.fillStyle = "rgba(0,0,0,0.1)";
+                ctx.beginPath();
+                ctx.arc(this.position.x, this.position.y, radius, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            bullet[me].do = function () {
+                if (simulation.cycle > this.endCycle - this.suckCycles) { //suck
+                    this.do = this.suck
+                } else if (Matter.Query.collides(this, map).length || Matter.Query.collides(this, body).length) {
+                    Matter.Body.setPosition(this, Vector.sub(this.position, this.velocity)) //undo last movement
+                    this.do = this.suck
+                } else {
+                    this.force.x += this.thrust.x;
+                    this.force.y += this.thrust.y;
+                }
+            };
+        }
+        grenadeVacuum = function (where = {
+            x: m.pos.x + 30 * Math.cos(m.angle),
+            y: m.pos.y + 30 * Math.sin(m.angle)
+        }, angle = m.angle, size = 1) {
+            const me = bullet.length;
+            bullet[me] = Bodies.circle(where.x, where.y, 20, b.fireAttributes(angle, false));
+            Matter.Body.setDensity(bullet[me], 0.0002);
+            bullet[me].explodeRad = 350 * size + Math.floor(Math.random() * 50) + tech.isBlockExplode * 100
+            bullet[me].onEnd = b.grenadeEnd
+            bullet[me].beforeDmg = function () {
+                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
+            };
+            bullet[me].restitution = 0.4;
+            bullet[me].do = function () {
+                this.force.y += this.mass * 0.0025; //extra gravity for harder arcs
+
+                const suckCycles = 40
+                if (simulation.cycle > this.endCycle - suckCycles) { //suck
+                    const that = this
+
+                    function suck(who, radius = that.explodeRad * 3.2) {
+                        for (i = 0, len = who.length; i < len; i++) {
+                            const sub = Vector.sub(that.position, who[i].position);
+                            const dist = Vector.magnitude(sub);
+                            if (dist < radius && dist > 150 && !who.isInvulnerable) {
+                                knock = Vector.mult(Vector.normalise(sub), mag * who[i].mass / Math.sqrt(dist));
+                                who[i].force.x += knock.x;
+                                who[i].force.y += knock.y;
+                            }
+                        }
+                    }
+                    let mag = 0.1
+                    if (simulation.cycle > this.endCycle - 5) {
+                        mag = -0.22
+                        suck(mob, this.explodeRad * 3)
+                        suck(body, this.explodeRad * 2)
+                        suck(powerUp, this.explodeRad * 1.5)
+                        suck(bullet, this.explodeRad * 1.5)
+                        suck([player], this.explodeRad * 1.3)
+                    } else {
+                        mag = 0.11
+                        suck(mob, this.explodeRad * 3)
+                        suck(body, this.explodeRad * 2)
+                        suck(powerUp, this.explodeRad * 1.5)
+                        suck(bullet, this.explodeRad * 1.5)
+                        suck([player], this.explodeRad * 1.3)
+                    }
+                    //keep bomb in place
+                    Matter.Body.setVelocity(this, {
+                        x: 0,
+                        y: 0
+                    });
+                    //draw suck
+                    const radius = 2.75 * this.explodeRad * (this.endCycle - simulation.cycle) / suckCycles
+                    ctx.fillStyle = "rgba(0,0,0,0.1)";
+                    ctx.beginPath();
+                    ctx.arc(this.position.x, this.position.y, radius, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            };
+            speed = 35
+            // speed = m.crouch ? 43 : 32
+
+            bullet[me].endCycle = simulation.cycle + 70 * tech.bulletsLastLonger;
+            if (m.crouch) {
+                speed += 9
+                bullet[me].endCycle += 20;
+            }
+            Matter.Body.setVelocity(bullet[me], {
+                x: m.Vx / 2 + speed * Math.cos(angle),
+                y: m.Vy / 2 + speed * Math.sin(angle)
+            });
+            Composite.add(engine.world, bullet[me]); //add bullet to world
+        }
+
+        grenadeNeutron = function (where = { x: m.pos.x + 30 * Math.cos(m.angle), y: m.pos.y + 30 * Math.sin(m.angle) }, angle = m.angle, size = 1) {
+            const me = bullet.length;
+            bullet[me] = Bodies.polygon(where.x, where.y, 10, 4, b.fireAttributes(angle, false));
+            b.fireProps((m.crouch ? 45 : 25) / Math.pow(0.92, tech.missileCount), m.crouch ? 35 : 20, angle, me); //cd , speed
+            Matter.Body.setDensity(bullet[me], 0.000001);
+            bullet[me].endCycle = 500 + simulation.cycle;
+            bullet[me].frictionAir = 0;
+            bullet[me].friction = 1;
+            bullet[me].frictionStatic = 1;
+            bullet[me].restitution = 0;
+            bullet[me].minDmgSpeed = 0;
+            bullet[me].damageRadius = 100;
+            bullet[me].maxDamageRadius = 450 * size + 130 * tech.isNeutronSlow //+ 150 * Math.random()
+            bullet[me].radiusDecay = (0.81 + 0.15 * tech.isNeutronSlow) / tech.bulletsLastLonger
+            bullet[me].stuckTo = null;
+            bullet[me].stuckToRelativePosition = null;
+            if (tech.isRPG) {
+                const SCALE = 2
+                Matter.Body.scale(bullet[me], SCALE, SCALE);
+                speed = m.crouch ? 25 : 15
+                // speed = m.crouch ? 43 : 32
+                Matter.Body.setVelocity(bullet[me], { x: m.Vx / 2 + speed * Math.cos(angle), y: m.Vy / 2 + speed * Math.sin(angle) });
+                const MAG = 0.005
+                bullet[me].thrust = { x: bullet[me].mass * MAG * Math.cos(angle), y: bullet[me].mass * MAG * Math.sin(angle) }
+            }
+
+            bullet[me].beforeDmg = function () { };
+            bullet[me].stuck = function () { };
+            bullet[me].do = function () {
+                const onCollide = () => {
+                    this.collisionFilter.mask = 0; //non collide with everything
+                    Matter.Body.setVelocity(this, { x: 0, y: 0 });
+                    if (tech.isRPG) this.thrust = { x: 0, y: 0 }
+                    this.do = this.radiationMode;
+                }
+                const mobCollisions = Matter.Query.collides(this, mob)
+                if (mobCollisions.length) {
+                    onCollide()
+                    this.stuckTo = mobCollisions[0].bodyA
+                    mobs.statusDoT(this.stuckTo, 0.6, 360) //apply radiation damage status effect on direct hits
+                    if (this.stuckTo.isVerticesChange) {
+                        this.stuckToRelativePosition = { x: 0, y: 0 }
+                    } else {
+                        //find the relative position for when the mob is at angle zero by undoing the mobs rotation
+                        this.stuckToRelativePosition = Vector.rotate(Vector.sub(this.position, this.stuckTo.position), -this.stuckTo.angle)
+                    }
+                    this.stuck = function () {
+                        if (this.stuckTo && this.stuckTo.alive) {
+                            const rotate = Vector.rotate(this.stuckToRelativePosition, this.stuckTo.angle) //add in the mob's new angle to the relative position vector
+                            Matter.Body.setPosition(this, Vector.add(Vector.add(rotate, this.stuckTo.velocity), this.stuckTo.position))
+                            Matter.Body.setVelocity(this, this.stuckTo.velocity); //so that it will move properly if it gets unstuck
+                        } else {
+                            this.collisionFilter.mask = cat.map | cat.body | cat.player | cat.mob; //non collide with everything but map
+                            this.stuck = function () {
+                                this.force.y += this.mass * 0.001;
+                            }
+                        }
+                    }
+                } else {
+                    const bodyCollisions = Matter.Query.collides(this, body)
+                    if (bodyCollisions.length) {
+                        if (!bodyCollisions[0].bodyA.isNotHoldable) {
+                            onCollide()
+                            this.stuckTo = bodyCollisions[0].bodyA
+                            //find the relative position for when the mob is at angle zero by undoing the mobs rotation
+                            this.stuckToRelativePosition = Vector.rotate(Vector.sub(this.position, this.stuckTo.position), -this.stuckTo.angle)
+                        } else {
+                            this.do = this.radiationMode;
+                        }
+                        this.stuck = function () {
+                            if (this.stuckTo) {
+                                const rotate = Vector.rotate(this.stuckToRelativePosition, this.stuckTo.angle) //add in the mob's new angle to the relative position vector
+                                Matter.Body.setPosition(this, Vector.add(Vector.add(rotate, this.stuckTo.velocity), this.stuckTo.position))
+                                // Matter.Body.setVelocity(this, this.stuckTo.velocity); //so that it will move properly if it gets unstuck
+                            } else {
+                                this.force.y += this.mass * 0.001;
+                            }
+                        }
+                    } else {
+                        if (Matter.Query.collides(this, map).length) {
+                            onCollide()
+                        } else if (tech.isRPG) { //if colliding with nothing
+                            this.force.x += this.thrust.x;
+                            this.force.y += this.thrust.y;
+                        } else {
+                            this.force.y += this.mass * 0.001;
+                        }
+                    }
+                }
+            }
+            bullet[me].radiationMode = function () { //the do code after the bullet is stuck on something,  projects a damaging radiation field
+                this.stuck(); //runs different code based on what the bullet is stuck to
+                this.damageRadius = this.damageRadius * 0.85 + 0.15 * this.maxDamageRadius //smooth radius towards max
+                this.maxDamageRadius -= this.radiusDecay
+                if (this.damageRadius < 15) {
+                    this.endCycle = 0;
+                } else {
+                    //aoe damage to player
+                    if (Vector.magnitude(Vector.sub(player.position, this.position)) < this.damageRadius) {
+                        const DRAIN = (tech.isRadioactiveResistance ? 0.0025 * 0.25 : 0.0025)
+                        if (m.energy > DRAIN) {
+                            if (m.immuneCycle < m.cycle) m.energy -= DRAIN
+                        } else {
+                            m.energy = 0;
+                            if (simulation.dmgScale) m.damage((tech.isRadioactiveResistance ? 0.00016 * 0.25 : 0.00016) * tech.radioactiveDamage) //0.00015
+                        }
+                    }
+                    //aoe damage to mobs
+                    let dmg = m.dmgScale * 0.15 * tech.radioactiveDamage
+                    for (let i = 0, len = mob.length; i < len; i++) {
+                        if (Vector.magnitude(Vector.sub(mob[i].position, this.position)) < this.damageRadius + mob[i].radius) {
+                            if (Matter.Query.ray(map, mob[i].position, this.position).length > 0) dmg *= 0.2 //reduce damage if a wall is in the way
+                            mob[i].damage(mob[i].shield ? dmg * 3 : dmg);
+                            mob[i].locatePlayer();
+                            if (tech.isNeutronSlow && mob[i].speed > 4) {
+                                Matter.Body.setVelocity(mob[i], { x: mob[i].velocity.x * 0.97, y: mob[i].velocity.y * 0.97 });
+                            }
+                        }
+                    }
+                    ctx.beginPath();
+                    ctx.arc(this.position.x, this.position.y, this.damageRadius, 0, 2 * Math.PI);
+                    ctx.globalCompositeOperation = "lighter"
+                    ctx.fillStyle = `rgba(25,139,170,${0.2 + 0.06 * Math.random()})`;
+                    ctx.fill();
+                    ctx.globalCompositeOperation = "source-over"
+                    if (tech.isNeutronSlow) {
+                        let slow = (who, radius = this.explodeRad * 3.2) => {
+                            for (i = 0, len = who.length; i < len; i++) {
+                                const sub = Vector.sub(this.position, who[i].position);
+                                const dist = Vector.magnitude(sub);
+                                if (dist < radius) {
+                                    Matter.Body.setVelocity(who[i], { x: who[i].velocity.x * 0.975, y: who[i].velocity.y * 0.975 });
+                                }
+                            }
+                        }
+                        slow(body, this.damageRadius)
+                        slow([player], this.damageRadius)
+                    }
+                }
+            }
+        }
+
+        if (tech.isNeutronBomb) {
+            b.grenade = grenadeNeutron
+            if (tech.isRPG) {
+                b.guns[5].do = function () { }
+            } else {
+                b.guns[5].do = function () {
+                    if (!input.field && m.crouch) {
+                        const cycles = 80
+                        const speed = m.crouch ? 35 : 20 //m.crouch ? 43 : 32
+                        const g = m.crouch ? 0.137 : 0.135
+                        const v = {
+                            x: speed * Math.cos(m.angle),
+                            y: speed * Math.sin(m.angle)
+                        }
+                        ctx.strokeStyle = "rgba(68, 68, 68, 0.2)" //color.map
+                        ctx.lineWidth = 2
+                        ctx.beginPath()
+                        for (let i = 1, len = 19; i < len + 1; i++) {
+                            const time = cycles * i / len
+                            ctx.lineTo(m.pos.x + time * v.x, m.pos.y + time * v.y + g * time * time)
+                        }
+                        ctx.stroke()
+                    }
+                }
+            }
+        } else if (tech.isRPG) {
+            b.guns[5].do = function () { }
+            if (tech.isVacuumBomb) {
+                b.grenade = grenadeRPGVacuum
+            } else {
+                b.grenade = grenadeRPG
+            }
+        } else if (tech.isVacuumBomb) {
+            b.grenade = grenadeVacuum
+            b.guns[5].do = function () {
+                if (!input.field && m.crouch) {
+                    const cycles = Math.floor(m.crouch ? 50 : 30) //30
+                    const speed = m.crouch ? 44 : 35
+                    const v = { x: speed * Math.cos(m.angle), y: speed * Math.sin(m.angle) }
+                    ctx.strokeStyle = "rgba(68, 68, 68, 0.2)" //color.map
+                    ctx.lineWidth = 2
+                    ctx.beginPath()
+                    for (let i = 1.6, len = 19; i < len + 1; i++) {
+                        const time = cycles * i / len
+                        ctx.lineTo(m.pos.x + time * v.x, m.pos.y + time * v.y + 0.34 * time * time)
+                    }
+                    ctx.stroke()
+                }
+            }
+        } else {
+            b.grenade = grenadeDefault
+            b.guns[5].do = function () {
+                if (!input.field && m.crouch) {
+                    const cycles = Math.floor(m.crouch ? 120 : 80) //30
+                    const speed = m.crouch ? 43 : 32
+                    const v = { x: speed * Math.cos(m.angle), y: speed * Math.sin(m.angle) } //m.Vy / 2 + removed to make the path less jerky
+                    ctx.strokeStyle = "rgba(68, 68, 68, 0.2)" //color.map
+                    ctx.lineWidth = 2
+                    ctx.beginPath()
+                    for (let i = 0.5, len = 19; i < len + 1; i++) {
+                        const time = cycles * i / len
+                        ctx.lineTo(m.pos.x + time * v.x, m.pos.y + time * v.y + 0.34 * time * time)
+                    }
+                    ctx.stroke()
+                }
+            }
+        }
+
+        const oldGrenade = b.grenade;
+        b.grenade = (where, angle, size, crouch) => {
+            const data = new Uint8Array(new ArrayBuffer(18));
+            data[0] = 15;
+            data[17] = crouch ? 1 : 0;
+            const dataView = new DataView(data.buffer);
+            dataView.setFloat32(1, where.x);
+            dataView.setFloat32(5, where.y);
+            dataView.setFloat32(9, angle);
+            dataView.setUint8(13, size);
+            dcRemote.send(dataView);
+
+            oldGrenade(where, angle, size, crouch);
+        }
     }
 
     let oldM = {

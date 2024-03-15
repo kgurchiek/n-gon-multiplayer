@@ -16,3 +16,4 @@
 | 12 | Sync              | 5+     | difficulty (int8), seed (string) |
 | 13 | Explosion         | 13+    | x (Float32), y (Float32), radius (Float32), color (string) |
 | 14 | Pulse             | 16     | charge (Float32), angle (Float32), x (Float32), y (Float32) |
+| 15 | Grenade           | 17     | x (Float32), y (Float32), angle (Float32), size (Float32), crouch (boolean)
