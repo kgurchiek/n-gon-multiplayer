@@ -779,6 +779,7 @@
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
         oldStartGame();
+        Math.random = Math.seededRandom;
 
         b.multiplayerGrapple = (where, angle, otherPlayer) => {
             const me = bullet.length;
