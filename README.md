@@ -13,4 +13,6 @@
 | 09 | Toggle Crouch     | 1      | crouched (boolean)
 | 10 | Toggle Cloak      | 1      | isCloak (boolean)
 | 11 | Sync Request      | 0      | |
-| 12 | Sync              | 5+     | difficulty (int8), seed (string)
+| 12 | Sync              | 5+     | difficulty (int8), seed (string) |
+| 13 | Explosion         | 13+    | x (Float32), y (Float32), radius (Float32), color (string) |
+| 14 | Pulse             | 16     | charge (Float32), angle (Float32), x (Float32), y (Float32) |
