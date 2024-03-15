@@ -1,3 +1,5 @@
+let player1;
+
 b.multiplayerExplosion = (where, radius, color) => { // typically explode is used for some bullets with .onEnd
     radius *= 1; //tech.explosiveRadius
 
@@ -586,6 +588,295 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
     Composite.add(engine.world, bullet[me]); //add bullet to world
 }
 
+b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust) => {
+    const me = bullet.length;
+    const returnRadius = 100 * Math.sqrt(harpoonSize)
+    bullet[me] = Bodies.fromVertices(where.x, where.y, [
+        {
+            x: -40 * harpoonSize,
+            y: 2 * harpoonSize,
+            index: 0,
+            isInternal: false
+        }, {
+            x: -40 * harpoonSize,
+            y: -2 * harpoonSize,
+            index: 1,
+            isInternal: false
+        }, {
+            x: 50 * harpoonSize,
+            y: -3 * harpoonSize,
+            index: 3,
+            isInternal: false
+        }, {
+            x: 30 * harpoonSize,
+            y: 2 * harpoonSize,
+            index: 4,
+            isInternal: false
+        }], {
+            cycle: 0,
+            angle: angle,
+            friction: 1,
+            frictionAir: 0.4,
+            // thrustMag: 0.1,
+            drain: /*tech.isRailEnergy ? 0 :*/ 0.006,
+            turnRate: isReturn ? 0.1 : 0.03, //0.015
+            drawStringControlMagnitude: 3000 + 5000 * Math.random(),
+            drawStringFlip: (Math.round(Math.random()) ? 1 : -1),
+            dmg: 6, //damage done in addition to the damage from momentum
+            classType: "bullet",
+            endCycle: simulation.cycle + totalCycles * 2.5 + 40,
+            collisionFilter: {
+                category: cat.bullet,
+                mask: /*tech.isShieldPierce ? cat.map | cat.body | cat.mob | cat.mobBullet :*/ cat.map | cat.body | cat.mob | cat.mobBullet | cat.mobShield,
+            },
+            minDmgSpeed: 4,
+            lookFrequency: Math.floor(7 + Math.random() * 3),
+            density: 0.004, //tech.harpoonDensity, //0.001 is normal for blocks,  0.004 is normal for harpoon,  0.004*6 when buffed
+            beforeDmg(who) {
+                // if (tech.isShieldPierce && who.isShielded) { //disable shields
+                //     who.isShielded = false
+                //     requestAnimationFrame(() => {
+                //         who.isShielded = true
+                //     });
+                // }
+                // if (tech.fragments) {
+                //     b.targetedNail(this.vertices[2], tech.fragments * Math.floor(2 + Math.random()))
+                //     if (!isReturn) this.endCycle = 0;
+                // }
+                if (!who.isBadTarget) {
+                    if (isReturn) {
+                        this.do = this.returnToPlayer
+                    } else {
+                        this.frictionAir = 0.01
+                        this.do = () => {
+                            this.force.y += this.mass * 0.003; //gravity
+                            this.draw();
+                        }
+                    }
+                }
+                // if (tech.isFoamBall) {
+                //     for (let i = 0, len = Math.min(30, 2 + 2 * Math.sqrt(this.mass)); i < len; i++) {
+                //         const radius = 5 + 8 * Math.random()
+                //         const velocity = { x: Math.max(0.5, 2 - radius * 0.1), y: 0 }
+                //         b.foam(this.position, Vector.rotate(velocity, 6.28 * Math.random()), radius)
+                //     }
+                // }
+                // if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) {
+                //     Matter.Body.setDensity(this, 1.8 * tech.harpoonDensity); //+90% damage after pick up power up for 8 seconds
+                // } else if (tech.isHarpoonFullHealth && who.health === 1) {
+                //     Matter.Body.setDensity(this, 2.11 * tech.harpoonDensity); //+90% damage if mob has full health do
+                //     simulation.ephemera.push({
+                //         name: "harpoon outline",
+                //         count: 2, //cycles before it self removes
+                //         vertices: this.vertices,
+                //         do() {
+                //             this.count--
+                //             if (this.count < 0) simulation.removeEphemera(this.name)
+
+                //             ctx.beginPath();
+                //             ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+                //             for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
+                //             ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
+                //             ctx.lineJoin = "miter"
+                //             ctx.miterLimit = 20;
+                //             ctx.lineWidth = 40;
+                //             ctx.strokeStyle = "rgba(255,0,100,0.35)";
+                //             ctx.stroke();
+                //             ctx.lineWidth = 10;
+                //             ctx.strokeStyle = `#f07`;
+                //             ctx.stroke();
+                //             ctx.lineJoin = "round"
+                //             ctx.miterLimit = 5
+                //             ctx.fillStyle = "#000"
+                //             ctx.fill();
+                //         },
+                //     })
+                // }
+            },
+            caughtPowerUp: null,
+            dropCaughtPowerUp() {
+                if (this.caughtPowerUp) {
+                    this.caughtPowerUp.collisionFilter.category = cat.powerUp
+                    this.caughtPowerUp.collisionFilter.mask = cat.map | cat.powerUp
+                    this.caughtPowerUp = null
+                }
+            },
+            onEnd() {
+                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || player2.health !== player2.maxHealth /*|| tech.isOverHeal*/)) {
+                    let index = null //find index
+                    for (let i = 0, len = powerUp.length; i < len; ++i) {
+                        if (powerUp[i] === this.caughtPowerUp) index = i
+                    }
+                    if (index !== null) {
+                        Matter.Composite.remove(engine.world, this.caughtPowerUp);
+                        powerUp.splice(index, 1);
+                        // if (tech.isHarpoonPowerUp) tech.harpoonPowerUpCycle = simulation.cycle
+                    } else {
+                        this.dropCaughtPowerUp()
+                    }
+                } else {
+                    this.dropCaughtPowerUp()
+                }
+            },
+            drawDamageAura() {
+                ctx.beginPath();
+                ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+                for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
+                ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
+                ctx.lineJoin = "miter"
+                ctx.miterLimit = 20;
+                ctx.lineWidth = 15;
+                ctx.strokeStyle = "rgba(255,0,100,0.25)";
+                ctx.stroke();
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = `#f07`;
+                ctx.stroke();
+                ctx.lineJoin = "round"
+                ctx.miterLimit = 5
+                ctx.fillStyle = "#000"
+                ctx.fill();
+            },
+            drawString() {
+                const where = { x: player2.pos.x + 30 * Math.cos(player2.angle), y: player2.pos.y + 30 * Math.sin(player2.angle) }
+                const sub = Vector.sub(where, this.vertices[0])
+                const perpendicular = Vector.mult(Vector.normalise(Vector.perp(sub)), this.drawStringFlip * Math.min(80, 10 + this.drawStringControlMagnitude / (10 + Vector.magnitude(sub))))
+                const controlPoint = Vector.add(Vector.add(where, Vector.mult(sub, -0.5)), perpendicular)
+                ctx.strokeStyle = "#000" // "#0ce"
+                ctx.lineWidth = 0.5
+                ctx.beginPath();
+                ctx.moveTo(where.x, where.y);
+                ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, this.vertices[0].x, this.vertices[0].y)
+                // ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
+                ctx.stroke();
+            },
+            draw() { },
+            returnToPlayer() {
+                if (Vector.magnitude(Vector.sub(this.position, player2.pos)) < returnRadius) { //near player
+                    this.endCycle = 0;
+                    // if (m.energy < 0.05) {
+                    //     m.fireCDcycle = m.cycle + 80 * b.fireCDscale; //fire cooldown is much longer when out of energy
+                    // } else if (m.cycle + 20 * b.fireCDscale < m.fireCDcycle) {
+                    // if (m.energy > 0.05) m.fireCDcycle = m.cycle + 20 * b.fireCDscale //lower cd to 25 if it is above 25
+                    // }
+                    //recoil on catching
+                    // const momentum = Vector.mult(Vector.sub(this.velocity, player2.velocity), (player2.crouch ? 0.0001 : 0.0002))
+                    // refund ammo
+                    if (isReturnAmmo) {
+                        b.guns[9].ammo++;
+                        simulation.updateGunHUD();
+                        // for (i = 0, len = b.guns.length; i < len; i++) { //find which gun 
+                        //     if (b.guns[i].name === "harpoon") {
+                        //         break;
+                        //     }
+                        // }
+                    }
+                } else {
+                    const sub = Vector.sub(this.position, player2.pos)
+                    const rangeScale = 1 + 0.000001 * Vector.magnitude(sub) * Vector.magnitude(sub) //return faster when far from player
+                    const returnForce = Vector.mult(Vector.normalise(sub), rangeScale * thrust * this.mass)
+                    if (player2.energy > this.drain) player2.energy -= this.drain
+                    if (player2.energy < 0.05) {
+                        this.force.x -= returnForce.x * 0.15
+                        this.force.y -= returnForce.y * 0.15
+                    } else { //if (m.cycle + 20 * b.fireCDscale < m.fireCDcycle)
+                        this.force.x -= returnForce.x
+                        this.force.y -= returnForce.y
+                    }
+                    this.grabPowerUp()
+                }
+                this.draw();
+            },
+            grabPowerUp() { //grab power ups near the tip of the harpoon
+                if (this.caughtPowerUp) {
+                    Matter.Body.setPosition(this.caughtPowerUp, Vector.add(this.vertices[2], this.velocity))
+                    Matter.Body.setVelocity(this.caughtPowerUp, { x: 0, y: 0 })
+                } else { //&& simulation.cycle % 2 
+                    for (let i = 0, len = powerUp.length; i < len; ++i) {
+                        const radius = powerUp[i].circleRadius + 50
+                        if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius && !powerUp[i].isGrabbed) {
+                            if (powerUp[i].name !== "heal" || player2.health !== player2.maxHealth /*|| tech.isOverHeal*/) {
+                                powerUp[i].isGrabbed = true
+                                this.caughtPowerUp = powerUp[i]
+                                Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
+                                Matter.Body.setPosition(powerUp[i], this.vertices[2])
+                                powerUp[i].collisionFilter.category = 0
+                                powerUp[i].collisionFilter.mask = 0
+                                thrust *= 0.6
+                                this.endCycle += 0.5 //it pulls back slower, so this prevents it from ending early
+                                break //just pull 1 power up if possible
+                            }
+                        }
+                    }
+                }
+            },
+            do() {
+                this.cycle++
+                if (isReturn || target) {
+                    if (isReturn) {
+                        if (this.cycle > totalCycles) { //return to player  //|| !input.fire
+                            this.do = this.returnToPlayer
+                            if (this.angularSpeed < 0.5) this.torque += this.inertia * 0.001 * (Math.random() - 0.5) //(Math.round(Math.random()) ? 1 : -1)
+                            Matter.Sleeping.set(this, false)
+                            this.endCycle = simulation.cycle + 240
+                            // const momentum = Vector.mult(Vector.sub(this.velocity, player2.velocity), (player2.crouch ? 0.00015 : 0.0003)) //recoil on jerking line
+                            requestAnimationFrame(() => { //delay this for 1 cycle to get the proper hit graphics
+                                this.collisionFilter.category = 0
+                                this.collisionFilter.mask = 0
+                            });
+                        } else {
+                            this.grabPowerUp()
+                        }
+                    }
+                    if (target) { //rotate towards the target
+                        const face = {
+                            x: Math.cos(this.angle),
+                            y: Math.sin(this.angle)
+                        };
+                        const vectorGoal = Vector.normalise(Vector.sub(this.position, target.position));
+                        if (Vector.cross(vectorGoal, face) > 0) {
+                            Matter.Body.rotate(this, this.turnRate);
+                        } else {
+                            Matter.Body.rotate(this, -this.turnRate);
+                        }
+                    }
+                    this.force.x += thrust * this.mass * Math.cos(this.angle);
+                    this.force.y += thrust * this.mass * Math.sin(this.angle);
+                }
+                this.draw()
+            },
+        }
+    );
+    bullet[me].multiplayer = true;
+    if (!isReturn && !target) {
+        Matter.Body.setVelocity(bullet[me], {
+            x: player2.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
+            y: player2.Vy / 2 + 600 * thrust * Math.sin(bullet[me].angle)
+        });
+        bullet[me].frictionAir = 0.002
+        bullet[me].do = function () {
+            if (this.speed < 20) this.force.y += 0.0005 * this.mass;
+            this.draw();
+        }
+    }
+    /*if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) { //8 seconds
+        if (isReturn) {
+            bullet[me].draw = function () {
+                this.drawDamageAura()
+                this.drawString()
+            }
+        } else {
+            bullet[me].draw = function () {
+                this.drawDamageAura()
+            }
+        }
+    } else*/ if (isReturn) {
+        bullet[me].draw = function () {
+            this.drawString()
+        }
+    }
+    Composite.add(engine.world, bullet[me]); //add bullet to world
+}
+
 (async () => {
     await new Promise((resolve, reject) => {
         const config = {
@@ -690,6 +981,10 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                 if (id == 15) {
                     // grenade
                     b.multiplayerGrenade({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getFloat32(9), data.getFloat32(13), new Uint8Array(data.buffer)[17] == 1);
+                }
+                if (id == 16) {
+                    // harpoon
+                    b.multiplayerHarpoon({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getUint16(9), data.getFloat32(11), data.getUint16(15), new Uint8Array(data.buffer)[17] == 1, data.getFloat32(18), new Uint8Array(data.buffer)[22] == 1, data.getFloat32(23))
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -1162,7 +1457,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
         }
     ]
 
-    let player1 = {
+    player1 = {
         angle: 0,
         bodyGradient: null,
         calcLeg: (cycle_offset, offset) => {
@@ -1577,7 +1872,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
     
                                     const stunTime = dmg / Math.sqrt(obj.mass)
                                     if (stunTime > 0.5 && mob[k].memory !== Infinity) mobs.statusStun(mob[k], 60 + 60 * Math.sqrt(stunTime))
-                                    if (mob[k].alive && mob[k].distanceToPlayer2() < 1000000 && !m.isCloak) mob[k].foundPlayer();
+                                    if (mob[k].alive && Math.sqrt((mob[k].position.x - player1.pos.x)**2 + (mob[k].position.y - player1.pos.y)**2) < 1000000 && !m.isCloak) mob[k].foundPlayer();
                                     if (tech.fragments && obj.speed > 10 && !obj.hasFragmented) {
                                         obj.hasFragmented = true;
                                         b.targetedNail(obj.position, tech.fragments * 4)
@@ -2070,6 +2365,25 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
 
             oldGrenade(where, angle, size, crouch);
         }
+    }
+
+    const oldHarpoon = b.harpoon;
+    b.harpoon = (where, target, angle = m.angle, harpoonSize = 1, isReturn = false, totalCycles = 35, isReturnAmmo = true, thrust = 0.1) => {
+        const data = new Uint8Array(new ArrayBuffer(27));
+        data[0] = 16;
+        data[17] = isReturn ? 1 : 0;
+        data[22] = isReturnAmmo ? 1 : 0;
+        const dataView = new DataView(data.buffer);
+        dataView.setFloat32(1, where.x);
+        dataView.setFloat32(5, where.y);
+        dataView.setUint16(9, target);
+        dataView.setFloat32(11, angle);
+        dataView.setUint16(15, harpoonSize);
+        dataView.setFloat32(18, totalCycles);
+        dataView.setFloat32(23, thrust)
+        dcRemote.send(dataView);
+
+        oldHarpoon(where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust);
     }
 
     let oldM = {
