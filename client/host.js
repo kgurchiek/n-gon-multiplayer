@@ -604,6 +604,22 @@
         },
         color: { hue: 0, sat: 0, light: 100 },
         crouch: false,
+        drawHealthbar: () => {
+            if (player2.health < player2.maxHealth) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                const xOff = player2.pos.x - 40 * player2.maxHealth;
+                const yOff = player2.pos.y - 70;
+                ctx.fillRect(xOff, yOff, 80 * player2.maxHealth, 10);
+                ctx.fillStyle = '#09f5a6';
+                ctx.fillRect(xOff, yOff, 80 * player2.health, 10);
+            } else if (player2.health > player2.maxHealth + 0.05 || player2.input.field) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                const xOff = player2.pos.x - 40 * player2.health;
+                const yOff = player2.pos.y - 70;
+                ctx.fillStyle = '#09f5a6';
+                ctx.fillRect(xOff, yOff, 80 * player2.health, 10);
+            }
+        },
         drawLeg: (stroke) => {
             if (player2.angle > -Math.PI / 2 && player2.angle < Math.PI / 2) {
                 player2.flipLegs = 1;
@@ -1119,6 +1135,7 @@
             powerUps.boost.draw();
 
             if (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10) fieldData[player2.fieldMode].drawField();
+            player2.drawHealthbar();
             player2.drawRegenEnergy();
 
             if (player2.isCloak) {
