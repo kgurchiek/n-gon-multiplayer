@@ -702,7 +702,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 }
             },
             onEnd() {
-                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || player2.health !== player2.maxHealth /*|| tech.isOverHeal*/)) {
+                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || player1.health !== player1.maxHealth /*|| tech.isOverHeal*/)) {
                     let index = null //find index
                     for (let i = 0, len = powerUp.length; i < len; ++i) {
                         if (powerUp[i] === this.caughtPowerUp) index = i
@@ -737,7 +737,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 ctx.fill();
             },
             drawString() {
-                const where = { x: player2.pos.x + 30 * Math.cos(player2.angle), y: player2.pos.y + 30 * Math.sin(player2.angle) }
+                const where = { x: player1.pos.x + 30 * Math.cos(player1.angle), y: player1.pos.y + 30 * Math.sin(player1.angle) }
                 const sub = Vector.sub(where, this.vertices[0])
                 const perpendicular = Vector.mult(Vector.normalise(Vector.perp(sub)), this.drawStringFlip * Math.min(80, 10 + this.drawStringControlMagnitude / (10 + Vector.magnitude(sub))))
                 const controlPoint = Vector.add(Vector.add(where, Vector.mult(sub, -0.5)), perpendicular)
@@ -751,7 +751,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
             },
             draw() { },
             returnToPlayer() {
-                if (Vector.magnitude(Vector.sub(this.position, player2.pos)) < returnRadius) { //near player
+                if (Vector.magnitude(Vector.sub(this.position, player1.pos)) < returnRadius) { //near player
                     this.endCycle = 0;
                     // if (m.energy < 0.05) {
                     //     m.fireCDcycle = m.cycle + 80 * b.fireCDscale; //fire cooldown is much longer when out of energy
@@ -759,7 +759,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                     // if (m.energy > 0.05) m.fireCDcycle = m.cycle + 20 * b.fireCDscale //lower cd to 25 if it is above 25
                     // }
                     //recoil on catching
-                    // const momentum = Vector.mult(Vector.sub(this.velocity, player2.velocity), (player2.crouch ? 0.0001 : 0.0002))
+                    // const momentum = Vector.mult(Vector.sub(this.velocity, player1.velocity), (player1.crouch ? 0.0001 : 0.0002))
                     // refund ammo
                     if (isReturnAmmo) {
                         b.guns[9].ammo++;
@@ -771,11 +771,11 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                         // }
                     }
                 } else {
-                    const sub = Vector.sub(this.position, player2.pos)
+                    const sub = Vector.sub(this.position, player1.pos)
                     const rangeScale = 1 + 0.000001 * Vector.magnitude(sub) * Vector.magnitude(sub) //return faster when far from player
                     const returnForce = Vector.mult(Vector.normalise(sub), rangeScale * thrust * this.mass)
-                    if (player2.energy > this.drain) player2.energy -= this.drain
-                    if (player2.energy < 0.05) {
+                    if (player1.energy > this.drain) player1.energy -= this.drain
+                    if (player1.energy < 0.05) {
                         this.force.x -= returnForce.x * 0.15
                         this.force.y -= returnForce.y * 0.15
                     } else { //if (m.cycle + 20 * b.fireCDscale < m.fireCDcycle)
@@ -794,7 +794,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                     for (let i = 0, len = powerUp.length; i < len; ++i) {
                         const radius = powerUp[i].circleRadius + 50
                         if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius && !powerUp[i].isGrabbed) {
-                            if (powerUp[i].name !== "heal" || player2.health !== player2.maxHealth /*|| tech.isOverHeal*/) {
+                            if (powerUp[i].name !== "heal" || player1.health !== player1.maxHealth /*|| tech.isOverHeal*/) {
                                 powerUp[i].isGrabbed = true
                                 this.caughtPowerUp = powerUp[i]
                                 Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
@@ -818,7 +818,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                             if (this.angularSpeed < 0.5) this.torque += this.inertia * 0.001 * (Math.random() - 0.5) //(Math.round(Math.random()) ? 1 : -1)
                             Matter.Sleeping.set(this, false)
                             this.endCycle = simulation.cycle + 240
-                            // const momentum = Vector.mult(Vector.sub(this.velocity, player2.velocity), (player2.crouch ? 0.00015 : 0.0003)) //recoil on jerking line
+                            // const momentum = Vector.mult(Vector.sub(this.velocity, player1.velocity), (player1.crouch ? 0.00015 : 0.0003)) //recoil on jerking line
                             requestAnimationFrame(() => { //delay this for 1 cycle to get the proper hit graphics
                                 this.collisionFilter.category = 0
                                 this.collisionFilter.mask = 0
@@ -849,8 +849,8 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
     bullet[me].multiplayer = true;
     if (!isReturn && !target) {
         Matter.Body.setVelocity(bullet[me], {
-            x: player2.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
-            y: player2.Vy / 2 + 600 * thrust * Math.sin(bullet[me].angle)
+            x: player1.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
+            y: player1.Vy / 2 + 600 * thrust * Math.sin(bullet[me].angle)
         });
         bullet[me].frictionAir = 0.002
         bullet[me].do = function () {
