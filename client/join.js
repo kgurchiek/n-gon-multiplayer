@@ -69,7 +69,7 @@ b.multiplayerExplosion = (where, radius, color) => { // typically explode is use
         });
 
         //player damage and knock back
-        if (m.immuneCycle < m.cycle) {
+        if (player1.immuneCycle < m.cycle) {
             sub = Vector.sub(where, player.position);
             dist = Vector.magnitude(sub);
 
@@ -207,16 +207,16 @@ b.multiplayerPulse = (charge, angle, where) => {
         }
     }
     if (best.who) {
-        b.multiplayerExplosion(path[1], explosionRadius, 'rgba(255,25,0,0.6)')
-        const off = explosionRadius * 1.2
-        b.multiplayerExplosion({
-            x: path[1].x + off * (Math.random() - 0.5),
-            y: path[1].y + off * (Math.random() - 0.5)
-        }, explosionRadius, 'rgba(255,25,0,0.6)')
-        b.multiplayerExplosion({
-            x: path[1].x + off * (Math.random() - 0.5),
-            y: path[1].y + off * (Math.random() - 0.5)
-        }, explosionRadius, 'rgba(255,25,0,0.6)')
+        // b.multiplayerExplosion(path[1], explosionRadius, 'rgba(255,25,0,0.6)')
+        // const off = explosionRadius * 1.2
+        // b.multiplayerExplosion({
+        //     x: path[1].x + off * (Math.random() - 0.5),
+        //     y: path[1].y + off * (Math.random() - 0.5)
+        // }, explosionRadius, 'rgba(255,25,0,0.6)')
+        // b.multiplayerExplosion({
+        //     x: path[1].x + off * (Math.random() - 0.5),
+        //     y: path[1].y + off * (Math.random() - 0.5)
+        // }, explosionRadius, 'rgba(255,25,0,0.6)')
     }
     //draw laser beam
     ctx.beginPath();
@@ -877,6 +877,105 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
     Composite.add(engine.world, bullet[me]); //add bullet to world
 }
 
+b.multiplayerMissile = (where, angle, speed, size) => {
+    // if (tech.isMissileBig) {
+    //     size *= 1.55
+    //     if (tech.isMissileBiggest) size *= 1.55
+    // }
+    const me = bullet.length;
+    bullet[me] = Bodies.rectangle(where.x, where.y, 30 * size, 4 * size, {
+        angle: angle,
+        friction: 0.5,
+        frictionAir: 0.045,
+        dmg: 0, //damage done in addition to the damage from momentum
+        classType: "bullet",
+        endCycle: simulation.cycle + Math.floor((230 + 40 * Math.random()) * tech.bulletsLastLonger /*+ 120 * tech.isMissileBiggest + 60 * tech.isMissileBig*/),
+        collisionFilter: {
+            category: cat.bullet,
+            mask: cat.map | cat.body | cat.mob | cat.mobBullet | cat.mobShield
+        },
+        minDmgSpeed: 10,
+        lookFrequency: Math.floor(10 + Math.random() * 3),
+        explodeRad: (/*tech.isMissileBig ? 230 :*/ 180) + 60 * Math.random(),
+        density: 0.02, //0.001 is normal
+        beforeDmg() {
+            Matter.Body.setDensity(this, 0.0001); //reduce density to normal
+            this.tryToLockOn();
+            this.endCycle = 0; //bullet ends cycle after doing damage  // also triggers explosion
+        },
+        onEnd() {
+            // b.multiplayerExplosion(this.position, this.explodeRad * size); //makes bullet do explosive damage at end
+            // if (tech.fragments) b.targetedNail(this.position, tech.fragments * Math.floor(2 + 1.5 * Math.random()))
+        },
+        lockedOn: null,
+        tryToLockOn() {
+            let closeDist = Infinity;
+            const futurePos = Vector.add(this.position, Vector.mult(this.velocity, 30)) //look for closest target to where the missile will be in 30 cycles
+            this.lockedOn = null;
+            // const futurePos = this.lockedOn ? :Vector.add(this.position, Vector.mult(this.velocity, 50))
+            for (let i = 0, len = mob.length; i < len; ++i) {
+                if (
+                    mob[i].alive && !mob[i].isBadTarget &&
+                    Matter.Query.ray(map, this.position, mob[i].position).length === 0 &&
+                    !mob[i].isInvulnerable
+                ) {
+                    const futureDist = Vector.magnitude(Vector.sub(futurePos, mob[i].position));
+                    if (futureDist < closeDist) {
+                        closeDist = futureDist;
+                        this.lockedOn = mob[i];
+                        // this.frictionAir = 0.04; //extra friction once a target it locked
+                    }
+                    if (Vector.magnitude(Vector.sub(this.position, mob[i].position) < this.explodeRad)) {
+                        this.endCycle = 0; //bullet ends cycle after doing damage  //also triggers explosion
+                        // mob[i].lockedOn.damage(m.dmgScale * 2 * size); //does extra damage to target
+                    }
+                }
+            }
+            //explode when bullet is close enough to target
+            if (this.lockedOn && Vector.magnitude(Vector.sub(this.position, this.lockedOn.position)) < this.explodeRad) {
+                this.endCycle = 0; //bullet ends cycle after doing damage  //also triggers explosion
+                // this.lockedOn.damage(m.dmgScale * 4 * size); //does extra damage to target
+            }
+        },
+        do() {
+            if (!(m.cycle % this.lookFrequency)) this.tryToLockOn();
+            if (this.lockedOn) { //rotate missile towards the target
+                const face = {
+                    x: Math.cos(this.angle),
+                    y: Math.sin(this.angle)
+                };
+                const target = Vector.normalise(Vector.sub(this.position, this.lockedOn.position));
+                const dot = Vector.dot(target, face)
+                const aim = Math.min(0.08, (1 + dot) * 1)
+                if (Vector.cross(target, face) > 0) {
+                    Matter.Body.rotate(this, aim);
+                } else {
+                    Matter.Body.rotate(this, -aim);
+                }
+                this.frictionAir = Math.min(0.1, Math.max(0.04, 1 + dot)) //0.08; //extra friction if turning
+            }
+            //accelerate in direction bullet is facing
+            const dir = this.angle;
+            this.force.x += thrust * Math.cos(dir);
+            this.force.y += thrust * Math.sin(dir);
+
+            ctx.beginPath(); //draw rocket
+            ctx.arc(this.position.x - Math.cos(this.angle) * (25 * size - 3) + (Math.random() - 0.5) * 4,
+                this.position.y - Math.sin(this.angle) * (25 * size - 3) + (Math.random() - 0.5) * 4,
+                11 * size, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(255,155,0,0.5)";
+            ctx.fill();
+        },
+    });
+    bullet[me].multiplayer = true;
+    const thrust = 0.0066 * bullet[me].mass; //* (tech.isMissileBig ? (tech.isMissileBiggest ? 0.3 : 0.7) : 1);
+    Matter.Body.setVelocity(bullet[me], {
+        x: player2.Vx / 2 + speed * Math.cos(angle),
+        y: player2.Vy / 2 + speed * Math.sin(angle)
+    });
+    Composite.add(engine.world, bullet[me]); //add bullet to world
+}
+
 (async () => {
     await new Promise((resolve, reject) => {
         const config = {
@@ -932,6 +1031,10 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                     player1.fieldAngle = player1.angle;
                     player1.fieldArc = 0.2;
                 }
+                if (id == 3) {
+                    // immune cycle update
+                    player1.immuneCycle = data.getFloat32(1);
+                }
                 if (id == 4) {
                     // health update
                     player1.health = data.getFloat32(1);
@@ -985,6 +1088,10 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 if (id == 16) {
                     // harpoon
                     b.multiplayerHarpoon({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getUint16(9), data.getFloat32(11), data.getUint16(15), new Uint8Array(data.buffer)[17] == 1, data.getFloat32(18), new Uint8Array(data.buffer)[22] == 1, data.getFloat32(23))
+                }
+                if (id == 17) {
+                    // missile
+                    b.multiplayerMissile({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getFloat32(9), data.getFloat32(13), data.getUint16(17))
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -2386,11 +2493,27 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
         oldHarpoon(where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust);
     }
 
+    const oldMissile = b.missile;
+    b.missile = (where, angle, speed, size = 1) => {
+        const data = new Uint8Array(new ArrayBuffer(23));
+        data[0] = 17;
+        const dataView = new DataView(data.buffer);
+        dataView.setFloat32(1, where.x);
+        dataView.setFloat32(5, where.y);
+        dataView.setFloat32(9, angle);
+        dataView.setFloat32(13, speed);
+        dataView.setUint16(17, size);
+        dcRemote.send(dataView);
+
+        oldMissile(where, angle, speed, size);
+    }
+
     let oldM = {
         crouch: m.crouch,
         energy: m.energy,
         fieldMode: m.fieldMode,
         health: m.health,
+        immuneCycle: m.immuneCycle,
         input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
         isCloak: m.isCloak,
         maxEnergy: m.maxEnergy,
@@ -2483,6 +2606,14 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 data[1] = m.fieldMode;
                 dcRemote.send(new DataView(data.buffer));
             }
+            if (m.immuneCycle != oldM.immuneCycle) {
+                // immune cycle update
+                const data = new Uint8Array(new ArrayBuffer(5));
+                data[0] = 3;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.immuneCycle);
+                dcRemote.send(dataView);
+            }
             if (m.health != oldM.health) {
                 // health update
                 const data = new Uint8Array(new ArrayBuffer(5));
@@ -2546,6 +2677,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 energy: m.energy,
                 fieldMode: m.fieldMode,
                 health: m.health,
+                immuneCycle: m.immuneCycle,
                 input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
                 isCloak: m.isCloak,
                 maxEnergy: m.maxEnergy,
