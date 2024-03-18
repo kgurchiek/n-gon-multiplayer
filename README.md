@@ -19,4 +19,4 @@
 | 14 | Pulse               | 16     | charge (Float32), angle (Float32), x (Float32), y (Float32) |
 | 15 | Grenade             | 17     | x (Float32), y (Float32), angle (Float32), size (Float32), crouch (boolean)
 | 16 | Harpoon             | 26     | x (Float32), y (Float32), targetIndex (Uint16), angle (Float32), harpoonSize (Uint16), isReturn (boolean), totalCycles (Float32), isReturnAmmo (boolean), thrust (Float32) |
-| 17 | Missile             | 22     | x (Float32), y (Float32), angle (Float32), speed (Float32), size (Uint16)
+| 17 | Missile             | 38     | x (Float32), y (Float32), angle (Float32), speed (Float32), size (Uint16), endCycle (Float32), lookFrequency (Float32), explodeRad (Float32), xForce (Float32), yForce (Float32)

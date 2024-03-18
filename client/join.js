@@ -877,7 +877,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
     Composite.add(engine.world, bullet[me]); //add bullet to world
 }
 
-b.multiplayerMissile = (where, angle, speed, size) => {
+b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, explodeRad) => {
     // if (tech.isMissileBig) {
     //     size *= 1.55
     //     if (tech.isMissileBiggest) size *= 1.55
@@ -889,14 +889,14 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         frictionAir: 0.045,
         dmg: 0, //damage done in addition to the damage from momentum
         classType: "bullet",
-        endCycle: simulation.cycle + Math.floor((230 + 40 * Math.random()) * tech.bulletsLastLonger /*+ 120 * tech.isMissileBiggest + 60 * tech.isMissileBig*/),
+        endCycle,
         collisionFilter: {
             category: cat.bullet,
             mask: cat.map | cat.body | cat.mob | cat.mobBullet | cat.mobShield
         },
         minDmgSpeed: 10,
-        lookFrequency: Math.floor(10 + Math.random() * 3),
-        explodeRad: (/*tech.isMissileBig ? 230 :*/ 180) + 60 * Math.random(),
+        lookFrequency,
+        explodeRad,
         density: 0.02, //0.001 is normal
         beforeDmg() {
             Matter.Body.setDensity(this, 0.0001); //reduce density to normal
@@ -1091,7 +1091,11 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 }
                 if (id == 17) {
                     // missile
-                    b.multiplayerMissile({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getFloat32(9), data.getFloat32(13), data.getUint16(17))
+                    const me = bullet.length;
+                    b.multiplayerMissile({ x: data.getFloat32(1), y: data.getFloat32(5) }, data.getFloat32(9), data.getFloat32(13), data.getUint16(17), data.getFloat32(19) + m.cycle, data.getFloat32(23), data.getFloat32(27))
+                    bullet[me].force.x += data.getFloat32(31);
+                    bullet[me].force.y += data.getFloat32(35);
+                    console.log(bullet[me]);
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -2493,19 +2497,134 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         oldHarpoon(where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust);
     }
 
-    const oldMissile = b.missile;
-    b.missile = (where, angle, speed, size = 1) => {
-        const data = new Uint8Array(new ArrayBuffer(23));
-        data[0] = 17;
-        const dataView = new DataView(data.buffer);
-        dataView.setFloat32(1, where.x);
-        dataView.setFloat32(5, where.y);
-        dataView.setFloat32(9, angle);
-        dataView.setFloat32(13, speed);
-        dataView.setUint16(17, size);
-        dcRemote.send(dataView);
+    b.guns[4].fire = () => {
+        const countReduction = Math.pow(0.86, tech.missileCount)
+        m.fireCDcycle = m.cycle + tech.missileFireCD * b.fireCDscale / countReduction; // cool down
+        const direction = {
+            x: Math.cos(m.angle),
+            y: Math.sin(m.angle)
+        }
+        
+        if (tech.missileCount > 1) {
+            const push = Vector.mult(Vector.perp(direction), 0.2 * countReduction / Math.sqrt(tech.missileCount))
+            const sqrtCountReduction = Math.sqrt(countReduction)
+            
+            const launchDelay = 4
+            let count = 0
+            const fireMissile = () => {
+                if (m.crouch) {
+                    const me = bullet.length;
+                    b.missile({
+                        x: m.pos.x + 30 * direction.x,
+                        y: m.pos.y + 30 * direction.y
+                    }, m.angle, 20, sqrtCountReduction)
+                    const extraForce = { x: 0.5 * push.x * (Math.random() - 0.5), y: 0.004 + 0.5 * push.y * (Math.random() - 0.5) }
+                    bullet[bullet.length - 1].force.x += extraForce.x;
+                    bullet[bullet.length - 1].force.y += extraForce.y;
+                    console.log(bullet[me]);
 
-        oldMissile(where, angle, speed, size);
+                    const data = new Uint8Array(new ArrayBuffer(39));
+                    data[0] = 17;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setFloat32(1, m.pos.x + 30 * direction.x);
+                    dataView.setFloat32(5, m.pos.y + 30 * direction.y);
+                    dataView.setFloat32(9, m.angle);
+                    dataView.setFloat32(13, 20);
+                    dataView.setUint16(17, sqrtCountReduction);
+                    dataView.setFloat32(19, bullet[me].endCycle);
+                    dataView.setFloat32(23, bullet[me].lookFrequency);
+                    dataView.setFloat32(27, bullet[me].explodeRad - m.cycle);
+                    dataView.setFloat32(31, extraForce.x);
+                    dataView.setFloat32(35, extraForce.y);
+                    dcRemote.send(dataView);
+                } else {
+                    const me = bullet.length;
+                    b.missile({
+                        x: m.pos.x + 30 * direction.x,
+                        y: m.pos.y + 30 * direction.y
+                    }, m.angle, -15, sqrtCountReduction)
+                    const extraForce = { x: push.x * (Math.random() - 0.5), y: 0.005 + push.y * (Math.random() - 0.5) }
+                    bullet[bullet.length - 1].force.x += extraForce.x
+                    bullet[bullet.length - 1].force.y += extraForce.y
+                    console.log(bullet[me]);
+
+                    const data = new Uint8Array(new ArrayBuffer(39));
+                    data[0] = 17;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setFloat32(1, m.pos.x + 30 * direction.x);
+                    dataView.setFloat32(5, m.pos.y + 30 * direction.y);
+                    dataView.setFloat32(9, m.angle);
+                    dataView.setFloat32(13, -15);
+                    dataView.setUint16(17, sqrtCountReduction);
+                    dataView.setFloat32(19, bullet[me].endCycle);
+                    dataView.setFloat32(23, bullet[me].lookFrequency);
+                    dataView.setFloat32(27, bullet[me].explodeRad - m.cycle);
+                    dataView.setFloat32(31, extraForce.x);
+                    dataView.setFloat32(35, extraForce.y);
+                    dcRemote.send(dataView);
+                }
+            }
+            const cycle = () => {
+                if ((simulation.paused || m.isBodiesAsleep) && m.alive) {
+                    requestAnimationFrame(cycle)
+                } else {
+                    count++
+                    if (!(count % launchDelay)) {
+                        fireMissile()
+                    }
+                    if (count < tech.missileCount * launchDelay && m.alive) requestAnimationFrame(cycle);
+                }
+            }
+            requestAnimationFrame(cycle);
+        } else {
+            if (m.crouch) {
+                const me = bullet.length;
+                b.missile({
+                    x: m.pos.x + 40 * direction.x,
+                    y: m.pos.y + 40 * direction.y
+                }, m.angle, 25)
+                console.log(bullet[me]);
+
+                const data = new Uint8Array(new ArrayBuffer(39));
+                data[0] = 17;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.pos.x + 40 * direction.x);
+                dataView.setFloat32(5, m.pos.y + 40 * direction.y);
+                dataView.setFloat32(9, m.angle);
+                dataView.setFloat32(13, 25);
+                dataView.setUint16(17, 1);
+                dataView.setFloat32(19, bullet[me].endCycle);
+                dataView.setFloat32(23, bullet[me].lookFrequency);
+                dataView.setFloat32(27, bullet[me].explodeRad - m.cycle);
+                dataView.setFloat32(31, 0);
+                dataView.setFloat32(35, 0);
+                dcRemote.send(dataView);
+            } else {
+                const me = bullet.length;
+                b.missile({
+                    x: m.pos.x + 40 * direction.x,
+                    y: m.pos.y + 40 * direction.y
+                }, m.angle, -12)
+                extraForce = 0.04 * (Math.random() - 0.2)
+                bullet[bullet.length - 1].force.y += extraForce;
+                console.log(bullet[me]);
+
+                const data = new Uint8Array(new ArrayBuffer(39));
+                data[0] = 17;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.pos.x + 40 * direction.x);
+                dataView.setFloat32(5, m.pos.y + 40 * direction.y);
+                dataView.setFloat32(9, m.angle);
+                dataView.setFloat32(13, -12);
+                dataView.setUint16(17, 1);
+                dataView.setFloat32(19, bullet[me].endCycle);
+                dataView.setFloat32(23, bullet[me].lookFrequency);
+                dataView.setFloat32(27, bullet[me].explodeRad - m.cycle);
+                dataView.setFloat32(31, 0);
+                dataView.setFloat32(35, extraForce);
+                dcRemote.send(dataView);
+            }
+        }
     }
 
     let oldM = {
