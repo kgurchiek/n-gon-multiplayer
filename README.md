@@ -2,8 +2,8 @@
 (length does not include id)
 | ID |         Name        | Length | Fields |
 | -- | ------------------- | ------ | ------ |
-| 00 | Rotation            | 8      | mouseInGame.x (Float32), mouseInGame.y (Float32) |
-| 01 | Movement            | 33     | mouseInGame.x (Float32), mouseInGame.y (Float32), onGround (boolean), pos.x (Float32), pos.y (Float32), Vx (Float32), Vy (Float32), walk_cycle (Float32), yOff (Float32) |
+| 00 | Rotation            | 16     | mouseInGame.x (Float64), mouseInGame.y (Float64) |
+| 01 | Movement            | 57     | mouseInGame.x (Float64), mouseInGame.y (Float64), onGround (boolean), pos.x (Float64), pos.y (Float64), Vx (Float64), Vy (Float64), walk_cycle (Float32), yOff (Float32) |
 | 02 | Set Field           | 4      | field index (int8) |
 | 03 | Immune Cycle Update | 4      | immuneCycle (Float32) |
 | 04 | Health Update       | 1      | health (Float32) |
@@ -15,8 +15,8 @@
 | 10 | Toggle Cloak        | 1      | isCloak (boolean)
 | 11 | Sync Request        | 0      | |
 | 12 | Sync                | 5+     | difficulty (int8), seed (string) |
-| 13 | Explosion           | 13+    | x (Float32), y (Float32), radius (Float32), color (string) |
-| 14 | Pulse               | 16     | charge (Float32), angle (Float32), x (Float32), y (Float32) |
-| 15 | Grenade             | 17     | x (Float32), y (Float32), angle (Float32), size (Float32), crouch (boolean)
-| 16 | Harpoon             | 26     | x (Float32), y (Float32), targetIndex (Uint16), angle (Float32), harpoonSize (Uint16), isReturn (boolean), totalCycles (Float32), isReturnAmmo (boolean), thrust (Float32) |
-| 17 | Missile             | 38     | x (Float32), y (Float32), angle (Float32), speed (Float32), size (Uint16), endCycle (Float32), lookFrequency (Float32), explodeRad (Float32), xForce (Float32), yForce (Float32)
+| 13 | Explosion           | 25+    | x (Float64), y (Float64), radius (Float64), color (string) |
+| 14 | Pulse               | 32     | charge (Float64), angle (Float64), x (Float64), y (Float64) |
+| 15 | Grenade             | 27     | x (Float64), y (Float64), angle (Float64), size (Uint8), crouch (boolean)
+| 16 | Harpoon             | 48     | x (Float64), y (Float64), targetIndex (Uint64), angle (Float64), harpoonSize (Uint16), isReturn (boolean), totalCycles (Float32), isReturnAmmo (boolean), thrust (Float64) |
+| 17 | Missile             | 70     | x (Float64), y (Float64), angle (Float64), speed (Float64), size (Uint16), endCycle (Float32), lookFrequency (Float64), explodeRad (Float64), xForce (Float64), yForce (Float64) |
