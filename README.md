@@ -15,8 +15,9 @@
 | 10 | Toggle Cloak        | 1      | isCloak (boolean)
 | 11 | Sync Request        | 0      | |
 | 12 | Sync                | 5+     | difficulty (int8), seed (string) |
-| 13 | Explosion           | 25+    | x (Float64), y (Float64), radius (Float64), color (string) |
-| 14 | Pulse               | 32     | charge (Float64), angle (Float64), x (Float64), y (Float64) |
-| 15 | Grenade             | 27     | x (Float64), y (Float64), angle (Float64), size (Uint8), crouch (boolean)
-| 16 | Harpoon             | 48     | x (Float64), y (Float64), targetIndex (Uint64), angle (Float64), harpoonSize (Uint16), isReturn (boolean), totalCycles (Float32), isReturnAmmo (boolean), thrust (Float64) |
-| 17 | Missile             | 70     | x (Float64), y (Float64), angle (Float64), speed (Float64), size (Uint16), endCycle (Float32), lookFrequency (Float64), explodeRad (Float64), xForce (Float64), yForce (Float64) |
+| 13 | Block Update        | 26     | id (Uint16), x (Float64), y (Float64), angle (Float64) |
+| 14 | Explosion           | 25+    | x (Float64), y (Float64), radius (Float64), color (string) |
+| 15 | Pulse               | 32     | charge (Float64), angle (Float64), x (Float64), y (Float64) |
+| 16 | Grenade             | 31     | x (Float64), y (Float64), angle (Float64), size (Float32), crouch (boolean)
+| 17 | Harpoon             | 45     | x (Float64), y (Float64), targetIndex (Uint32), angle (Float64), harpoonSize (Uint16), isReturn (boolean), totalCycles (Float32), isReturnAmmo (boolean), thrust (Float64), playerId (Uint8) |
+| 18 | Missile             | 70     | x (Float64), y (Float64), angle (Float64), speed (Float64), size (Uint16), endCycle (Float32), lookFrequency (Float64), explodeRad (Float64), xForce (Float64), yForce (Float64) |

@@ -207,16 +207,16 @@ b.multiplayerPulse = (charge, angle, where) => {
         }
     }
     if (best.who) {
-        // b.multiplayerExplosion(path[1], explosionRadius, 'rgba(255,25,0,0.6)')
-        // const off = explosionRadius * 1.2
-        // b.multiplayerExplosion({
-        //     x: path[1].x + off * (Math.random() - 0.5),
-        //     y: path[1].y + off * (Math.random() - 0.5)
-        // }, explosionRadius, 'rgba(255,25,0,0.6)')
-        // b.multiplayerExplosion({
-        //     x: path[1].x + off * (Math.random() - 0.5),
-        //     y: path[1].y + off * (Math.random() - 0.5)
-        // }, explosionRadius, 'rgba(255,25,0,0.6)')
+        b.explosion(path[1], explosionRadius, 'rgba(255,25,0,0.6)')
+        const off = explosionRadius * 1.2
+        b.explosion({
+            x: path[1].x + off * (Math.random() - 0.5),
+            y: path[1].y + off * (Math.random() - 0.5)
+        }, explosionRadius, 'rgba(255,25,0,0.6)')
+        b.explosion({
+            x: path[1].x + off * (Math.random() - 0.5),
+            y: path[1].y + off * (Math.random() - 0.5)
+        }, explosionRadius, 'rgba(255,25,0,0.6)')
     }
     //draw laser beam
     ctx.beginPath();
@@ -250,10 +250,11 @@ b.multiplayerPulse = (charge, angle, where) => {
 }
 
 b.multiplayerGrenade = (where, angle, size, crouch) => {
+    console.log(size)
     const me = bullet.length;
     bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
     Matter.Body.setDensity(bullet[me], 0.0003);
-    bullet[me].multiplayer = true;
+    // bullet[me].multiplayer = true;
     bullet[me].explodeRad = 300 * size; //+ 100 * tech.isBlockExplode;
     bullet[me].onEnd = b.grenadeEnd
     bullet[me].minDmgSpeed = 1;
@@ -588,7 +589,8 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
     Composite.add(engine.world, bullet[me]); //add bullet to world
 },
 
-b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust) => {
+b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust, playerId) => {
+    const origin = playerId == 1 ? m : player2;
     const me = bullet.length;
     const returnRadius = 100 * Math.sqrt(harpoonSize)
     bullet[me] = Bodies.fromVertices(where.x, where.y, [
@@ -702,7 +704,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 }
             },
             onEnd() {
-                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || player2.health !== player2.maxHealth /*|| tech.isOverHeal*/)) {
+                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/)) {
                     let index = null //find index
                     for (let i = 0, len = powerUp.length; i < len; ++i) {
                         if (powerUp[i] === this.caughtPowerUp) index = i
@@ -737,7 +739,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                 ctx.fill();
             },
             drawString() {
-                const where = { x: player2.pos.x + 30 * Math.cos(player2.angle), y: player2.pos.y + 30 * Math.sin(player2.angle) }
+                const where = { x: origin.pos.x + 30 * Math.cos(origin.angle), y: origin.pos.y + 30 * Math.sin(origin.angle) }
                 const sub = Vector.sub(where, this.vertices[0])
                 const perpendicular = Vector.mult(Vector.normalise(Vector.perp(sub)), this.drawStringFlip * Math.min(80, 10 + this.drawStringControlMagnitude / (10 + Vector.magnitude(sub))))
                 const controlPoint = Vector.add(Vector.add(where, Vector.mult(sub, -0.5)), perpendicular)
@@ -751,7 +753,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
             },
             draw() { },
             returnToPlayer() {
-                if (Vector.magnitude(Vector.sub(this.position, player2.pos)) < returnRadius) { //near player
+                if (Vector.magnitude(Vector.sub(this.position, origin.pos)) < returnRadius) { //near player
                     this.endCycle = 0;
                     // if (m.energy < 0.05) {
                     //     m.fireCDcycle = m.cycle + 80 * b.fireCDscale; //fire cooldown is much longer when out of energy
@@ -759,7 +761,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                     // if (m.energy > 0.05) m.fireCDcycle = m.cycle + 20 * b.fireCDscale //lower cd to 25 if it is above 25
                     // }
                     //recoil on catching
-                    // const momentum = Vector.mult(Vector.sub(this.velocity, player2.velocity), (player2.crouch ? 0.0001 : 0.0002))
+                    // const momentum = Vector.mult(Vector.sub(this.velocity, origin.velocity), (origin.crouch ? 0.0001 : 0.0002))
                     // refund ammo
                     if (isReturnAmmo) {
                         b.guns[9].ammo++;
@@ -771,11 +773,11 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                         // }
                     }
                 } else {
-                    const sub = Vector.sub(this.position, player2.pos)
+                    const sub = Vector.sub(this.position, origin.pos)
                     const rangeScale = 1 + 0.000001 * Vector.magnitude(sub) * Vector.magnitude(sub) //return faster when far from player
                     const returnForce = Vector.mult(Vector.normalise(sub), rangeScale * thrust * this.mass)
-                    if (player2.energy > this.drain) player2.energy -= this.drain
-                    if (player2.energy < 0.05) {
+                    if (origin.energy > this.drain) origin.energy -= this.drain
+                    if (origin.energy < 0.05) {
                         this.force.x -= returnForce.x * 0.15
                         this.force.y -= returnForce.y * 0.15
                     } else { //if (m.cycle + 20 * b.fireCDscale < m.fireCDcycle)
@@ -794,7 +796,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                     for (let i = 0, len = powerUp.length; i < len; ++i) {
                         const radius = powerUp[i].circleRadius + 50
                         if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius && !powerUp[i].isGrabbed) {
-                            if (powerUp[i].name !== "heal" || player2.health !== player2.maxHealth /*|| tech.isOverHeal*/) {
+                            if (powerUp[i].name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/) {
                                 powerUp[i].isGrabbed = true
                                 this.caughtPowerUp = powerUp[i]
                                 Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
@@ -818,7 +820,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
                             if (this.angularSpeed < 0.5) this.torque += this.inertia * 0.001 * (Math.random() - 0.5) //(Math.round(Math.random()) ? 1 : -1)
                             Matter.Sleeping.set(this, false)
                             this.endCycle = simulation.cycle + 240
-                            // const momentum = Vector.mult(Vector.sub(this.velocity, player2.velocity), (player2.crouch ? 0.00015 : 0.0003)) //recoil on jerking line
+                            // const momentum = Vector.mult(Vector.sub(this.velocity, origin.velocity), (origin.crouch ? 0.00015 : 0.0003)) //recoil on jerking line
                             requestAnimationFrame(() => { //delay this for 1 cycle to get the proper hit graphics
                                 this.collisionFilter.category = 0
                                 this.collisionFilter.mask = 0
@@ -849,8 +851,8 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
     bullet[me].multiplayer = true;
     if (!isReturn && !target) {
         Matter.Body.setVelocity(bullet[me], {
-            x: player2.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
-            y: player2.Vy / 2 + 600 * thrust * Math.sin(bullet[me].angle)
+            x: origin.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
+            y: origin.Vy / 2 + 600 * thrust * Math.sin(bullet[me].angle)
         });
         bullet[me].frictionAir = 0.002
         bullet[me].do = function () {
@@ -877,7 +879,7 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
     Composite.add(engine.world, bullet[me]); //add bullet to world
 }
 
-b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, explodeRad) => {
+b.multiplayerMissile = (where, angle, speed, size) => {
     // if (tech.isMissileBig) {
     //     size *= 1.55
     //     if (tech.isMissileBiggest) size *= 1.55
@@ -889,14 +891,14 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         frictionAir: 0.045,
         dmg: 0, //damage done in addition to the damage from momentum
         classType: "bullet",
-        endCycle,
+        endCycle: simulation.cycle + Math.floor((230 + 40 * Math.random()) /** tech.bulletsLastLonger + 120 * tech.isMissileBiggest + 60 * tech.isMissileBig*/),
         collisionFilter: {
             category: cat.bullet,
             mask: cat.map | cat.body | cat.mob | cat.mobBullet | cat.mobShield
         },
         minDmgSpeed: 10,
-        lookFrequency,
-        explodeRad,
+        lookFrequency: Math.floor(10 + Math.random() * 3),
+        explodeRad: (/*tech.isMissileBig ? 230 :*/ 180) + 60 * Math.random(),
         density: 0.02, //0.001 is normal
         beforeDmg() {
             Matter.Body.setDensity(this, 0.0001); //reduce density to normal
@@ -904,7 +906,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
             this.endCycle = 0; //bullet ends cycle after doing damage  // also triggers explosion
         },
         onEnd() {
-            //b.explosion(this.position, this.explodeRad * size); //makes bullet do explosive damage at end
+            b.explosion(this.position, this.explodeRad * size); //makes bullet do explosive damage at end
             // if (tech.fragments) b.targetedNail(this.position, tech.fragments * Math.floor(2 + 1.5 * Math.random()))
         },
         lockedOn: null,
@@ -967,7 +969,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
             ctx.fill();
         },
     });
-    bullet[me].multiplayer = true;
+    // bullet[me].multiplayer = true;
     const thrust = 0.0066 * bullet[me].mass; //* (tech.isMissileBig ? (tech.isMissileBiggest ? 0.3 : 0.7) : 1);
     Matter.Body.setVelocity(bullet[me], {
         x: player2.Vx / 2 + speed * Math.cos(angle),
@@ -1097,30 +1099,43 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 dcLocal.send(new DataView(data.buffer));
             }
             if (id == 13) {
-                // explosion
-                b.multiplayerExplosion({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), new TextDecoder().decode(data.buffer.slice(26, new Uint8Array(data.buffer)[25] + 26)));
+                // block update
+                
             }
             if (id == 14) {
-                // pulse
-                b.multiplayerPulse(data.getFloat64(1), data.getFloat64(9), { x: data.getFloat64(17), y: data.getFloat64(25) });
+                // explosion
+                b.multiplayerExplosion({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), new TextDecoder().decode(data.buffer.slice(26, new Uint8Array(data.buffer)[25] + 26)));
+                dcLocal.send(data);
             }
             if (id == 15) {
-                // grenade
-                b.multiplayerGrenade({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat64(25), new Uint8Array(data.buffer)[33] == 1);
+                // pulse
+                b.multiplayerPulse(data.getFloat64(1), data.getFloat64(9), { x: data.getFloat64(17), y: data.getFloat64(25) });
+                dcLocal.send(data);
             }
             if (id == 16) {
-                // harpoon
-                b.multiplayerHarpoon({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getUint16(17), data.getFloat64(19), data.getUint16(27), new Uint8Array(data.buffer)[29] == 1, data.getFloat32(30), new Uint8Array(data.buffer)[34] == 1, data.getFloat64(35))
+                // grenade
+                b.multiplayerGrenade({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat32(25), new Uint8Array(data.buffer)[31] == 1);
+                dcLocal.send(data);
             }
             if (id == 17) {
+                // harpoon
+                b.multiplayerHarpoon({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getUint32(17), data.getFloat64(21), data.getUint16(29), new Uint8Array(data.buffer)[31] == 1, data.getFloat32(32), new Uint8Array(data.buffer)[36] == 1, data.getFloat64(37), 2);
+                dcLocal.send(data);
+            }
+            if (id == 18) {
                 // missile
                 const me = bullet.length;
-                b.multiplayerMissile({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat64(25), data.getUint16(33), data.getFloat32(35) + m.cycle, data.getFloat64(39), data.getFloat64(47))
+                b.multiplayerMissile({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat64(25), data.getUint16(33));
                 bullet[me].force.x += data.getFloat64(55);
                 bullet[me].force.y += data.getFloat64(63);
-                console.log({ extraForce: { x: data.getFloat64(55), y: data.getFloat64(63) }});
-                console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle});
-                simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
+                // console.log({ extraForce: { x: data.getFloat64(55), y: data.getFloat64(63) }});
+                // console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle});
+                // simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(35, bullet[me].endCycle - m.cycle);
+                dataView.setFloat64(39, bullet[me].lookFrequency);
+                dataView.setFloat64(47, bullet[me].explodeRad);
+                dcLocal.send(dataView);
             }
         };
         window.dcLocal.onerror = function(e) {
@@ -2023,7 +2038,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
         const textEncoder = new TextEncoder();
         const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
-        data[0] = 13;
+        data[0] = 14;
         data[25] = textEncoder.encode(color).length;
         data.set(textEncoder.encode(color), 26);
         const dataView = new DataView(data.buffer);
@@ -2038,7 +2053,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
     const oldPulse = b.pulse;
     b.pulse = (charge, angle = m.angle, where = m.pos) => {
         const data = new Uint8Array(new ArrayBuffer(33))
-        data[0] = 14;
+        data[0] = 15;
         const dataView = new DataView(data.buffer);
         dataView.setFloat64(1, charge);
         dataView.setFloat64(9, angle);
@@ -2475,35 +2490,36 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         }
 
         const oldGrenade = b.grenade;
-        b.grenade = (where, angle, size, crouch) => {
-            const data = new Uint8Array(new ArrayBuffer(28));
-            data[0] = 15;
-            data[27] = crouch ? 1 : 0;
+        b.grenade = (where, angle, size) => {
+            const data = new Uint8Array(new ArrayBuffer(32));
+            data[0] = 16;
+            data[31] = m.crouch ? 1 : 0;
             const dataView = new DataView(data.buffer);
             dataView.setFloat64(1, where.x);
             dataView.setFloat64(9, where.y);
             dataView.setFloat64(17, angle);
-            dataView.setUint8(25, size);
+            dataView.setFloat32(25, size);
             dcLocal.send(dataView);
 
-            oldGrenade(where, angle, size, crouch);
+            oldGrenade(where, angle, size);
         }
     }
 
     const oldHarpoon = b.harpoon;
     b.harpoon = (where, target, angle = m.angle, harpoonSize = 1, isReturn = false, totalCycles = 35, isReturnAmmo = true, thrust = 0.1) => {
-        const data = new Uint8Array(new ArrayBuffer(49));
-        data[0] = 16;
-        data[35] = isReturn ? 1 : 0;
-        data[44] = isReturnAmmo ? 1 : 0;
+        const data = new Uint8Array(new ArrayBuffer(46));
+        data[0] = 17;
+        data[31] = isReturn ? 1 : 0;
+        data[36] = isReturnAmmo ? 1 : 0;
         const dataView = new DataView(data.buffer);
         dataView.setFloat64(1, where.x);
         dataView.setFloat64(9, where.y);
-        dataView.setUint64(17, target);
-        dataView.setFloat64(25, angle);
-        dataView.setUint16(33, harpoonSize);
-        dataView.setFloat32(36, totalCycles);
-        dataView.setFloat64(45, thrust)
+        dataView.setUint32(17, target);
+        dataView.setFloat64(21, angle);
+        dataView.setUint16(29, harpoonSize);
+        dataView.setFloat32(32, totalCycles);
+        dataView.setFloat64(37, thrust);
+        dataView.setUint8(45, 1); // TODO: player id
         dcLocal.send(dataView);
 
         oldHarpoon(where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust);
@@ -2536,7 +2552,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     console.log(bullet[me]);
 
                     const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 17;
+                    data[0] = 18;
                     const dataView = new DataView(data.buffer);
                     dataView.setFloat64(1, m.pos.x + 30 * direction.x);
                     dataView.setFloat64(9, m.pos.y + 30 * direction.y);
@@ -2561,7 +2577,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     console.log(bullet[me]);
 
                     const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 17;
+                    data[0] = 18;
                     const dataView = new DataView(data.buffer);
                     dataView.setFloat64(1, m.pos.x + 30 * direction.x);
                     dataView.setFloat64(9, m.pos.y + 30 * direction.y);
@@ -2598,7 +2614,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 console.log(bullet[me]);
 
                 const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 17;
+                data[0] = 18;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat64(1, m.pos.x + 40 * direction.x);
                 dataView.setFloat64(9, m.pos.y + 40 * direction.y);
@@ -2622,7 +2638,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 console.log(bullet[me]);
 
                 const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 17;
+                data[0] = 18;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat64(1, m.pos.x + 40 * direction.x);
                 dataView.setFloat64(9, m.pos.y + 40 * direction.y);
