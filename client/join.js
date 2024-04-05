@@ -991,10 +991,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         }
         let peerRemote = new RTCPeerConnection(config);
 
-        peerRemote.onconnectionstatechange = function(e) {
-            console.log('peerRemote', 'onconnectionstatechange', e);
-        };
-        peerRemote.ondatachannel = function(e) {
+        peerRemote.onconnectionstatechange = (e) => console.log('peerRemote', 'onconnectionstatechange', e)
+        peerRemote.ondatachannel = (e) => {
             // peerLocal started a data channel, so connect to it here
             console.log('peerRemote', 'ondatachannel', e);
             window.dcRemote = e.channel;
@@ -1022,6 +1020,11 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     player1.Vy = data.getFloat64(42);
                     player1.walk_cycle = data.getFloat32(50);
                     player1.yOff = data.getFloat32(54);
+                    if (player1.hitbox != null) {
+                        console.log(player1.hitbox.position.x, player1.hitbox.position.y, player1.pos.x, player1.pos.y, player1.yOff);
+                        Matter.Body.setPosition(player1.hitbox, { x: player1.pos.x, y: player1.pos.y + player1.yOff - 24.714076782448295});
+                        Matter.Body.setVelocity(player1.hitbox, { x: player1.Vx, y: player1.Vy });
+                    }
                 }
                 if (id == 2) {
                     // set field
@@ -1038,19 +1041,33 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 }
                 if (id == 4) {
                     // health update
-                    player1.health = data.getFloat32(1);
+                    if (data.getUint8(5) == 1) player1.health = data.getFloat32(1);
+                    else {
+                        m.health = data.getFloat32(1);
+                        if (m.health > m.maxHealth) m.health = m.maxHealth;
+                        m.displayHealth();
+                    }
                 }
                 if (id == 5) {
                     // max health update
-                    player1.maxHealth = data.getFloat32(1);
+                    if (data.getUint8(5) == 1) player1.maxHealth = data.getFloat32(1);
+                    else {
+                        m.maxHealth = data.getFloat32(1);
+                        document.getElementById("health-bg").style.width = `${Math.floor(300 * m.maxHealth)}px`;
+                        if (m.health > m.maxHealth) m.health = m.maxHealth;
+                        m.displayHealth();
+                    }
+
                 }
                 if (id == 6) {
                     // energy update
-                    player1.energy = data.getFloat32(1);
+                    if (data.getUint8(5) == 1) player1.energy = data.getFloat32(1);
+                    else m.maxEnergy = data.getFloat32(1);
                 }
                 if (id == 7) {
                     // max energy update
-                    player1.maxEnergy = data.getFloat32(1);
+                    if (data.getUint8(5) == 1) player1.maxEnergy = data.getFloat32(1);
+                    else m.energy = data.getFloat32(1);
                 }
                 if (id == 8) {
                     // inputs
@@ -1074,27 +1091,52 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     Math.initialSeed = new TextDecoder().decode(data.buffer.slice(3, new Uint8Array(data.buffer)[2] + 3));
                     Math.seed = Math.abs(Math.hash(Math.initialSeed));
                 }
-                if (id == 13) {
-                    // block update
-                    
-                }
                 if (id == 14) {
+                    // block info
+                    let found = false;
+                    for (let i = 0; i < body.length && !found; i++) if (body[i].id == data.getUint16(1)) found = true;
+                    if (!found) {
+                        const me = body.length;
+                        oldBodyRect(data.getFloat64(3), data.getFloat64(11), data.getFloat64(19), data.getFloat64(27));
+                        body[me].id = data.getUint16(1);
+                        body[me].inertia = Infinity;
+                    }
+                }
+                if (id == 15) {
+                    // block update
+                    let found = false;
+                    for (let i = 0; i < body.length && !found; i++) {
+                        if (body[i].id == data.getUint16(1)) {
+                            found = true;
+                            Matter.Body.setPosition(body[i], { x: data.getFloat64(3), y: data.getFloat64(11) });
+                            Matter.Body.setAngle(body[i], data.getFloat64(19));
+                        }
+                    }
+                    if (!found) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 13;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    }
+                }
+                if (id == 16) {
                     // explosion
                     b.multiplayerExplosion({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), new TextDecoder().decode(data.buffer.slice(26, new Uint8Array(data.buffer)[25] + 26)));
                 }
-                if (id == 15) {
+                if (id == 17) {
                     // pulse
                     b.multiplayerPulse(data.getFloat64(1), data.getFloat64(9), { x: data.getFloat64(17), y: data.getFloat64(25) });
                 }
-                if (id == 16) {
+                if (id == 18) {
                     // grenade
                     b.multiplayerGrenade({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat32(25), new Uint8Array(data.buffer)[31] == 1);
                 }
-                if (id == 17) {
+                if (id == 19) {
                     // harpoon
                     b.multiplayerHarpoon({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getUint32(17), data.getFloat64(21), data.getUint16(29), new Uint8Array(data.buffer)[31] == 1, data.getFloat32(32), new Uint8Array(data.buffer)[36] == 1, data.getFloat64(37), data.getUint8(45));
                 }
-                if (id == 18) {
+                if (id == 20) {
                     // missile
                     const me = bullet.length;
                     b.multiplayerMissile({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat64(25), data.getUint16(33), data.getFloat32(35) + m.cycle, data.getFloat64(39), data.getFloat64(47))
@@ -1111,21 +1153,17 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
             };
 
         };
-        peerRemote.onsignalingstatechange = function(e) {
+        peerRemote.onsignalingstatechange = (e) => {
             console.log('peerRemote', 'onsignalingstatechange', peerRemote.signalingState);
             if (peerRemote.iceGatheringState == 'complete') ws.close();
         };
-        peerRemote.onicegatheringstatechange = function(e) {
-            console.log('peerRemote', 'onicegatheringstatechange', peerRemote.iceGatheringState);
-        };
-        peerRemote.onicecandidate = function(e){
-            //Share ICE candidates with peerLocal
+        peerRemote.onicegatheringstatechange = (e) => console.log('peerRemote', 'onicegatheringstatechange', peerRemote.iceGatheringState);
+        peerRemote.onicecandidate = (e) => {
+            // share ICE candidates with peerLocal
             console.log('peerRemote', 'onicecandidate', e);
             if (e.candidate != null) ws.send(`\x01${JSON.stringify(e.candidate)}`);
-        };
-        peerRemote.onnegotiationneeded = function(e) {
-            console.log('peerRemote', 'onnegotiationneeded', e);
-        };
+        }
+        peerRemote.onnegotiationneeded = (e) => console.log('peerRemote', 'onnegotiationneeded', e);
 
         ws = new WebSocket('wss://n-gon.cornbread2100.com');
         ws.onopen = async () => {
@@ -2012,11 +2050,14 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         }
     }
 
+    const oldBodyRect = spawn.bodyRect;
+    spawn.bodyRect = () => {}
+
     const oldExplosion = b.explosion;
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
         const textEncoder = new TextEncoder();
         const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
-        data[0] = 14;
+        data[0] = 16;
         data[25] = textEncoder.encode(color).length;
         data.set(textEncoder.encode(color), 26);
         const dataView = new DataView(data.buffer);
@@ -2031,7 +2072,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
     const oldPulse = b.pulse;
     b.pulse = (charge, angle = m.angle, where = m.pos) => {
         const data = new Uint8Array(new ArrayBuffer(33))
-        data[0] = 15;
+        data[0] = 17;
         const dataView = new DataView(data.buffer);
         dataView.setFloat64(1, charge);
         dataView.setFloat64(9, angle);
@@ -2470,7 +2511,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         const oldGrenade = b.grenade;
         b.grenade = (where, angle, size) => {
             const data = new Uint8Array(new ArrayBuffer(32));
-            data[0] = 16;
+            data[0] = 18;
             data[31] = m.crouch ? 1 : 0;
             const dataView = new DataView(data.buffer);
             dataView.setFloat64(1, where.x);
@@ -2486,7 +2527,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
     const oldHarpoon = b.harpoon;
     b.harpoon = (where, target, angle = m.angle, harpoonSize = 1, isReturn = false, totalCycles = 35, isReturnAmmo = true, thrust = 0.1) => {
         const data = new Uint8Array(new ArrayBuffer(46));
-        data[0] = 17;
+        data[0] = 19;
         data[31] = isReturn ? 1 : 0;
         data[36] = isReturnAmmo ? 1 : 0;
         const dataView = new DataView(data.buffer);
@@ -2531,7 +2572,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     // simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
 
                     const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 18;
+                    data[0] = 20;
                     const dataView = new DataView(data.buffer);
                     dataView.setFloat64(1, m.pos.x + 30 * direction.x);
                     dataView.setFloat64(9, m.pos.y + 30 * direction.y);
@@ -2554,7 +2595,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     // simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
 
                     const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 18;
+                    data[0] = 20;
                     const dataView = new DataView(data.buffer);
                     dataView.setFloat64(1, m.pos.x + 30 * direction.x);
                     dataView.setFloat64(9, m.pos.y + 30 * direction.y);
@@ -2589,7 +2630,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 // simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
 
                 const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 18;
+                data[0] = 20;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat64(1, m.pos.x + 40 * direction.x);
                 dataView.setFloat64(9, m.pos.y + 40 * direction.y);
@@ -2612,7 +2653,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 // simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
 
                 const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 18;
+                data[0] = 20;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat64(1, m.pos.x + 40 * direction.x);
                 dataView.setFloat64(9, m.pos.y + 40 * direction.y);
@@ -2665,6 +2706,39 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         const difficulty = simulation.isCheating ? "testing" : level.difficultyText()
         document.title = `n-gon: (${difficulty})`;
         Math.random = Math.seededRandom;
+
+        //load player in matter.js physic engine
+        let vertices = Vertices.fromPath("0,40, 50,40, 50,115, 30,130, 20,130, 0,115, 0,40"); //player as a series of vertices
+        player1.body = Bodies.fromVertices(0, 0, vertices);
+        player1.jumpSensor = Bodies.rectangle(0, 46, 36, 6, {
+            //this sensor check if the player is on the ground to enable jumping
+            sleepThreshold: 99999999999,
+            isSensor: true
+        });
+        vertices = Vertices.fromPath("16 -82  2 -66  2 -37  43 -37  43 -66  30 -82");
+        player1.head = Bodies.fromVertices(0, -55, vertices); //this part of the player lowers on crouch
+        player1.headSensor = Bodies.rectangle(0, -57, 48, 45, {
+            //senses if the player's head is empty and can return after crouching
+            sleepThreshold: 99999999999,
+            isSensor: true
+        });
+        player1.hitbox = Body.create({
+            parts: [player1.body, player1.head, player1.jumpSensor, player1.headSensor],
+            inertia: Infinity,
+            friction: 0.002,
+            frictionAir: 0.001,
+            restitution: 0,
+            sleepThreshold: Infinity,
+            collisionFilter: {
+                group: 0,
+                category: cat.player,
+                mask: cat.body | cat.map | cat.mob | cat.mobBullet | cat.mobShield
+            },
+        });
+        Matter.Body.setMass(player1.hitbox, player1.mass);
+        Composite.add(engine.world, [player1.hitbox]);
+        console.log(player1.hitbox.position.x, player1.hitbox.position.y)
+        window.player1 = player1;
 
         simulation.ephemera.push({ name: 'Player1', count: 0, do: () => {
             player1.angle = Math.atan2(player1.mouseInGame.y - player1.pos.y, player1.mouseInGame.x - player1.pos.x);

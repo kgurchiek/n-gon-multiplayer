@@ -1042,6 +1042,8 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 player2.Vy = data.getFloat64(42);
                 player2.walk_cycle = data.getFloat32(50);
                 player2.yOff = data.getFloat32(54);
+                Matter.Body.setPosition(player2.hitbox, { x: player2.pos.x, y: player2.pos.y + player2.yOff - 24.714076782448295});
+                Matter.Body.setVelocity(player2.hitbox, { x: player2.Vx, y: player2.Vy });
             }
             if (id == 2) {
                 // set field
@@ -1099,30 +1101,42 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 dcLocal.send(new DataView(data.buffer));
             }
             if (id == 13) {
-                // block update
-                
+                // block info request
+                let block;
+                for (let i = 0; i < body.length; i++) if (body[i].id == data.getUint16(1)) block = body[i];
+                if (block != null) {
+                    const data = new Uint8Array(new ArrayBuffer(35));
+                    data[0] = 14;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, block.id);
+                    dataView.setFloat64(3, block.position.x);
+                    dataView.setFloat64(11, block.position.y);
+                    dataView.setFloat64(19, block.width);
+                    dataView.setFloat64(27, block.height);
+                    dcLocal.send(dataView);
+                }
             }
-            if (id == 14) {
+            if (id == 16) {
                 // explosion
                 b.multiplayerExplosion({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), new TextDecoder().decode(data.buffer.slice(26, new Uint8Array(data.buffer)[25] + 26)));
                 dcLocal.send(data);
             }
-            if (id == 15) {
+            if (id == 17) {
                 // pulse
                 b.multiplayerPulse(data.getFloat64(1), data.getFloat64(9), { x: data.getFloat64(17), y: data.getFloat64(25) });
                 dcLocal.send(data);
             }
-            if (id == 16) {
+            if (id == 18) {
                 // grenade
                 b.multiplayerGrenade({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat32(25), new Uint8Array(data.buffer)[31] == 1);
                 dcLocal.send(data);
             }
-            if (id == 17) {
+            if (id == 19) {
                 // harpoon
                 b.multiplayerHarpoon({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getUint32(17), data.getFloat64(21), data.getUint16(29), new Uint8Array(data.buffer)[31] == 1, data.getFloat32(32), new Uint8Array(data.buffer)[36] == 1, data.getFloat64(37), 2);
                 dcLocal.send(data);
             }
-            if (id == 18) {
+            if (id == 20) {
                 // missile
                 const me = bullet.length;
                 b.multiplayerMissile({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat64(25), data.getUint16(33));
@@ -1771,6 +1785,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         lastFieldPosition: { x: 0, y: 0 },
         legLength1: 55,
         legLength2: 45,
+        mass: 5,
         maxEnergy: 1,
         maxHealth: 1,
         mouseInGame: { x: 0, y: 0 },
@@ -2034,11 +2049,19 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         }
     }
 
+    const oldBodyRect = spawn.bodyRect;
+    spawn.bodyRect = (x, y, width, height, chance, properties) => {
+        const me = body.length;
+        oldBodyRect(x, y, width, height, chance, properties);
+        body[me].width = width;
+        body[me].height = height;
+    }
+
     const oldExplosion = b.explosion;
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
         const textEncoder = new TextEncoder();
         const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
-        data[0] = 14;
+        data[0] = 16;
         data[25] = textEncoder.encode(color).length;
         data.set(textEncoder.encode(color), 26);
         const dataView = new DataView(data.buffer);
@@ -2053,7 +2076,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
     const oldPulse = b.pulse;
     b.pulse = (charge, angle = m.angle, where = m.pos) => {
         const data = new Uint8Array(new ArrayBuffer(33))
-        data[0] = 15;
+        data[0] = 17;
         const dataView = new DataView(data.buffer);
         dataView.setFloat64(1, charge);
         dataView.setFloat64(9, angle);
@@ -2492,7 +2515,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         const oldGrenade = b.grenade;
         b.grenade = (where, angle, size) => {
             const data = new Uint8Array(new ArrayBuffer(32));
-            data[0] = 16;
+            data[0] = 18;
             data[31] = m.crouch ? 1 : 0;
             const dataView = new DataView(data.buffer);
             dataView.setFloat64(1, where.x);
@@ -2508,7 +2531,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
     const oldHarpoon = b.harpoon;
     b.harpoon = (where, target, angle = m.angle, harpoonSize = 1, isReturn = false, totalCycles = 35, isReturnAmmo = true, thrust = 0.1) => {
         const data = new Uint8Array(new ArrayBuffer(46));
-        data[0] = 17;
+        data[0] = 19;
         data[31] = isReturn ? 1 : 0;
         data[36] = isReturnAmmo ? 1 : 0;
         const dataView = new DataView(data.buffer);
@@ -2552,7 +2575,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                     console.log(bullet[me]);
 
                     const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 18;
+                    data[0] = 20;
                     const dataView = new DataView(data.buffer);
                     dataView.setFloat64(1, m.pos.x + 30 * direction.x);
                     dataView.setFloat64(9, m.pos.y + 30 * direction.y);
@@ -2577,7 +2600,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                     console.log(bullet[me]);
 
                     const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 18;
+                    data[0] = 20;
                     const dataView = new DataView(data.buffer);
                     dataView.setFloat64(1, m.pos.x + 30 * direction.x);
                     dataView.setFloat64(9, m.pos.y + 30 * direction.y);
@@ -2614,7 +2637,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 console.log(bullet[me]);
 
                 const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 18;
+                data[0] = 20;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat64(1, m.pos.x + 40 * direction.x);
                 dataView.setFloat64(9, m.pos.y + 40 * direction.y);
@@ -2638,7 +2661,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 console.log(bullet[me]);
 
                 const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 18;
+                data[0] = 20;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat64(1, m.pos.x + 40 * direction.x);
                 dataView.setFloat64(9, m.pos.y + 40 * direction.y);
@@ -2673,11 +2696,43 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         walk_cycle: 0,
         yOff: 70
     }
+    const oldBlocks = [];
 
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
         oldStartGame();
         Math.random = Math.seededRandom;
+
+        //load player in matter.js physic engine
+        let vertices = Vertices.fromPath("0,40, 50,40, 50,115, 30,130, 20,130, 0,115, 0,40"); //player as a series of vertices
+        player2.body = Bodies.fromVertices(0, 0, vertices);
+        player2.jumpSensor = Bodies.rectangle(0, 46, 36, 6, {
+            //this sensor check if the player is on the ground to enable jumping
+            sleepThreshold: 99999999999,
+            isSensor: true
+        });
+        vertices = Vertices.fromPath("16 -82  2 -66  2 -37  43 -37  43 -66  30 -82");
+        player2.head = Bodies.fromVertices(0, -55, vertices); //this part of the player lowers on crouch
+        player2.headSensor = Bodies.rectangle(0, -57, 48, 45, {
+            //senses if the player's head is empty and can return after crouching
+            sleepThreshold: 99999999999,
+            isSensor: true
+        });
+        player2.hitbox = Body.create({
+            parts: [player2.body, player2.head, player2.jumpSensor, player2.headSensor],
+            inertia: Infinity,
+            friction: 0.002,
+            frictionAir: 0.001,
+            restitution: 0,
+            sleepThreshold: Infinity,
+            collisionFilter: {
+                group: 0,
+                category: cat.player,
+                mask: cat.body | cat.map | cat.mob | cat.mobBullet | cat.mobShield
+            },
+        });
+        Matter.Body.setMass(player2.hitbox, player2.mass);
+        Composite.add(engine.world, [player2.hitbox]);
 
         simulation.ephemera.push({ name: 'Player2', count: 0, do: () => {
             player2.angle = Math.atan2(player2.mouseInGame.y - player2.pos.y, player2.mouseInGame.x - player2.pos.x);
@@ -2714,6 +2769,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             }
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
+            // player broadcast
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
                 // movement
                 const data = new Uint8Array(new ArrayBuffer(58));
@@ -2755,34 +2811,38 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             }
             if (m.health != oldM.health) {
                 // health update
-                const data = new Uint8Array(new ArrayBuffer(5));
+                const data = new Uint8Array(new ArrayBuffer(6));
                 data[0] = 4;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat32(1, m.health);
+                dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.maxHealth != oldM.maxHealth) {
                 // max health update
-                const data = new Uint8Array(new ArrayBuffer(5));
+                const data = new Uint8Array(new ArrayBuffer(6));
                 data[0] = 5;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat32(1, m.maxHealth);
+                dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.energy != oldM.energy) {
                 // energy update
-                const data = new Uint8Array(new ArrayBuffer(5));
+                const data = new Uint8Array(new ArrayBuffer(6));
                 data[0] = 6;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat32(1, m.energy);
+                dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.maxEnergy != oldM.maxEnergy) {
                 // max energy update
-                const data = new Uint8Array(new ArrayBuffer(5))
+                const data = new Uint8Array(new ArrayBuffer(6))
                 data[0] = 7;
                 const dataView = new DataView(data.buffer);
                 dataView.setFloat32(1, m.maxEnergy);
+                dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (input.up != oldM.input.up || input.down != oldM.input.down || input.left != oldM.input.left || input.right != oldM.input.right || input.field != oldM.input.field) {
@@ -2829,6 +2889,34 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 walk_cycle: 0,
                 yOff: 70
             }
+
+            // block broadcast
+            const blockChanges = [];
+            for (const block of body) {
+                let changed = false;
+                let found = false; 
+                for (let i = 0; i < oldBlocks.length && !found; i++) {
+                    if (block.id == oldBlocks[i].id) {
+                        found = true;
+                        if (block.position.x != oldBlocks[i].position.x || block.position.y != oldBlocks[i].position.y || block.angle != oldBlocks[i].angle) changed = true;
+                    }
+                }
+                changed = changed || !found;
+                if (changed) blockChanges.push(block);
+            }
+            for (const block of blockChanges) {
+                const data = new Uint8Array(new ArrayBuffer(27));
+                data[0] = 15;
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(1, block.id);
+                dataView.setFloat64(3, block.position.x);
+                dataView.setFloat64(11, block.position.y);
+                dataView.setFloat64(19, block.angle);
+                dcLocal.send(dataView);
+            }
+
+            oldBlocks.length = 0;
+            for (const block of body) oldBlocks.push({ id: block.id, position: { x: block.position.x, y: block.position.y }, angle: block.angle });
         }})
     }
 })();
