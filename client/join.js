@@ -1021,7 +1021,6 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     player1.walk_cycle = data.getFloat32(50);
                     player1.yOff = data.getFloat32(54);
                     if (player1.hitbox != null) {
-                        console.log(player1.hitbox.position.x, player1.hitbox.position.y, player1.pos.x, player1.pos.y, player1.yOff);
                         Matter.Body.setPosition(player1.hitbox, { x: player1.pos.x, y: player1.pos.y + player1.yOff - 24.714076782448295});
                         Matter.Body.setVelocity(player1.hitbox, { x: player1.Vx, y: player1.Vy });
                     }
@@ -1787,6 +1786,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         lastFieldPosition: { x: 0, y: 0 },
         legLength1: 55,
         legLength2: 45,
+        mass: 5,
         maxEnergy: 1,
         maxHealth: 1,
         mouseInGame: { x: 0, y: 0 },
@@ -2737,8 +2737,6 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         });
         Matter.Body.setMass(player1.hitbox, player1.mass);
         Composite.add(engine.world, [player1.hitbox]);
-        console.log(player1.hitbox.position.x, player1.hitbox.position.y)
-        window.player1 = player1;
 
         simulation.ephemera.push({ name: 'Player1', count: 0, do: () => {
             player1.angle = Math.atan2(player1.mouseInGame.y - player1.pos.y, player1.mouseInGame.x - player1.pos.x);
