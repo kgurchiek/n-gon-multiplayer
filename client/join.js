@@ -1099,6 +1099,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                         oldBodyRect(data.getFloat64(3), data.getFloat64(11), data.getFloat64(19), data.getFloat64(27));
                         body[me].id = data.getUint16(1);
                         body[me].inertia = Infinity;
+                        Matter.Body.setAngle(body[me], data.getFloat64(35));
+                        Matter.Body.setVelocity(body[me], { x: data.getFloat64(43), y: data.getFloat64(51) });
                     }
                 }
                 if (id == 15) {
@@ -1109,6 +1111,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                             found = true;
                             Matter.Body.setPosition(body[i], { x: data.getFloat64(3), y: data.getFloat64(11) });
                             Matter.Body.setAngle(body[i], data.getFloat64(19));
+                            Matter.Body.setVelocity(body[i], { x: data.getFloat64(27), y: data.getFloat64(35) });
                         }
                     }
                     if (!found) {
@@ -1142,6 +1145,11 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     bullet[me].force.x += data.getFloat64(55);
                     bullet[me].force.y += data.getFloat64(63);
                     console.log(bullet[me]);
+                }
+                if (id == 21) {
+                    // hold block
+                    if (data.getUint8(1) == 0) player1.holdingTarget = null;
+                    else player1.holdingTarget = body.find(block => block.id == data.getUint16(2));
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -1200,6 +1208,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         {
             // field emitter
             drawField: () => {
+                if (player1.holdingTarget) return;
                 ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
                 ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")";
                 const range = player1.fieldRange;
@@ -1230,7 +1239,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.stroke();
             },
             fieldMeterColor: '#0cf',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.00067
         },
         {
             // standing wave
@@ -1252,7 +1262,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.fill();
             },
             fieldMeterColor: '#0cf',
-            fieldRange: 185
+            fieldRange: 185,
+            fieldRegen: 0.001
         },
         {
             // perfect diamagnetism
@@ -1295,7 +1306,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 }
             },
             fieldMeterColor: '#48f',
-            fieldRange: 180
+            fieldRange: 180,
+            fieldRegen: 0.000833
         },
         {
             // negative mass
@@ -1313,7 +1325,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     ctx.globalCompositeOperation = "source-over";
 
                     // effect on player
-                    player1.FxAir = 0.005;
+                    player1.FxAir = 0.005
                     const dist = Math.sqrt((player1.pos.x - m.pos.x) * (player1.pos.x - m.pos.x) + (player1.pos.y - m.pos.y) * (player1.pos.y - m.pos.y));
                     if (dist < player1.fieldDrawRadius) {
                         if (player1.input.down) player.force.y -= 0.5 * player.mass * simulation.g;
@@ -1323,7 +1335,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 } else player1.fieldDrawRadius = 0;
             },
             fieldMeterColor: '#333',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.001
         },
         {
             // molecular assembler
@@ -1358,7 +1371,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.stroke();
             },
             fieldMeterColor: '#ff0',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.002
         },
         {
             // plasma torch
@@ -1416,7 +1430,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.stroke();
             },
             fieldMeterColor: '#f0f',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.001667
         },
         {
             // time dilation
@@ -1427,13 +1442,15 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.globalCompositeOperation = "source-over";
             },
             fieldMeterColor: '#3fe',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.002
         },
         {
             // metamaterial cloaking
             drawField: () => {},
             fieldMeterColor: '#333',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.001
         },
         {
             // pilot wave
@@ -1498,7 +1515,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 } else player1.fieldDrawRadius = 0;
             },
             fieldMeterColor: '#333',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.001667
         },
         {
             // wormhole
@@ -1594,7 +1612,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 }
             },
             fieldMeterColor: '#bbf',
-            fieldRange: 0
+            fieldRange: 0,
+            fieldRegen: 0.001
         },
         {
             // grappling hook
@@ -1606,7 +1625,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 }
             },
             fieldMeterColor: '#0cf',
-            fieldRange: 155
+            fieldRange: 155,
+            fieldRegen: 0.0015
         }
     ]
 
@@ -2672,6 +2692,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         energy: m.energy,
         fieldMode: m.fieldMode,
         health: m.health,
+        holdingTarget: m.holdingTarget,
         immuneCycle: m.immuneCycle,
         input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
         isCloak: m.isCloak,
@@ -2861,12 +2882,24 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 data[1] = m.isCloak ? 1 : 0;
                 dcRemote.send(new DataView(data.buffer));
             }
+            if (m.holdingTarget?.id != oldM.holdingTarget?.id) {
+                console.log(m.holdingTarget?.id, oldM.holdingTarget?.id)
+                // hold block
+                const data = new Uint8Array(new ArrayBuffer(5));
+                data[0] = 21;
+                data[1] = m.holdingTarget?.id == null ? 0 : 1;
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(2, m.holdingTarget?.id || oldM.holdingTarget?.id || 0);
+                dataView.setUint8(4, 2); // TODO: player id
+                dcRemote.send(dataView);
+            }
             
             oldM = {
                 crouch: m.crouch,
                 energy: m.energy,
                 fieldMode: m.fieldMode,
                 health: m.health,
+                holdingTarget: m.holdingTarget,
                 immuneCycle: m.immuneCycle,
                 input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
                 isCloak: m.isCloak,
