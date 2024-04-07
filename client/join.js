@@ -1148,8 +1148,8 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 }
                 if (id == 21) {
                     // hold block
-                    if (data.getUint8(1) == 0) player1.holdingTarget = null;
-                    else player1.holdingTarget = body.find(block => block.id == data.getUint16(2));
+                    player1.isHolding = data.getUint8(1) == 1;
+                    player1.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -1208,7 +1208,13 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         {
             // field emitter
             drawField: () => {
-                if (player1.holdingTarget) return;
+                if (player1.holdingTarget) {
+                    ctx.fillStyle = "rgba(110,170,200," + (m.energy * (0.05 + 0.05 * Math.random())) + ")";
+                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.3 + 0.08 * Math.random()) + ")";
+                } else {
+                    ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
+                    ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")";
+                }
                 ctx.fillStyle = "rgba(110,170,200," + (0.02 + player1.energy * (0.15 + 0.15 * Math.random())) + ")";
                 ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")";
                 const range = player1.fieldRange;
@@ -1670,6 +1676,35 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
             }
         },
+        drawHold: (target) => {
+            if (target) {
+                const eye = 15;
+                const len = target.vertices.length - 1;
+                ctx.fillStyle = "rgba(110,170,200," + (0.2 + 0.4 * Math.random()) + ")";
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = "#000";
+                ctx.beginPath();
+                ctx.moveTo(
+                    player1.pos.x + eye * Math.cos(player1.angle),
+                    player1.pos.y + eye * Math.sin(player1.angle)
+                );
+                ctx.lineTo(target.vertices[len].x, target.vertices[len].y);
+                ctx.lineTo(target.vertices[0].x, target.vertices[0].y);
+                ctx.fill();
+                ctx.stroke();
+                for (let i = 0; i < len; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        player1.pos.x + eye * Math.cos(player1.angle),
+                        player1.pos.y + eye * Math.sin(player1.angle)
+                    );
+                    ctx.lineTo(target.vertices[i].x, target.vertices[i].y);
+                    ctx.lineTo(target.vertices[i + 1].x, target.vertices[i + 1].y);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+        },
         drawLeg: (stroke) => {
             if (player1.angle > -Math.PI / 2 && player1.angle < Math.PI / 2) {
                 player1.flipLegs = 1;
@@ -1802,6 +1837,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         immuneCycle: 0,
         input: { up: false, down: false, left: false, right: false, field: false },
         isCloak: false,
+        isHolding: false,
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
         lastFieldPosition: { x: 0, y: 0 },
         legLength1: 55,
@@ -1819,6 +1855,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         walk_cycle: 0,
         yOff: 70
     }
+    window.player1 = player1;
     player1.fillColor = `hsl(${player1.color.hue},${player1.color.sat}%,${player1.color.light}%)`;
     player1.fillColorDark = `hsl(${player1.color.hue},${player1.color.sat}%,${player1.color.light - 25}%)`;
     let grd = ctx.createLinearGradient(-30, 0, 30, 0);
@@ -2782,6 +2819,30 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
             powerUps.boost.draw();
 
             if (player1.input.field || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3 || player1.fieldMode == 8 || player1.fieldMode == 9 || player1.fieldMode == 10) fieldData[player1.fieldMode].drawField();
+            if (player1.holdingTarget) {
+                ctx.beginPath(); //draw on each valid body
+                let vertices = player1.holdingTarget.vertices;
+                ctx.moveTo(vertices[0].x, vertices[0].y);
+                for (let i = 1; i < vertices.length; i += 1) ctx.lineTo(vertices[i].x, vertices[i].y);
+                ctx.lineTo(vertices[0].x, vertices[0].y);
+                ctx.fillStyle = "rgba(190,215,230," + (0.3 + 0.7 * Math.random()) + ")";
+                ctx.fill();
+    
+                ctx.globalAlpha = player1.isHolding ? 1 : 0.2;
+                player1.drawHold(player1.holdingTarget);
+                ctx.globalAlpha = 1;
+            }
+            if (player1.isHolding) {
+                player1.energy -= fieldData[player1.fieldMode].fieldRegen;
+                if (player1.energy < 0) player1.energy = 0;
+                Matter.Body.setPosition(player1.holdingTarget, {
+                    x: player1.pos.x + 70 * Math.cos(player1.angle),
+                    y: player1.pos.y + 70 * Math.sin(player1.angle)
+                });
+                Matter.Body.setVelocity(player1.holdingTarget, { x: player1.Vx, y: player1.Vy });
+                Matter.Body.rotate(player1.holdingTarget, 0.01 / player1.holdingTarget.mass); //gently spin the block
+            }
+            
             player1.drawHealthbar();
             player1.drawRegenEnergy();
         }})
@@ -2882,16 +2943,30 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 data[1] = m.isCloak ? 1 : 0;
                 dcRemote.send(new DataView(data.buffer));
             }
-            if (m.holdingTarget?.id != oldM.holdingTarget?.id) {
-                console.log(m.holdingTarget?.id, oldM.holdingTarget?.id)
+            if (m.isHolding != oldM.isHolding || m.holdingTarget?.id != oldM.holdingTarget?.id) {
                 // hold block
                 const data = new Uint8Array(new ArrayBuffer(5));
                 data[0] = 21;
-                data[1] = m.holdingTarget?.id == null ? 0 : 1;
+                data[1] = m.isHolding ? 1 : 0;
                 const dataView = new DataView(data.buffer);
-                dataView.setUint16(2, m.holdingTarget?.id || oldM.holdingTarget?.id || 0);
+                dataView.setUint16(2, m.holdingTarget?.id || -1);
                 dataView.setUint8(4, 2); // TODO: player id
                 dcRemote.send(dataView);
+
+                if (m.holdingTarget == null && oldM.holdingTarget != null) {
+                    console.log(m.throwCharge)
+                    const speed = 80 * Math.min(m.throwCharge / 5, 1) * Math.min(0.85, 0.8 / Math.pow(oldM.holdingTarget.mass, 0.25))
+                    const data = new Uint8Array(new ArrayBuffer(43));
+                    data[0] = 15;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, oldM.holdingTarget.id);
+                    dataView.setFloat64(3, oldM.holdingTarget.position.x);
+                    dataView.setFloat64(11, oldM.holdingTarget.position.y);
+                    dataView.setFloat64(19, oldM.holdingTarget.angle);
+                    dataView.setFloat64(27, player.velocity.x * 0.5 + Math.cos(m.angle) * speed);
+                    dataView.setFloat64(35, player.velocity.y * 0.5 + Math.sin(m.angle) * speed);
+                    dcRemote.send(dataView);
+                }
             }
             
             oldM = {
