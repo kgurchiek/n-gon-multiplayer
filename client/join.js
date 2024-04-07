@@ -2765,6 +2765,22 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         document.title = `n-gon: (${difficulty})`;
         Math.random = Math.seededRandom;
 
+        const oldThrowBlock = m.throwBlock;
+        m.throwBlock = () => {
+            const holdingTarget = m.holdingTarget;
+            oldThrowBlock();
+            const data = new Uint8Array(new ArrayBuffer(43));
+            data[0] = 15;
+            const dataView = new DataView(data.buffer);
+            dataView.setUint16(1, holdingTarget.id);
+            dataView.setFloat64(3, holdingTarget.position.x);
+            dataView.setFloat64(11, holdingTarget.position.y);
+            dataView.setFloat64(19, holdingTarget.angle);
+            dataView.setFloat64(27, holdingTarget.velocity.x);
+            dataView.setFloat64(35, holdingTarget.velocity.y);
+            dcRemote.send(dataView);
+        }
+
         //load player in matter.js physic engine
         let vertices = Vertices.fromPath("0,40, 50,40, 50,115, 30,130, 20,130, 0,115, 0,40"); //player as a series of vertices
         player1.body = Bodies.fromVertices(0, 0, vertices);
@@ -2952,21 +2968,6 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 dataView.setUint16(2, m.holdingTarget?.id || -1);
                 dataView.setUint8(4, 2); // TODO: player id
                 dcRemote.send(dataView);
-
-                if (m.holdingTarget == null && oldM.holdingTarget != null) {
-                    console.log(m.throwCharge)
-                    const speed = 80 * Math.min(m.throwCharge / 5, 1) * Math.min(0.85, 0.8 / Math.pow(oldM.holdingTarget.mass, 0.25))
-                    const data = new Uint8Array(new ArrayBuffer(43));
-                    data[0] = 15;
-                    const dataView = new DataView(data.buffer);
-                    dataView.setUint16(1, oldM.holdingTarget.id);
-                    dataView.setFloat64(3, oldM.holdingTarget.position.x);
-                    dataView.setFloat64(11, oldM.holdingTarget.position.y);
-                    dataView.setFloat64(19, oldM.holdingTarget.angle);
-                    dataView.setFloat64(27, player.velocity.x * 0.5 + Math.cos(m.angle) * speed);
-                    dataView.setFloat64(35, player.velocity.y * 0.5 + Math.sin(m.angle) * speed);
-                    dcRemote.send(dataView);
-                }
             }
             
             oldM = {
