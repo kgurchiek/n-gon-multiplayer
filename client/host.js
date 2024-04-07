@@ -1171,6 +1171,10 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 player2.isHolding = data.getUint8(1) == 1;
                 player2.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
             }
+            if (id == 22) {
+                // throw charge update
+                player2.throwCharge = data.getFloat32(1);
+            }
         };
         window.dcLocal.onerror = function(e) {
             console.error('dcLocal', 'onerror', e);
@@ -1860,6 +1864,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         pos: { x: 0, y: 0 },
         radius: 30,
         stepSize: 0,
+        throwCharge: 0,
         Vx: 0,
         Vy: 0,
         walk_cycle: 0,
@@ -2757,6 +2762,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         mouseInGame: { x: 0, y: 0 },
         onGround: false,
         pos: { x: 0, y: 0 },
+        throwCharge: 0,
         Vx: 0,
         Vy: 0,
         walk_cycle: 0,
@@ -2821,7 +2827,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             ctx.stroke();
             ctx.restore();
             powerUps.boost.draw();
-            if (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10) fieldData[player2.fieldMode].drawField();
+            if (!player2.isHolding && (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10)) fieldData[player2.fieldMode].drawField();
             if (player2.holdingTarget) {
                 ctx.beginPath(); //draw on each valid body
                 let vertices = player2.holdingTarget.vertices;
@@ -2834,6 +2840,31 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 ctx.globalAlpha = player2.isHolding ? 1 : 0.2;
                 player2.drawHold(player2.holdingTarget);
                 ctx.globalAlpha = 1;
+
+                //draw charge
+                const x = player2.pos.x + 15 * Math.cos(player2.angle);
+                const y = player2.pos.y + 15 * Math.sin(player2.angle);
+                const len = player2.holdingTarget.vertices.length - 1;
+                const edge = player2.throwCharge * player2.throwCharge * player2.throwCharge;
+                const grd = ctx.createRadialGradient(x, y, edge, x, y, edge + 5);
+                grd.addColorStop(0, "rgba(255,50,150,0.3)");
+                grd.addColorStop(1, "transparent");
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(player2.holdingTarget.vertices[len].x, player2.holdingTarget.vertices[len].y);
+                ctx.lineTo(player2.holdingTarget.vertices[0].x, player2.holdingTarget.vertices[0].y);
+                ctx.fill();
+                for (let i = 0; i < len; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(player2.holdingTarget.vertices[i].x, player2.holdingTarget.vertices[i].y);
+                    ctx.lineTo(player2.holdingTarget.vertices[i + 1].x, player2.holdingTarget.vertices[i + 1].y);
+                    ctx.fill();
+                }
+                ctx.strokeStyle = "rgba(68, 68, 68, 0.15)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
             if (player2.isHolding) {
                 player2.energy -= fieldData[player2.fieldMode].fieldRegen;
@@ -2969,6 +3000,15 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 dataView.setUint8(4, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
+            if (m.throwCharge != oldM.throwCharge) {
+                // throw charge update
+                const data = new Uint8Array(new ArrayBuffer(7));
+                data[0] = 22;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.throwCharge);
+                dataView.setUint8(5, 1); // TODO: player id
+                dcLocal.send(dataView);
+            }
             
             oldM = {
                 crouch: m.crouch,
@@ -2984,11 +3024,12 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 maxHealth: m.maxHealth,
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: false,
-                pos: { x: 0, y: 0 },
-                Vx: 0,
-                Vy: 0,
-                walk_cycle: 0,
-                yOff: 70
+                pos: { x: m.pos.y, y: m.pos.y },
+                throwCharge: m.throwCharge,
+                Vx: m.Vx,
+                Vy: m.Vy,
+                walk_cycle: m.walk_cycle,
+                yOff: m.yOff
             }
 
             // block update

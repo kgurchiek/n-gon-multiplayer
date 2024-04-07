@@ -1151,6 +1151,10 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                     player1.isHolding = data.getUint8(1) == 1;
                     player1.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
                 }
+                if (id == 22) {
+                    // throw charge update
+                    player1.throwCharge = data.getFloat32(1);
+                }
             };
             window.dcRemote.onerror = function(e) {
                 console.error('dcRemote', 'onerror', e);
@@ -1850,6 +1854,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         pos: { x: 0, y: 0 },
         radius: 30,
         stepSize: 0,
+        throwCharge: 0,
         Vx: 0,
         Vy: 0,
         walk_cycle: 0,
@@ -2738,6 +2743,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
         mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
         onGround: false,
         pos: { x: 0, y: 0 },
+        throwCharge: 0,
         Vx: 0,
         Vy: 0,
         walk_cycle: 0,
@@ -2834,7 +2840,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
             ctx.restore();
             powerUps.boost.draw();
 
-            if (player1.input.field || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3 || player1.fieldMode == 8 || player1.fieldMode == 9 || player1.fieldMode == 10) fieldData[player1.fieldMode].drawField();
+            if (!player1.isHolding && (player1.input.field || player1.fieldMode == 1 || player1.fieldMode == 2 || player1.fieldMode == 3 || player1.fieldMode == 8 || player1.fieldMode == 9 || player1.fieldMode == 10)) fieldData[player1.fieldMode].drawField();
             if (player1.holdingTarget) {
                 ctx.beginPath(); //draw on each valid body
                 let vertices = player1.holdingTarget.vertices;
@@ -2847,6 +2853,31 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 ctx.globalAlpha = player1.isHolding ? 1 : 0.2;
                 player1.drawHold(player1.holdingTarget);
                 ctx.globalAlpha = 1;
+
+                //draw charge
+                const x = player1.pos.x + 15 * Math.cos(player1.angle);
+                const y = player1.pos.y + 15 * Math.sin(player1.angle);
+                const len = player1.holdingTarget.vertices.length - 1;
+                const edge = player1.throwCharge * player1.throwCharge * player1.throwCharge;
+                const grd = ctx.createRadialGradient(x, y, edge, x, y, edge + 5);
+                grd.addColorStop(0, "rgba(255,50,150,0.3)");
+                grd.addColorStop(1, "transparent");
+                ctx.fillStyle = grd;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(player1.holdingTarget.vertices[len].x, player1.holdingTarget.vertices[len].y);
+                ctx.lineTo(player1.holdingTarget.vertices[0].x, player1.holdingTarget.vertices[0].y);
+                ctx.fill();
+                for (let i = 0; i < len; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(player1.holdingTarget.vertices[i].x, player1.holdingTarget.vertices[i].y);
+                    ctx.lineTo(player1.holdingTarget.vertices[i + 1].x, player1.holdingTarget.vertices[i + 1].y);
+                    ctx.fill();
+                }
+                ctx.strokeStyle = "rgba(68, 68, 68, 0.15)";
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
             if (player1.isHolding) {
                 player1.energy -= fieldData[player1.fieldMode].fieldRegen;
@@ -2969,6 +3000,15 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 dataView.setUint8(4, 2); // TODO: player id
                 dcRemote.send(dataView);
             }
+            if (m.throwCharge != oldM.throwCharge) {
+                // throw charge update
+                const data = new Uint8Array(new ArrayBuffer(7));
+                data[0] = 22;
+                const dataView = new DataView(data.buffer);
+                dataView.setFloat32(1, m.throwCharge);
+                dataView.setUint8(5, 2); // TODO: player id
+                dcRemote.send(dataView);
+            }
             
             oldM = {
                 crouch: m.crouch,
@@ -2982,12 +3022,13 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 maxEnergy: m.maxEnergy,
                 maxHealth: m.maxHealth,
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
-                onGround: false,
-                pos: { x: 0, y: 0 },
-                Vx: 0,
-                Vy: 0,
-                walk_cycle: 0,
-                yOff: 70
+                onGround: m.onGround,
+                pos: { x: m.pos.x, y: m.pos.y },
+                throwCharge: m.throwCharge,
+                Vx: m.Vx,
+                Vy: m.Vy,
+                walk_cycle: m.walk_cycle,
+                yOff: m.yOff
             }
         }})
     }

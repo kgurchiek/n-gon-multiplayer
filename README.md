@@ -24,3 +24,4 @@
 | 19 | Harpoon             | 45     | x (Float64), y (Float64), targetIndex (Uint32), angle (Float64), harpoonSize (Uint16), isReturn (boolean), totalCycles (Float32), isReturnAmmo (boolean), thrust (Float64), playerId (Uint8) |
 | 20 | Missile             | 70     | x (Float64), y (Float64), angle (Float64), speed (Float64), size (Uint16), endCycle (Float32), lookFrequency (Float64), explodeRad (Float64), xForce (Float64), yForce (Float64) |
 | 21 | Hold Block          | 4      | holding (boolean), blockId (Uint16), playerId (Uint8) |
+| 22 | Throw Charge Update | 6      | throwCharge (Float32), playerId (Uint8) |
