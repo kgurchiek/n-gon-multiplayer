@@ -273,7 +273,8 @@ b.multiplayerGrenade = (where, angle, size, crouch) => {
     Composite.add(engine.world, bullet[me]); //add bullet to world
 }
 
-b.multiplayerGrapple = (where, angle, otherPlayer) => {
+b.multiplayerGrapple = (where, angle, playerId) => {
+    const origin = playerId == 1 ? player1 : m;
     const me = bullet.length;
     const returnRadius = 100
     bullet[me] = Bodies.fromVertices(where.x, where.y, [
@@ -327,7 +328,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
             powerUpDamage: false, //tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle,
             draw() {
                 // draw rope
-                const where = { x: otherPlayer.pos.x + 30 * Math.cos(otherPlayer.angle), y: otherPlayer.pos.y + 30 * Math.sin(otherPlayer.angle) }
+                const where = { x: origin.pos.x + 30 * Math.cos(origin.angle), y: origin.pos.y + 30 * Math.sin(origin.angle) }
                 const sub = Vector.sub(where, this.vertices[0])
                 ctx.strokeStyle = "#000" // "#0ce"
                 ctx.lineWidth = 0.5
@@ -388,7 +389,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                 //         who.isShielded = true
                 //     });
                 // }
-                if (otherPlayer.fieldCDcycle < m.cycle + 40) otherPlayer.fieldCDcycle = m.cycle + 40  //extra long cooldown on hitting mobs
+                if (origin.fieldCDcycle < m.cycle + 40) origin.fieldCDcycle = m.cycle + 40  //extra long cooldown on hitting mobs
                 // if (tech.hookNails) {
                 //     b.targetedNail(this.position, tech.hookNails)
                 //     const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
@@ -441,7 +442,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                 }
             },
             onEnd() {
-                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || otherPlayer.health !== otherPlayer.maxHealth /*|| tech.isOverHeal*/)) {
+                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/)) {
                     let index = null //find index
                     for (let i = 0, len = powerUp.length; i < len; ++i) if (powerUp[i] === this.caughtPowerUp) index = i
                     if (index !== null) powerUp.splice(index, 1);
@@ -457,23 +458,23 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                 this.collisionFilter.mask = 0//cat.map | cat.mob | cat.mobBullet | cat.mobShield // | cat.body
                 //recoil on pulling grapple back
                 const mag = this.pickUpTarget ? Math.max(this.pickUpTarget.mass, 0.5) : 0.5
-                const momentum = Vector.mult(Vector.sub(this.position, otherPlayer.pos), mag * (otherPlayer.crouch ? 0.0001 : 0.0002))
+                const momentum = Vector.mult(Vector.sub(this.position, origin.pos), mag * (origin.crouch ? 0.0001 : 0.0002))
             },
             returnToPlayer() {
-                if (otherPlayer.fieldCDcycle < m.cycle + 5) otherPlayer.fieldCDcycle = m.cycle + 5
-                if (Vector.magnitude(Vector.sub(this.position, otherPlayer.pos)) < returnRadius) { //near player
+                if (origin.fieldCDcycle < m.cycle + 5) origin.fieldCDcycle = m.cycle + 5
+                if (Vector.magnitude(Vector.sub(this.position, origin.pos)) < returnRadius) { //near player
                     this.endCycle = 0;
                     //recoil on catching grapple
-                    // const momentum = Vector.mult(Vector.sub(this.velocity, player.velocity), (otherPlayer.crouch ? 0.0001 : 0.0002))
+                    // const momentum = Vector.mult(Vector.sub(this.velocity, player.velocity), (origin.crouch ? 0.0001 : 0.0002))
                     if (this.pickUpTarget) {
                         // if (tech.isReel && this.blockDist > 150) {
                         //     // console.log(0.0003 * Math.min(this.blockDist, 1000))
-                        //     otherPlayer.energy += 0.0009 * Math.min(this.blockDist, 800) //max 0.352 energy
+                        //     origin.energy += 0.0009 * Math.min(this.blockDist, 800) //max 0.352 energy
                         //     simulation.drawList.push({ //add dmg to draw queue
-                        //         x: otherPlayer.pos.x,
-                        //         y: otherPlayer.pos.y,
+                        //         x: origin.pos.x,
+                        //         y: origin.pos.y,
                         //         radius: 10,
-                        //         color: otherPlayer.fieldMeterColor,
+                        //         color: origin.fieldMeterColor,
                         //         time: simulation.drawTime
                         //     });
                         // }
@@ -491,8 +492,8 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                         this.pickUpTarget = null
                     }
                 } else {
-                    if (otherPlayer.energy > this.drain) otherPlayer.energy -= this.drain
-                    const sub = Vector.sub(this.position, otherPlayer.pos)
+                    if (origin.energy > this.drain) origin.energy -= this.drain
+                    const sub = Vector.sub(this.position, origin.pos)
                     const rangeScale = 1 + 0.000001 * Vector.magnitude(sub) * Vector.magnitude(sub) //return faster when far from player
                     const returnForce = Vector.mult(Vector.normalise(sub), rangeScale * this.thrustMag * this.mass)
                     this.force.x -= returnForce.x
@@ -510,7 +511,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                     for (let i = 0, len = powerUp.length; i < len; ++i) {
                         const radius = powerUp[i].circleRadius + 50
                         if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius) {
-                            if (powerUp[i].name !== "heal" || otherPlayer.health !== otherPlayer.maxHealth /*|| tech.isOverHeal*/) {
+                            if (powerUp[i].name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/) {
                                 this.caughtPowerUp = powerUp[i]
                                 Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
                                 Matter.Body.setPosition(powerUp[i], this.vertices[2])
@@ -526,14 +527,14 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                 }
             },
             do() {
-                if (otherPlayer.fieldCDcycle < m.cycle + 5) otherPlayer.fieldCDcycle = m.cycle + 5
-                if (otherPlayer.input.field) {
+                if (origin.fieldCDcycle < m.cycle + 5) origin.fieldCDcycle = m.cycle + 5
+                if (origin.input.field) {
                     this.grabPowerUp()
                 } else {
                     this.retract()
                 }
                 //grappling hook
-                if (otherPlayer.input.field && Matter.Query.collides(this, map).length) {
+                if (origin.input.field && Matter.Query.collides(this, map).length) {
                     Matter.Body.setPosition(this, Vector.add(this.position, { x: -20 * Math.cos(this.angle), y: -20 * Math.sin(this.angle) }))
                     if (Matter.Query.collides(this, map).length) {
                         // if (tech.hookNails) {
@@ -548,13 +549,13 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                         this.endCycle = simulation.cycle + 5
                         // this.dropCaughtPowerUp()
                         this.do = () => {
-                            if (otherPlayer.fieldCDcycle < m.cycle + 5) otherPlayer.fieldCDcycle = m.cycle + 5
+                            if (origin.fieldCDcycle < m.cycle + 5) origin.fieldCDcycle = m.cycle + 5
                             this.grabPowerUp()
 
                             //between player nose and the grapple
-                            const sub = Vector.sub(this.vertices[0], { x: otherPlayer.pos.x + 30 * Math.cos(otherPlayer.angle), y: otherPlayer.pos.y + 30 * Math.sin(otherPlayer.angle) })
+                            const sub = Vector.sub(this.vertices[0], { x: origin.pos.x + 30 * Math.cos(origin.angle), y: origin.pos.y + 30 * Math.sin(origin.angle) })
                             let dist = Vector.magnitude(sub)
-                            if (otherPlayer.input.field) {
+                            if (origin.input.field) {
                                 this.endCycle = simulation.cycle + 10
                                 if (input.down) { //down
                                     this.isSlowPull = true
@@ -562,7 +563,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                                 } else if (input.up) {
                                     this.isSlowPull = false
                                 }
-                                if (otherPlayer.energy < this.drain) this.isSlowPull = true
+                                if (origin.energy < this.drain) this.isSlowPull = true
 
                                 // pulling friction that allowed a slight swinging, but has high linear pull at short dist
                                 const drag = 1 - 30 / Math.min(Math.max(100, dist), 700) - 0.1 * (player.speed > 66)
@@ -570,7 +571,7 @@ b.multiplayerGrapple = (where, angle, otherPlayer) => {
                                 const pullScale = 0.0004
                                 const pull = Vector.mult(Vector.normalise(sub), pullScale * Math.min(Math.max(15, dist), this.isSlowPull ? 70 : 200))
                                 if (dist > 500) {
-                                    otherPlayer.energy -= this.drain
+                                    origin.energy -= this.drain
                                 }
                             } else {
                                 Matter.Sleeping.set(this, false)
@@ -1630,7 +1631,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
             drawField: () => {
                 // console.log(player1.input.field, player1.fieldCDcycle, m.cycle)
                 if (player1.input.field && player1.fieldCDcycle < m.cycle) {
-                    b.multiplayerGrapple({ x: player1.pos.x + 40 * Math.cos(player1.angle), y: player1.pos.y + 40 * Math.sin(player1.angle) }, player1.angle, player1);
+                    b.multiplayerGrapple({ x: player1.pos.x + 40 * Math.cos(player1.angle), y: player1.pos.y + 40 * Math.sin(player1.angle) }, player1.angle, 1);
                     if (player1.fieldCDcycle < m.cycle + 20) player1.fieldCDcycle = m.cycle + 20;
                 }
             },
