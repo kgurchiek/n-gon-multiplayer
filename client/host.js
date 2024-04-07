@@ -1170,7 +1170,15 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             if (id == 21) {
                 // hold block
                 player2.isHolding = data.getUint8(1) == 1;
+                if (!player2.isHolding && player2.holdingTarget) {
+                    player2.holdingTarget.collisionFilter.category = cat.body;
+                    player2.holdingTarget.collisionFilter.mask = cat.player | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
+                }
                 player2.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
+                if (player2.isHolding) {
+                    player2.holdingTarget.collisionFilter.category = 0;
+                    player2.holdingTarget.collisionFilter.mask = 0;
+                }
             }
             if (id == 22) {
                 // throw charge update

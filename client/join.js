@@ -1150,7 +1150,15 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 if (id == 21) {
                     // hold block
                     player1.isHolding = data.getUint8(1) == 1;
+                    if (!player1.isHolding && player1.holdingTarget) {
+                        player1.holdingTarget.collisionFilter.category = cat.body;
+                        player1.holdingTarget.collisionFilter.mask = cat.player | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
+                    }
                     player1.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
+                    if (player1.isHolding) {
+                        player1.holdingTarget.collisionFilter.category = 0;
+                        player1.holdingTarget.collisionFilter.mask = 0;
+                    }
                 }
                 if (id == 22) {
                     // throw charge update
@@ -2731,17 +2739,18 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
     }
 
     let oldM = {
-        crouch: m.crouch,
-        energy: m.energy,
-        fieldMode: m.fieldMode,
-        health: m.health,
-        holdingTarget: m.holdingTarget,
-        immuneCycle: m.immuneCycle,
-        input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
-        isCloak: m.isCloak,
-        maxEnergy: m.maxEnergy,
-        maxHealth: m.maxHealth,
-        mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
+        crouch: false,
+        energy: 1,
+        fieldMode: 0,
+        health: 1,
+        holdingTarget: null,
+        immuneCycle: 0,
+        input: { up: false, down: false, left: false, right: false, field: false },
+        isCloak: false,
+        isHolding: false,
+        maxEnergy: 1,
+        maxHealth: 1,
+        mouseInGame: { x: 0, y: 0 },
         onGround: false,
         pos: { x: 0, y: 0 },
         throwCharge: 0,
@@ -3020,6 +3029,7 @@ b.multiplayerMissile = (where, angle, speed, size, endCycle, lookFrequency, expl
                 immuneCycle: m.immuneCycle,
                 input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
                 isCloak: m.isCloak,
+                isHolding: m.isHolding,
                 maxEnergy: m.maxEnergy,
                 maxHealth: m.maxHealth,
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
