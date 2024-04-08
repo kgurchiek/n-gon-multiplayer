@@ -10,7 +10,7 @@
 | 05 | Max Health Update   | 5      | maxHealth (Float32), playerId (Uint8) |
 | 06 | Energy Update       | 5      | energy (Float32), playerId(Uint8) |
 | 07 | Max Energy Update   | 5      | maxEnergy (Float32), playerId (Uint8) |
-| 08 | Inputs              | 5      | up (boolean), down (boolean), left (boolean), right (boolean), field (boolean) |
+| 08 | Inputs              | 6      | up (boolean), down (boolean), left (boolean), right (boolean), field (boolean), gun (boolean) |
 | 09 | Toggle Crouch       | 1      | crouched (boolean) |
 | 10 | Toggle Cloak        | 1      | isCloak (boolean) |
 | 11 | Sync Request        | 0      | |
@@ -25,3 +25,4 @@
 | 20 | Missile             | 70     | x (Float64), y (Float64), angle (Float64), speed (Float64), size (Uint16), endCycle (Float32), lookFrequency (Float64), explodeRad (Float64), xForce (Float64), yForce (Float64) |
 | 21 | Hold Block          | 4      | holding (boolean), blockId (Uint16), playerId (Uint8) |
 | 22 | Throw Charge Update | 6      | throwCharge (Float32), playerId (Uint8) |
+| 23 | Laser               | 51     | startX (Float64), startY (Float64), endX (Float64), endY (Float64), dmg (Float64), reflections (Uint8), isThickBeam (boolean), push (Float64), playerId (Uint8) |

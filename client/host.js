@@ -979,6 +979,152 @@ b.multiplayerMissile = (where, angle, speed, size) => {
     Composite.add(engine.world, bullet[me]); //add bullet to world
 }
 
+b.multiplayerLasers = [];
+b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
+    const reflectivity = 1 - 1 / (reflections * 3)
+    let damage = m.dmgScale * dmg
+
+    let best = {
+        x: 1,
+        y: 1,
+        dist2: Infinity,
+        who: null,
+        v1: 1,
+        v2: 1
+    };
+    const path = [{
+        x: where.x,
+        y: where.y
+    }, {
+        x: whereEnd.x,
+        y: whereEnd.y
+    }];
+
+    const checkForCollisions = function () {
+        best = vertexCollision(path[path.length - 2], path[path.length - 1], [mob, map, body]);
+    };
+    const laserHitMob = function () {
+        if (best.who.alive) {
+            best.who.locatePlayer();
+            if (best.who.damageReduction) {
+                if ( //iridescence
+                    tech.laserCrit && !best.who.shield &&
+                    Vector.dot(Vector.normalise(Vector.sub(best.who.position, path[path.length - 1])), Vector.normalise(Vector.sub(path[path.length - 1], path[path.length - 2]))) > 0.999 - 0.5 / best.who.radius
+                ) {
+                    damage *= 1 + tech.laserCrit
+                    simulation.drawList.push({ //add dmg to draw queue
+                        x: path[path.length - 1].x,
+                        y: path[path.length - 1].y,
+                        radius: Math.sqrt(2500 * damage * best.who.damageReduction) + 5,
+                        color: `hsla(${60 + 283 * Math.random()},100%,70%,0.5)`, // random hue, but not red
+                        time: 16
+                    });
+                } else {
+                    simulation.drawList.push({ //add dmg to draw queue
+                        x: path[path.length - 1].x,
+                        y: path[path.length - 1].y,
+                        radius: Math.sqrt(2000 * damage * best.who.damageReduction) + 2,
+                        color: tech.laserColorAlpha,
+                        time: simulation.drawTime
+                    });
+                }
+                best.who.damage(damage);
+            }
+            if (tech.isLaserPush) { //push mobs away
+                const index = path.length - 1
+                Matter.Body.setVelocity(best.who, { x: best.who.velocity.x * 0.97, y: best.who.velocity.y * 0.97 });
+                const force = Vector.mult(Vector.normalise(Vector.sub(path[index], path[Math.max(0, index - 1)])), 0.003 * push * Math.min(6, best.who.mass))
+                Matter.Body.applyForce(best.who, path[index], force)
+            }
+        } else if (tech.isLaserPush && best.who.classType === "body") {
+            const index = path.length - 1
+            Matter.Body.setVelocity(best.who, { x: best.who.velocity.x * 0.97, y: best.who.velocity.y * 0.97 });
+            const force = Vector.mult(Vector.normalise(Vector.sub(path[index], path[Math.max(0, index - 1)])), 0.003 * push * Math.min(6, best.who.mass))
+            Matter.Body.applyForce(best.who, path[index], force)
+        }
+    };
+    const reflection = function () { // https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
+        const n = Vector.perp(Vector.normalise(Vector.sub(best.v1, best.v2)));
+        const d = Vector.sub(path[path.length - 1], path[path.length - 2]);
+        const nn = Vector.mult(n, 2 * Vector.dot(d, n));
+        const r = Vector.normalise(Vector.sub(d, nn));
+        path[path.length] = Vector.add(Vector.mult(r, 3000), path[path.length - 1]);
+    };
+
+    checkForCollisions();
+    let lastBestOdd
+    let lastBestEven = best.who //used in hack below
+    if (best.dist2 !== Infinity) { //if hitting something
+        path[path.length - 1] = { x: best.x, y: best.y };
+        laserHitMob();
+        for (let i = 0; i < reflections; i++) {
+            reflection();
+            checkForCollisions();
+            if (best.dist2 !== Infinity) { //if hitting something
+                lastReflection = best
+                path[path.length - 1] = { x: best.x, y: best.y };
+                damage *= reflectivity
+                laserHitMob();
+                //I'm not clear on how this works, but it gets rid of a bug where the laser reflects inside a block, often vertically.
+                //I think it checks to see if the laser is reflecting off a different part of the same block, if it is "inside" a block
+                if (i % 2) {
+                    if (lastBestOdd === best.who) break
+                } else {
+                    lastBestOdd = best.who
+                    if (lastBestEven === best.who) break
+                }
+            } else {
+                break
+            }
+        }
+    }
+    if (isThickBeam) {
+        for (let i = 1, len = path.length; i < len; ++i) {
+            ctx.moveTo(path[i - 1].x, path[i - 1].y);
+            ctx.lineTo(path[i].x, path[i].y);
+        }
+    } else if (tech.isLaserLens && b.guns[11].lensDamage !== 1) {
+        ctx.strokeStyle = tech.laserColor;
+        ctx.lineWidth = 2
+        ctx.lineDashOffset = 900 * Math.random()
+        ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
+        for (let i = 1, len = path.length; i < len; ++i) {
+            ctx.beginPath();
+            ctx.moveTo(path[i - 1].x, path[i - 1].y);
+            ctx.lineTo(path[i].x, path[i].y);
+            ctx.stroke();
+            ctx.globalAlpha *= reflectivity; //reflections are less intense
+        }
+        ctx.setLineDash([]);
+        // ctx.globalAlpha = 1;
+
+        //glow
+        ctx.lineWidth = 9 + 2 * b.guns[11].lensDamageOn
+        ctx.globalAlpha = 0.13
+        ctx.beginPath();
+        for (let i = 1, len = path.length; i < len; ++i) {
+            ctx.moveTo(path[i - 1].x, path[i - 1].y);
+            ctx.lineTo(path[i].x, path[i].y);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    } else {
+        ctx.strokeStyle = "#f00"; //tech.laserColor;
+        ctx.lineWidth = 2;
+        // ctx.lineDashOffset = 900 * Math.random()
+        // ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
+        for (let i = 1, len = path.length; i < len; ++i) {
+            ctx.beginPath();
+            ctx.moveTo(path[i - 1].x, path[i - 1].y);
+            ctx.lineTo(path[i].x, path[i].y);
+            ctx.stroke();
+            ctx.globalAlpha *= reflectivity; //reflections are less intense
+        }
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+    }
+}
+
 (async () => {
     await new Promise(async (resolve, reject) => {
         const config = {
@@ -1082,6 +1228,8 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 player2.input.left = new Uint8Array(data.buffer)[3] == 1;
                 player2.input.right = new Uint8Array(data.buffer)[4] == 1;
                 player2.input.field = new Uint8Array(data.buffer)[5] == 1;
+                player2.input.fire = new Uint8Array(data.buffer)[6] == 1;
+                if (!player2.input.fire) b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 2);
             }
             if (id == 9) {
                 // toggle crouch
@@ -1183,6 +1331,14 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             if (id == 22) {
                 // throw charge update
                 player2.throwCharge = data.getFloat32(1);
+            }
+            if (id == 23) {
+                // laser
+                b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 2);
+                b.multiplayerLasers.push({ id: 2, created: new Date(), where: { x: data.getFloat64(1), y: data.getFloat64(9) }, whereEnd: { x: data.getFloat64(17), y: data.getFloat64(25) }, dmg: data.getFloat64(33), reflections: data.getUint8(41), isThickBeam: data.getUint8(42) == 1, push: data.getFloat64(43) });
+                const dataView = new DataView(data.buffer);
+                dataView.setUint8(51, 2);
+                dcLocal.send(data);
             }
         };
         window.dcLocal.onerror = function(e) {
@@ -1858,7 +2014,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             unit: { x: 0, y: 0 },
         },
         immuneCycle: 0,
-        input: { up: false, down: false, left: false, right: false, field: false },
+        input: { up: false, down: false, left: false, right: false, field: false, fire: false },
         isCloak: false,
         isHolding: false,
         knee: { x: 0, y: 0, x2: 0, y2: 0 },
@@ -2756,6 +2912,25 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         }
     }
 
+    const oldLaser = b.laser;
+    b.laser = (where = { x: m.pos.x + 20 * Math.cos(m.angle), y: m.pos.y + 20 * Math.sin(m.angle) }, whereEnd = { x: where.x + 3000 * Math.cos(m.angle), y: where.y + 3000 * Math.sin(m.angle) }, dmg = tech.laserDamage, reflections = tech.laserReflections, isThickBeam = false, push = 1) => {
+        const data = new Uint8Array(new ArrayBuffer(52));
+        data[0] = 23;
+        const dataView = new DataView(data.buffer);
+        dataView.setFloat64(1, where.x);
+        dataView.setFloat64(9, where.y);
+        dataView.setFloat64(17, whereEnd.x);
+        dataView.setFloat64(25, whereEnd.y);
+        dataView.setFloat64(33, dmg);
+        dataView.setUint8(41, reflections);
+        dataView.setUint8(42, isThickBeam ? 1 : 0);
+        dataView.setFloat64(43, push);
+        dataView.setUint8(51, 1); // TODO: player id
+        dcLocal.send(dataView);
+
+        oldLaser(where, whereEnd, dmg, reflections, isThickBeam, push);
+    }
+
     let oldM = {
         crouch: false,
         energy: 1,
@@ -2763,7 +2938,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
         health: 1,
         holdingTarget: null,
         immuneCycle: 0,
-        input: { up: false, down: false, left: false, right: false, field: false },
+        input: { up: false, down: false, left: false, right: false, field: false, fire: false },
         isCloak: false,
         isHolding: false,
         maxEnergy: 1,
@@ -2885,17 +3060,19 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 Matter.Body.setVelocity(player2.holdingTarget, { x: player2.Vx, y: player2.Vy });
                 Matter.Body.rotate(player2.holdingTarget, 0.01 / player2.holdingTarget.mass); //gently spin the block
             }
-            
-            player2.drawHealthbar();
-            player2.drawRegenEnergy();
 
             if (player2.isCloak) {
                 ctx.beginPath();
                 ctx.arc(player2.pos.x, player2.pos.y, 35, 0, 2 * Math.PI);
                 ctx.strokeStyle = "rgba(255,255,255,0.5)";
-                ctx.lineWidth = 6
+                ctx.lineWidth = 6;
                 ctx.stroke();
             }
+
+            player2.drawHealthbar();
+            player2.drawRegenEnergy();
+
+            for (const multiplayerLaser of b.multiplayerLasers) if (new Date().getTime() - multiplayerLaser.created.getTime() < 100) b.multiplayerLaser(multiplayerLaser.where, multiplayerLaser.whereEnd, multiplayerLaser.dmg, multiplayerLaser.reflections, multiplayerLaser.isThickBeam, multiplayerLaser.push);
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             // player broadcast
@@ -2974,15 +3151,16 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
-            if (input.up != oldM.input.up || input.down != oldM.input.down || input.left != oldM.input.left || input.right != oldM.input.right || input.field != oldM.input.field) {
+            if (input.up != oldM.input.up || input.down != oldM.input.down || input.left != oldM.input.left || input.right != oldM.input.right || input.field != oldM.input.field || input.fire != oldM.input.fire) {
                 // inputs
-                const data = new Uint8Array(new ArrayBuffer(6));
+                const data = new Uint8Array(new ArrayBuffer(7));
                 data[0] = 8;
                 data[1] = input.up ? 1 : 0;
                 data[2] = input.down ? 1 : 0;
                 data[3] = input.left ? 1 : 0;
                 data[4] = input.right ? 1 : 0;
                 data[5] = input.field ? 1 : 0;
+                data[6] = input.fire ? 1 : 0;
                 dcLocal.send(new DataView(data.buffer));
             }
             if (m.crouch != oldM.crouch) {
@@ -3026,7 +3204,7 @@ b.multiplayerMissile = (where, angle, speed, size) => {
                 health: m.health,
                 holdingTarget: m.holdingTarget,
                 immuneCycle: m.immuneCycle,
-                input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field },
+                input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field, fire: input.fire },
                 isCloak: m.isCloak,
                 isHolding: m.isHolding,
                 maxEnergy: m.maxEnergy,
