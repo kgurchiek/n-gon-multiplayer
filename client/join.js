@@ -1027,7 +1027,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         time: simulation.drawTime
                     });
                 }
-                best.who.damage(damage);
+                // best.who.damage(damage);
             }
             if (tech.isLaserPush) { //push mobs away
                 const index = path.length - 1
