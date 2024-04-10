@@ -1,5 +1,7 @@
 ## Protocol
-(length does not include id)
+- length does not include id
+- all strings use 8-bit length prefix
+
 | ID |         Name         | Length | Fields |
 | -- | -------------------- | ------ | ------ |
 | 00 | Rotation             | 16     | mouseInGame.x (Float64), mouseInGame.y (Float64) |
@@ -31,3 +33,8 @@
 | 26 | Powerup Info         | 27+    | powerupId (Uint16), x (Float64), y (Float64), size (Float64), name (string) |
 | 27 | Powerup Update       | 26     | powerupId (Uint16), x (Float64), y (Float64), size (Float64) |
 | 28 | Delete Powerup       | 2      | powerupId (Uint16) |
+| 29 | Mob Info Request     | 2      | mobId (Uint16) |
+| 30 | Mob Info             | 40+    | mobId (Uint16), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32) |
+| 31 | Mob Position Update  | 26     | mobId (Uint16), x (Float64), y (Float64), angle (Float64) |
+| 32 | Mob Vertex Update    | 2+     | mobId (Uint16), vertices (list: x (Float64), y (Float64)) |
+| 33 | Delete Mob           | 2      | mobId (Uint16) |

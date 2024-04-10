@@ -1352,6 +1352,90 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     Matter.Composite.remove(engine.world, powerUp[index]);
                     powerUp = powerUp.slice(0, index).concat(powerUp.slice(index + 1));
                 }
+                if (id == 30) {
+                    // mob info
+                    if (mob.find(a => a.id == data.getUint16(1)) == null) {
+                        const me = mob.length;
+                        const alpha = data.getFloat32(37 + new Uint8Array(data.buffer)[36]);
+                        let color = new TextDecoder().decode(data.buffer.slice(37, new Uint8Array(data.buffer)[36] + 37));
+                        if (color.startsWith('#')) {
+                            if (color.length == 4) color = `rgba(${color[1]},${color[2]},${color[3]},${alpha})`
+                            else color = `rgba(${color.substring(1, 3)},${color.substring(3, 5)},${color.substring(5)},${alpha})`;
+                        } else if (color.startsWith('hsl(')) {
+                            let values = color.substring(4, color.length - 1);
+                            const [h, s, l] = values.split(',');
+
+                            // https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
+                            function hueToRgb(p, q, t) {
+                                if (t < 0) t += 1;
+                                if (t > 1) t -= 1;
+                                if (t < 1/6) return p + (q - p) * 6 * t;
+                                if (t < 1/2) return q;
+                                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                                return p;
+                            }
+
+                            let r, g, b;
+                        
+                            if (s === 0) r = g = b = l; // achromatic
+                            else {
+                                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                                const p = 2 * l - q;
+                                r = hueToRgb(p, q, h + 1/3);
+                                g = hueToRgb(p, q, h);
+                                b = hueToRgb(p, q, h - 1/3);
+                            }
+                        
+                            color = `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${alpha})`;
+                        } else if (color.startsWith('rgb(')) {
+                            let values = color.substring(4, color.length - 1);
+                            color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
+                        } else if (color.startsWith('rgba(')) {
+                            let values = color.substring(5, color.length - 1);
+                            color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
+                        }
+                        mobs.spawn(data.getFloat64(3), data.getFloat64(11), data.getUint8(27), data.getFloat64(28), color);
+                        mob[me].id = data.getUint16(1);
+                        Matter.Body.setAngle(mob[me], data.getFloat64(19));
+                        mob[me].do = () => {};
+                    }
+                }
+                if (id == 31) {
+                    // mob position update
+                    const newMob = mob.find(a => a.id == data.getUint16(1));
+                    if (newMob == null) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 29;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    } else {
+                        Matter.Body.setPosition(newMob, { x: data.getFloat64(3), y: data.getFloat64(11) });
+                        Matter.Body.setAngle(newMob, data.getFloat64(19));
+                    }
+                }
+                if (id == 32) {
+                    // mob vertex update
+                    const newMob = mob.find(a => a.id == data.getUint16(1));
+                    if (newMob == null) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 29;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    } else {
+                        const newVertices = [];
+                        for (let i = 3; i < data.byteLength; i += 16) newVertices.push({ x: data.getFloat64(i), y: data.getFloat64(i + 8) });
+                        Matter.Body.setVertices(newMob, newVertices)
+                        console.log(newMob.vertices.length);
+                    }
+                }
+                if (id == 33) {
+                    // delete mob
+                    const index = mob.findIndex(a => a.id == data.getUint16(1));
+                    Matter.Composite.remove(engine.world, mob[index]);
+                    mob = mob.slice(0, index).concat(mob.slice(index + 1));
+                }
             };
             window.dcRemote.onerror = function(e) {
                 console.error('dcRemote', 'onerror', e);

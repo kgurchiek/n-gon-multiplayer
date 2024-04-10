@@ -1342,8 +1342,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             }
             if (id == 25) {
                 // powerup info request
-                let powerup;
-                powerup = powerUp.find(a => a.id == data.getUint16(1));
+                const powerup = powerUp.find(a => a.id == data.getUint16(1));
                 if (powerUp != null) {
                     const textEncoder = new TextEncoder();
                     const data = new Uint8Array(new ArrayBuffer(28 + textEncoder.encode(powerup.name).length));
@@ -1355,6 +1354,27 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setFloat64(11, powerup.position.y);
                     dataView.setFloat64(19, powerup.size);
                     dataView.setUint8(27, textEncoder.encode(powerup.name).length);
+                    dcLocal.send(dataView);
+                }
+            }
+            if (id == 29) {
+                // mob info request
+                const requestedMob = mob.find(a => a.id == data.getUint16(1));
+                if (requestedMob != null && !requestedMob.isUnblockable) {
+                    const color = requestedMob.fill == 'transparent' ? '#000' : requestedMob.fill;
+                    const textEncoder = new TextEncoder();
+                    const data = new Uint8Array(new ArrayBuffer(41 + textEncoder.encode(color).length));
+                    data[0] = 30;
+                    data.set(textEncoder.encode(color), 37);
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, requestedMob.id);
+                    dataView.setFloat64(3, requestedMob.position.x);
+                    dataView.setFloat64(11, requestedMob.position.y);
+                    dataView.setFloat64(19, requestedMob.angle);
+                    dataView.setUint8(27, requestedMob.vertices.length);
+                    dataView.setFloat64(28, requestedMob.radius);
+                    dataView.setUint8(36, textEncoder.encode(color).length);
+                    dataView.setFloat32(37 + textEncoder.encode(color).length, requestedMob.alpha || 1);
                     dcLocal.send(dataView);
                 }
             }
@@ -3029,6 +3049,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     }
     const oldBlocks = [];
     const oldPowerups = [];
+    const oldMobs = [];
 
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
@@ -3351,8 +3372,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         if (powerup.position.x != oldPowerups[i].position.x || powerup.position.y != oldPowerups[i].position.y || powerup.size != oldPowerups[i].size) changed = true;
                     }
                 }
-                changed = changed || !found;
-                if (changed) powerupChanges.push(powerup);
+                if (changed || !found) powerupChanges.push(powerup);
             }
             for (const powerup of powerupChanges) {
                 const data = new Uint8Array(new ArrayBuffer(27));
@@ -3379,6 +3399,77 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
 
             oldPowerups.length = 0;
             for (const powerup of powerUp) oldPowerups.push({ id: powerup.id, position: { x: powerup.position.x, y: powerup.position.y }, size: powerup.size });
+
+
+            // mob update
+            const mobChanges = [];
+            for (const newMob of mob) {
+                let changed = false;
+                let found = false;
+                for (let i = 0; i < oldMobs.length && !found; i++) {
+                    if (newMob.id == oldMobs[i].id) {
+                        found = true;
+                        if (newMob.position.x != oldMobs[i].position.x || newMob.position.y != oldMobs[i].position.y || newMob.angle != oldMobs[i].angle) changed = true;
+                    }
+                }
+                if (changed || !found) mobChanges.push(newMob);
+            }
+            for (const newMob of mobChanges) {
+                const data = new Uint8Array(new ArrayBuffer(27));
+                data[0] = 31;
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(1, newMob.id);
+                dataView.setFloat64(3, newMob.position.x);
+                dataView.setFloat64(11, newMob.position.y);
+                dataView.setFloat64(19, newMob.angle);
+                dcLocal.send(dataView);
+            }
+
+            mobChanges.length = 0;
+            for (const newMob of mob) {
+                let changed = false;
+                let found = false;
+                for (let i = 0; i < oldMobs.length && !found; i++) {
+                    if (newMob.id == oldMobs[i].id) {
+                        found = true;
+                        if (newMob.vertices.length != oldMobs[i].vertices.length) changed = true;
+                        for (let j = 0; j < newMob.vertices.length; j++) if (newMob.vertices[j].x != oldMobs[i].vertices[j].x || newMob.vertices[j].y != oldMobs[i].vertices[j].y) changed = true;
+                    }
+                }
+                if (changed || !found) mobChanges.push(newMob);
+            }
+            for (const newMob of mobChanges) {
+                const data = new Uint8Array(new ArrayBuffer(3 + 16 * newMob.vertices.length));
+                data[0] = 32;
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(1, newMob.id);
+                let index = 3;
+                for (const vertex of newMob.vertices) {
+                    dataView.setFloat64(index, vertex.x);
+                    dataView.setFloat64(index + 8, vertex.y);
+                    index += 16;
+                }
+                dcLocal.send(dataView);
+            }
+
+            for (const oldMob of oldMobs) {
+                let found = false;
+                for (let i = 0; i < mob.length; i++) if (oldMob.id == mob[i].id) found = true;
+                if (!found) {
+                    const data = new Uint8Array(new ArrayBuffer(3));
+                    data[0] = 33;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, oldMob.id);
+                    dcLocal.send(dataView);
+                }
+            }
+
+            oldMobs.length = 0;
+            for (const newMob of mob) {
+                vertices = [];
+                for (const vertex of newMob.vertices) vertices.push({ x: vertex.x, y: vertex.y });
+                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices });
+            };
         }})
     }
 })();
