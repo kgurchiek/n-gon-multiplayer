@@ -56,9 +56,9 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        console.log(session.ws.readyState, session.ws2.readyState)
-        if (session.ws.readyState == 1) session.ws.close();
-        if (session.ws2.readyState == 1) session.ws2.close();
+        console.log(session?.ws?.readyState, session?.ws2?.readyState)
+        if (session?.ws && session.ws.readyState == 1) session.ws.close();
+        if (session?.ws2 && session.ws2.readyState == 1) session.ws2.close();
         delete sessions[session];
     });
 });

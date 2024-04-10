@@ -1340,6 +1340,24 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 dataView.setUint8(51, 2);
                 dcLocal.send(data);
             }
+            if (id == 25) {
+                // powerup info request
+                let powerup;
+                powerup = powerUp.find(a => a.id == data.getUint16(1));
+                if (powerUp != null) {
+                    const textEncoder = new TextEncoder();
+                    const data = new Uint8Array(new ArrayBuffer(28 + textEncoder.encode(powerup.name).length));
+                    data[0] = 26;
+                    data.set(textEncoder.encode(powerup.name), 28)
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, powerup.id);
+                    dataView.setFloat64(3, powerup.position.x);
+                    dataView.setFloat64(11, powerup.position.y);
+                    dataView.setFloat64(19, powerup.size);
+                    dataView.setUint8(27, textEncoder.encode(powerup.name).length);
+                    dcLocal.send(dataView);
+                }
+            }
         };
         window.dcLocal.onerror = function(e) {
             console.error('dcLocal', 'onerror', e);
@@ -1362,7 +1380,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
 
             if (message.data[0] == '\x00') {
                 if (state == 0) {
-                    alert(`Join code: ${message.data.substring(1)}\nPress "ok" before entering it on another device.`);
+                    alert(`Join code: ${message.data.substring(1)}`);
                     state++;
                 } else {
                     const peerRemoteAnswer = new RTCSessionDescription(JSON.parse(message.data.substring(1)));
@@ -1386,6 +1404,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     const fieldData = [
         {
             // field emitter
+            do: () => {},
             drawField: () => {
                 if (player2.holdingTarget) {
                     ctx.fillStyle = "rgba(110,170,200," + (m.energy * (0.05 + 0.05 * Math.random())) + ")";
@@ -1427,6 +1446,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // standing wave
+            do: () => {},
             drawField: () => {
                 player2.harmonicRadius = 1; // TODO: changes with expansion tech
                 const fieldRange1 = (0.75 + 0.3 * Math.sin(m.cycle / 23)) * player2.fieldRange * player2.harmonicRadius
@@ -1450,6 +1470,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // perfect diamagnetism
+            do: () => {},
             drawField: () => {
                 const wave = Math.sin(m.cycle * 0.022);
                 player2.fieldRange = 180 + 12 * wave; // TODO: changes with Miessner Effect tech
@@ -1494,6 +1515,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // negative mass
+            do: () => {},
             drawField: () => {
                 if (player2.input.field) {
                     player2.FxAir = 0.016;
@@ -1523,6 +1545,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // molecular assembler
+            do: () => {},
             drawField: () => {
                 ctx.fillStyle = "rgba(110,170,200," + (0.02 + player2.energy * (0.15 + 0.15 * Math.random())) + ")";
                 ctx.strokeStyle = "rgba(110, 200, 235, " + (0.6 + 0.2 * Math.random()) + ")";
@@ -1559,6 +1582,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // plasma torch
+            do: () => {},
             drawField: () => {
                 let range = 120 + (player2.crouch ? 400 : 300) * Math.sqrt(Math.random()) // TODO: can change with tech
                 const path = [
@@ -1618,6 +1642,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // time dilation
+            do: () => {},
             drawField: () => {
                 ctx.globalCompositeOperation = "saturation";
                 ctx.fillStyle = "#ccc";
@@ -1630,6 +1655,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // metamaterial cloaking
+            do: () => {},
             drawField: () => {},
             fieldMeterColor: '#333',
             fieldRange: 155,
@@ -1637,6 +1663,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // pilot wave
+            do: () => {},
             drawField: () => {
                 if (player2.input.field) {
                     if (player2.fieldDrawRadius == 0) {
@@ -1703,6 +1730,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // wormhole
+            do: () => {},
             drawField: () => {
                 const scale = 60;
                 const justPastMouse = Vector.add(Vector.mult(Vector.normalise(Vector.sub(player2.mouseInGame, player2.pos)), 50), player2.mouseInGame)
@@ -1800,6 +1828,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         },
         {
             // grappling hook
+            do: () => {},
             drawField: () => {
                 // console.log(player2.input.field, player2.fieldCDcycle, m.cycle)
                 if (player2.input.field && player2.fieldCDcycle < m.cycle) {
@@ -2001,6 +2030,38 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         flipLegs: -1,
         foot: { x: 0, y: 0 },
         FxAir: 0.016,
+        grabPowerUp: () => {
+            for (let i = 0, len = powerUp.length; i < len; ++i) {
+                const dxP = player2.pos.x - powerUp[i].position.x;
+                const dyP = player2.pos.y - powerUp[i].position.y;
+                const dist2 = dxP * dxP + dyP * dyP + 10;
+                // float towards player  if looking at and in range  or  if very close to player
+                if (
+                    dist2 < m.grabPowerUpRange2 &&
+                    (player2.lookingAt(powerUp[i]) || dist2 < 10000) &&
+                    Matter.Query.ray(map, powerUp[i].position, player2.pos).length === 0
+                ) {
+                    if (true /*!tech.isHealAttract || powerUp[i].name !== "heal"*/) { //if you have accretion heals are already pulled in a different way
+                        powerUp[i].force.x += 0.04 * (dxP / Math.sqrt(dist2)) * powerUp[i].mass;
+                        powerUp[i].force.y += 0.04 * (dyP / Math.sqrt(dist2)) * powerUp[i].mass - powerUp[i].mass * simulation.g; //negate gravity
+                        Matter.Body.setVelocity(powerUp[i], { x: powerUp[i].velocity.x * 0.11, y: powerUp[i].velocity.y * 0.11 }); //extra friction
+                    }
+                    if ( //use power up if it is close enough
+                        dist2 < 5000 &&
+                        !simulation.isChoosing &&
+                        (powerUp[i].name !== "heal" || player2.maxHealth - player2.health > 0.01 || tech.isOverHeal)
+                    ) {
+                        // powerUps.onPickUp(powerUp[i]);
+                        player.velocity.x += powerUp[i].velocity.x / player.mass * 4 * powerUp[i].mass,
+                        player.velocity.y += powerUp[i].velocity.y / player.mass * 4 * powerUp[i].mass
+                        // powerUp[i].effect();
+                        Matter.Composite.remove(engine.world, powerUp[i]);
+                        powerUp.splice(i, 1);
+                        return; //because the array order is messed up after splice
+                    }
+                }
+            }
+        },
         health: 1,
         height: 42,
         hip: { x: 12, y: 24 },
@@ -2021,6 +2082,20 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         lastFieldPosition: { x: 0, y: 0 },
         legLength1: 55,
         legLength2: 45,
+        lookingAt: (who) => {
+            //calculate a vector from body to player and make it length 1
+            const diff = Vector.normalise(Vector.sub(who.position, player2.pos));
+            //make a vector for the player's direction of length 1
+            const dir = {
+                x: Math.cos(player2.angle),
+                y: Math.sin(player2.angle)
+            };
+            //the dot product of diff and dir will return how much over lap between the vectors
+            if (Vector.dot(dir, diff) > Math.cos((player2.fieldArc) * Math.PI)) {
+                return true;
+            }
+            return false;
+        },
         mass: 5,
         maxEnergy: 1,
         maxHealth: 1,
@@ -2953,6 +3028,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         yOff: 70
     }
     const oldBlocks = [];
+    const oldPowerups = [];
 
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
@@ -3011,6 +3087,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             ctx.stroke();
             ctx.restore();
             powerUps.boost.draw();
+            if (!player2.isHolding && player2.input.field) fieldData[player2.fieldMode].do();
+            if (!player2.isHolding && player2.input.field) player2.grabPowerUp();
             if (!player2.isHolding && (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10)) fieldData[player2.fieldMode].drawField();
             if (player2.holdingTarget) {
                 ctx.beginPath(); //draw on each valid body
@@ -3246,8 +3324,61 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 dcLocal.send(dataView);
             }
 
+            for (const oldBlock of oldBlocks) {
+                let found = false;
+                for (let i = 0; i < body.length; i++) if (oldBlock.id == body[i].id) found = true;
+                if (!found) {
+                    const data = new Uint8Array(new ArrayBuffer(3));
+                    data[0] = 24;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, oldBlock.id);
+                    dcLocal.send(dataView);
+                }
+            }
+
             oldBlocks.length = 0;
             for (const block of body) oldBlocks.push({ id: block.id, position: { x: block.position.x, y: block.position.y }, angle: block.angle });
+
+
+            // powerup update
+            const powerupChanges = [];
+            for (const powerup of powerUp) {
+                let changed = false;
+                let found = false; 
+                for (let i = 0; i < oldPowerups.length && !found; i++) {
+                    if (powerup.id == oldPowerups[i].id) {
+                        found = true;
+                        if (powerup.position.x != oldPowerups[i].position.x || powerup.position.y != oldPowerups[i].position.y || powerup.size != oldPowerups[i].size) changed = true;
+                    }
+                }
+                changed = changed || !found;
+                if (changed) powerupChanges.push(powerup);
+            }
+            for (const powerup of powerupChanges) {
+                const data = new Uint8Array(new ArrayBuffer(27));
+                data[0] = 27;
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(1, powerup.id);
+                dataView.setFloat64(3, powerup.position.x);
+                dataView.setFloat64(11, powerup.position.y);
+                dataView.setFloat64(19, powerup.size);
+                dcLocal.send(dataView);
+            }
+
+            for (const oldPowerup of oldPowerups) {
+                let found = false;
+                for (let i = 0; i < powerUp.length; i++) if (oldPowerup.id == powerUp[i].id) found = true;
+                if (!found) {
+                    const data = new Uint8Array(new ArrayBuffer(3));
+                    data[0] = 28;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, oldPowerup.id);
+                    dcLocal.send(dataView);
+                }
+            }
+
+            oldPowerups.length = 0;
+            for (const powerup of powerUp) oldPowerups.push({ id: powerup.id, position: { x: powerup.position.x, y: powerup.position.y }, size: powerup.size });
         }})
     }
 })();

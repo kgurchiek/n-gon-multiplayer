@@ -1317,6 +1317,41 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != data.getUint8(51));
                     b.multiplayerLasers.push({ id: data.getUint8(51), created: new Date(), where: { x: data.getFloat64(1), y: data.getFloat64(9) }, whereEnd: { x: data.getFloat64(17), y: data.getFloat64(25) }, dmg: data.getFloat64(33), reflections: data.getUint8(41), isThickBeam: data.getUint8(42) == 1, push: data.getFloat64(43) });
                 }
+                if (id == 24) {
+                    // delete block
+                    const index = body.findIndex(a => a.id == data.getUint16(1));
+                    Matter.Composite.remove(engine.world, body[index]);
+                    body = body.slice(0, index).concat(body.slice(index + 1));
+                }
+                if (id == 26) {
+                    // powerup info
+                    if (powerUp.find(a => a.id == data.getUint16(1)) == null) {
+                        const me = powerUp.length;
+                        oldPowerupSpawn(data.getFloat64(3), data.getFloat64(11), new TextDecoder().decode(data.buffer.slice(28, new Uint8Array(data.buffer)[27] + 28)));
+                        powerUp[me].id = data.getUint16(1);
+                        powerUp[me].size = data.getFloat64(19);
+                    }
+                }
+                if (id == 27) {
+                    // powerup update
+                    const powerup = powerUp.find(a => a.id == data.getUint16(1));
+                    if (powerup == null) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 25;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    } else {
+                        Matter.Body.setPosition(powerup, { x: data.getFloat64(3), y: data.getFloat64(11) });
+                        powerup.size = data.getFloat64(19);
+                    }
+                }
+                if (id == 28) {
+                    // delete powerup
+                    const index = powerUp.findIndex(a => a.id == data.getUint16(1));
+                    Matter.Composite.remove(engine.world, powerUp[index]);
+                    powerUp = powerUp.slice(0, index).concat(powerUp.slice(index + 1));
+                }
             };
             window.dcRemote.onerror = function(e) {
                 console.error('dcRemote', 'onerror', e);
@@ -2275,7 +2310,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     }
 
     const oldBodyRect = spawn.bodyRect;
-    spawn.bodyRect = () => {}
+    spawn.bodyRect = () => {};
+    const oldPowerupSpawn = powerUps.spawn;
+    powerUps.spawn = () => {};
 
     const oldExplosion = b.explosion;
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
