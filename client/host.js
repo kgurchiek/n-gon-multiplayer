@@ -1254,17 +1254,19 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 let block;
                 for (let i = 0; i < body.length; i++) if (body[i].id == data.getUint16(1)) block = body[i];
                 if (block != null) {
-                    const data = new Uint8Array(new ArrayBuffer(59));
+                    const data = new Uint8Array(new ArrayBuffer(20 + 16 * block.vertices.length));
                     data[0] = 14;
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, block.id);
                     dataView.setFloat64(3, block.position.x);
                     dataView.setFloat64(11, block.position.y);
-                    dataView.setFloat64(19, block.width);
-                    dataView.setFloat64(27, block.height);
-                    dataView.setFloat64(35, block.angle);
-                    dataView.setFloat64(43, block.velocity.x);
-                    dataView.setFloat64(51, block.velocity.y);
+                    dataView.setUint8(19, 16 * block.vertices.length);
+                    let index = 20;
+                    for (const vertex of block.vertices) {
+                        dataView.setFloat64(index, vertex.x);
+                        dataView.setFloat64(index + 8, vertex.y);
+                        index += 16;
+                    }
                     dcLocal.send(dataView);
                 }
             }
@@ -1361,11 +1363,13 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 // mob info request
                 const requestedMob = mob.find(a => a.id == data.getUint16(1));
                 if (requestedMob != null && !requestedMob.isUnblockable) {
-                    const color = requestedMob.fill == 'transparent' ? '#000' : requestedMob.fill;
+                    const color = requestedMob.fill; // == 'transparent' ? '#000' : requestedMob.fill;
+                    const stroke = requestedMob.stroke; // == 'transparent' ? '#000' : requestedMob.stroke;
                     const textEncoder = new TextEncoder();
-                    const data = new Uint8Array(new ArrayBuffer(41 + textEncoder.encode(color).length));
+                    const data = new Uint8Array(new ArrayBuffer(42 + textEncoder.encode(color).length + textEncoder.encode(stroke).length));
                     data[0] = 30;
                     data.set(textEncoder.encode(color), 37);
+                    data.set(textEncoder.encode(stroke), 42 + textEncoder.encode(color).length);
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, requestedMob.id);
                     dataView.setFloat64(3, requestedMob.position.x);
@@ -1375,6 +1379,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setFloat64(28, requestedMob.radius);
                     dataView.setUint8(36, textEncoder.encode(color).length);
                     dataView.setFloat32(37 + textEncoder.encode(color).length, requestedMob.alpha || 1);
+                    dataView.setUint8(41 + textEncoder.encode(color).length, textEncoder.encode(stroke).length);
                     dcLocal.send(dataView);
                 }
             }
@@ -1389,7 +1394,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         console.log('peerLocal', 'createOffer');
         let peerLocalOffer = await peerLocal.createOffer();
 
-        ws = new WebSocket('wss://n-gon.cornbread2100.com');
+        ws = new WebSocket('ws://localhost' /*'wss://n-gon.cornbread2100.com'*/);
         ws.onopen = async () => {
             console.log('connected');
             ws.send(`\x00${JSON.stringify(peerLocalOffer)}`);

@@ -18,7 +18,7 @@
 | 11 | Sync Request         | 0      | |
 | 12 | Sync                 | 2+     | difficulty (int8), seed (string) |
 | 13 | Block Info Request   | 2      | blockId (Uint16) |
-| 14 | Block Info           | 58     | blockId (Uint16), x (Float64), y (Float64), width (Float64) height (Float64), angle (Float64), xVelocity (Float64), yVelocity (Float64) |
+| 14 | Block Info           | 58     | blockId (Uint16), x (Float64), y (Float64), vertices (list: x (Float64), y (Float64)) |
 | 15 | Block Update         | 42     | blockId (Uint16), x (Float64), y (Float64), angle (Float64), xVelocity (Float64), yVelocity (Float64) |
 | 16 | Explosion            | 25+    | x (Float64), y (Float64), radius (Float64), color (string) |
 | 17 | Pulse                | 32     | charge (Float64), angle (Float64), x (Float64), y (Float64) |
@@ -34,7 +34,7 @@
 | 27 | Powerup Update       | 26     | powerupId (Uint16), x (Float64), y (Float64), size (Float64) |
 | 28 | Delete Powerup       | 2      | powerupId (Uint16) |
 | 29 | Mob Info Request     | 2      | mobId (Uint16) |
-| 30 | Mob Info             | 40+    | mobId (Uint16), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32) |
+| 30 | Mob Info             | 40+    | mobId (Uint16), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string) |
 | 31 | Mob Position Update  | 26     | mobId (Uint16), x (Float64), y (Float64), angle (Float64) |
 | 32 | Mob Vertex Update    | 2+     | mobId (Uint16), vertices (list: x (Float64), y (Float64)) |
 | 33 | Delete Mob           | 2      | mobId (Uint16) |

@@ -1245,11 +1245,12 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     for (let i = 0; i < body.length && !found; i++) if (body[i].id == data.getUint16(1)) found = true;
                     if (!found) {
                         const me = body.length;
-                        oldBodyRect(data.getFloat64(3), data.getFloat64(11), data.getFloat64(19), data.getFloat64(27));
+                        let vertices = '';
+                        for (let i = 0; i < data.getUint8(19); i += 16) vertices += `${vertices == '' ? '' : ' '}${data.getFloat64(20 + i)} ${data.getFloat64(20 + i + 8)}`;
+                        oldBodyVertex(data.getFloat64(3), data.getFloat64(11), vertices, {});
                         body[me].id = data.getUint16(1);
                         body[me].inertia = Infinity;
-                        Matter.Body.setAngle(body[me], data.getFloat64(35));
-                        Matter.Body.setVelocity(body[me], { x: data.getFloat64(43), y: data.getFloat64(51) });
+
                     }
                 }
                 if (id == 15) {
@@ -1357,47 +1358,56 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     if (mob.find(a => a.id == data.getUint16(1)) == null) {
                         const me = mob.length;
                         const alpha = data.getFloat32(37 + new Uint8Array(data.buffer)[36]);
-                        let color = new TextDecoder().decode(data.buffer.slice(37, new Uint8Array(data.buffer)[36] + 37));
-                        if (color.startsWith('#')) {
-                            if (color.length == 4) color = `rgba(${color[1]},${color[2]},${color[3]},${alpha})`
-                            else color = `rgba(${color.substring(1, 3)},${color.substring(3, 5)},${color.substring(5)},${alpha})`;
-                        } else if (color.startsWith('hsl(')) {
-                            let values = color.substring(4, color.length - 1);
-                            const [h, s, l] = values.split(',');
+                        const colorLength = data.getUint8(36);
+                        let color = new TextDecoder().decode(data.buffer.slice(37, 37 + colorLength));
+                        const strokeLength = data.getUint8(41 + colorLength);
+                        let stroke = new TextDecoder().decode(data.buffer.slice(42 + colorLength, 42 + colorLength + strokeLength));
+                        // console.log(1, color)
+                        // if (color.startsWith('#')) {
+                        //     if (color.length == 4) color = `rgba(${color[1]},${color[2]},${color[3]},${alpha})`;
+                        //     else color = `rgba(${color.substring(1, 3)},${color.substring(3, 5)},${color.substring(5)},${alpha})`;
+                        // } else if (color.startsWith('hsl(')) {
+                        //     let values = color.substring(4, color.length - 1);
+                        //     let [h, s, l] = values.split(',');
+                        //     h = parseInt(h);
+                        //     s = parseInt(s.replaceAll('%', ''));
+                        //     l = parseInt(l.replaceAll('%', ''));
 
-                            // https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
-                            function hueToRgb(p, q, t) {
-                                if (t < 0) t += 1;
-                                if (t > 1) t -= 1;
-                                if (t < 1/6) return p + (q - p) * 6 * t;
-                                if (t < 1/2) return q;
-                                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                                return p;
-                            }
+                        //     // https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
+                        //     function hueToRgb(p, q, t) {
+                        //         if (t < 0) t += 1;
+                        //         if (t > 1) t -= 1;
+                        //         if (t < 1/6) return p + (q - p) * 6 * t;
+                        //         if (t < 1/2) return q;
+                        //         if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                        //         return p;
+                        //     }
 
-                            let r, g, b;
+                        //     let r, g, b;
                         
-                            if (s === 0) r = g = b = l; // achromatic
-                            else {
-                                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                                const p = 2 * l - q;
-                                r = hueToRgb(p, q, h + 1/3);
-                                g = hueToRgb(p, q, h);
-                                b = hueToRgb(p, q, h - 1/3);
-                            }
+                        //     if (s === 0) r = g = b = l; // achromatic
+                        //     else {
+                        //         const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                        //         const p = 2 * l - q;
+                        //         r = hueToRgb(p, q, h + 1/3);
+                        //         g = hueToRgb(p, q, h);
+                        //         b = hueToRgb(p, q, h - 1/3);
+                        //     }
                         
-                            color = `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${alpha})`;
-                        } else if (color.startsWith('rgb(')) {
-                            let values = color.substring(4, color.length - 1);
-                            color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
-                        } else if (color.startsWith('rgba(')) {
-                            let values = color.substring(5, color.length - 1);
-                            color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
-                        }
+                        //     color = `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${alpha})`;
+                        // } else if (color.startsWith('rgb(')) {
+                        //     let values = color.substring(4, color.length - 1);
+                        //     color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
+                        // } else if (color.startsWith('rgba(')) {
+                        //     let values = color.substring(5, color.length - 1);
+                        //     color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
+                        // }
                         mobs.spawn(data.getFloat64(3), data.getFloat64(11), data.getUint8(27), data.getFloat64(28), color);
                         mob[me].id = data.getUint16(1);
                         Matter.Body.setAngle(mob[me], data.getFloat64(19));
                         mob[me].do = () => {};
+                        mob[me].alpha = alpha;
+                        mob[me].stroke = stroke;
                     }
                 }
                 if (id == 31) {
@@ -1427,14 +1437,18 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         const newVertices = [];
                         for (let i = 3; i < data.byteLength; i += 16) newVertices.push({ x: data.getFloat64(i), y: data.getFloat64(i + 8) });
                         Matter.Body.setVertices(newMob, newVertices)
-                        console.log(newMob.vertices.length);
                     }
                 }
                 if (id == 33) {
                     // delete mob
                     const index = mob.findIndex(a => a.id == data.getUint16(1));
-                    Matter.Composite.remove(engine.world, mob[index]);
-                    mob = mob.slice(0, index).concat(mob.slice(index + 1));
+                    console.log(data.getUint16(1), index);
+                    if (index != -1) {
+                        // mob[index].removeConsBB();
+                        // mob[index].alive = false;
+                        Matter.Composite.remove(engine.world, mob[index]);
+                        mob = mob.slice(0, index).concat(mob.slice(index + 1));
+                    }
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -1457,7 +1471,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         }
         peerRemote.onnegotiationneeded = (e) => console.log('peerRemote', 'onnegotiationneeded', e);
 
-        ws = new WebSocket('wss://n-gon.cornbread2100.com');
+        ws = new WebSocket('ws://localhost' /*'wss://n-gon.cornbread2100.com'*/);
         ws.onopen = async () => {
             console.log('connected');
             ws.send(`\x01${prompt('Join code:')}`)
@@ -2395,6 +2409,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
 
     const oldBodyRect = spawn.bodyRect;
     spawn.bodyRect = () => {};
+    const oldBodyVertex = spawn.bodyVertex;
+    spawn.bodyVertex = () => {};
     const oldPowerupSpawn = powerUps.spawn;
     powerUps.spawn = () => {};
 
