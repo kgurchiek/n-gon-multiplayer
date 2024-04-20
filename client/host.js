@@ -1363,23 +1363,24 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 // mob info request
                 const requestedMob = mob.find(a => a.id == data.getUint16(1));
                 if (requestedMob != null && !requestedMob.isUnblockable) {
-                    const color = requestedMob.fill; // == 'transparent' ? '#000' : requestedMob.fill;
-                    const stroke = requestedMob.stroke; // == 'transparent' ? '#000' : requestedMob.stroke;
+                    const color = requestedMob.fill;
+                    const stroke = requestedMob.stroke;
                     const textEncoder = new TextEncoder();
-                    const data = new Uint8Array(new ArrayBuffer(42 + textEncoder.encode(color).length + textEncoder.encode(stroke).length));
+                    const data = new Uint8Array(new ArrayBuffer(43 + textEncoder.encode(color).length + textEncoder.encode(stroke).length));
                     data[0] = 30;
-                    data.set(textEncoder.encode(color), 37);
-                    data.set(textEncoder.encode(stroke), 42 + textEncoder.encode(color).length);
+                    data.set(textEncoder.encode(color), 38);
+                    data.set(textEncoder.encode(stroke), 43 + textEncoder.encode(color).length);
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, requestedMob.id);
-                    dataView.setFloat64(3, requestedMob.position.x);
-                    dataView.setFloat64(11, requestedMob.position.y);
-                    dataView.setFloat64(19, requestedMob.angle);
-                    dataView.setUint8(27, requestedMob.vertices.length);
-                    dataView.setFloat64(28, requestedMob.radius);
-                    dataView.setUint8(36, textEncoder.encode(color).length);
-                    dataView.setFloat32(37 + textEncoder.encode(color).length, requestedMob.alpha || 1);
-                    dataView.setUint8(41 + textEncoder.encode(color).length, textEncoder.encode(stroke).length);
+                    dataView.setUint8(3, requestedMob.mobType);
+                    dataView.setFloat64(4, requestedMob.position.x);
+                    dataView.setFloat64(12, requestedMob.position.y);
+                    dataView.setFloat64(20, requestedMob.angle);
+                    dataView.setUint8(28, requestedMob.vertices.length);
+                    dataView.setFloat64(29, requestedMob.radius);
+                    dataView.setUint8(37, textEncoder.encode(color).length);
+                    dataView.setFloat32(38 + textEncoder.encode(color).length, requestedMob.alpha || 1);
+                    dataView.setUint8(42 + textEncoder.encode(color).length, textEncoder.encode(stroke).length);
                     dcLocal.send(dataView);
                 }
             }
@@ -2395,6 +2396,510 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         body[me].height = height;
     }
 
+    const oldMACHO = spawn.MACHO;
+    spawn.MACHO = (x = m.pos.x, y = m.pos.y) => {
+        oldMACHO(x, y);
+        mob[mob.length - 1].mobType = 0;
+    }
+    
+    const oldWIMP = spawn.WIMP;
+    spawn.WIMP = (x = level.exit.x + tech.wimpCount * 200 * (Math.random() - 0.5), y = level.exit.y + tech.wimpCount * 200 * (Math.random() - 0.5)) => {
+        oldWIMP(x, y);
+        mob[mob.length - 1].mobType = 1;
+    }
+    
+    const oldFinalBoss = spawn.finalBoss;
+    spawn.finalBoss = (x, y, radius = 300) => {
+        oldFinalBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 2;
+    }
+    
+    const oldZombie = spawn.zombie;
+    spawn.zombie = (x, y, radius, sides, color) => {
+        oldZombie(x, y, radius, sides, color);
+        mob[mob.length - 1].mobType = 3;
+    }
+    
+    const oldStarter = spawn.starter;
+    spawn.starter = (x, y, radius = Math.floor(15 + 20 * Math.random())) => {
+        oldStarter(x, y, radius);
+        mob[mob.length - 1].mobType = 4;
+    }
+    
+    const oldBlockGroupMob = spawn.blockGroupMob;
+    spawn.blockGroupMob = (x, y, radius = 25 + Math.floor(Math.random() * 20)) => {
+        oldBlockGroupMob(x, y, radius);
+        mob[mob.length - 1].mobType = 5;
+    }
+    
+    const oldBlockBoss = spawn.blockBoss;
+    spawn.blockBoss = (x, y, radius = 60) => {
+        oldBlockBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 6;
+    }
+    
+    const oldBlockMob = spawn.blockMob;
+    spawn.blockMob = (x, y, host, growCycles = 60) => {
+        oldBlockMob(x, y, host, growCycles);
+        mob[mob.length - 1].mobType = 7;
+    }
+    
+    const oldCellBoss = spawn.cellBoss;
+    spawn.cellBoss = (x, y, radius = 20, cellID) => {
+        oldCellBoss(x, y, radius, cellID);
+        mob[mob.length - 1].mobType = 8;
+    }
+    
+    const oldSpawnerBoss = spawn.spawnerBoss;
+    spawn.spawnerBoss = (x, y, radius, spawnID) => {
+        oldSpawnerBoss(x, y, radius, spawnID);
+        mob[mob.length - 1].mobType = 9;
+    }
+    
+    const oldGrowBoss = spawn.growBoss;
+    spawn.growBoss = (x, y, radius, buffID) => {
+        oldGrowBoss(x, y, radius, buffID);
+        mob[mob.length - 1].mobType = 10;
+    }
+    
+    const oldPowerUpBossBaby = spawn.powerUpBossBaby;
+    spawn.powerUpBossBaby = (x, y, vertices = 9, radius = 60) => {
+        oldPowerUpBossBaby(x, y, vertices, radius);
+        mob[mob.length - 1].mobType = 11;
+    }
+    
+    const oldPowerUpBoss = spawn.powerUpBoss;
+    spawn.powerUpBoss = (x, y, vertices = 9, radius = 130) => {
+        oldPowerUpBoss(x, y, vertices, radius);
+        mob[mob.length - 1].mobType = 12;
+    }
+    
+    const oldGrower = spawn.grower;
+    spawn.grower = (x, y, radius = 15) => {
+        oldGrower(x, y, radius);
+        mob[mob.length - 1].mobType = 13;
+    }
+    
+    const oldSpringer = spawn.springer;
+    spawn.springer = (x, y, radius = 20 + Math.ceil(Math.random() * 35)) => {
+        oldSpringer(x, y, radius);
+        mob[mob.length - 1].mobType = 14;
+    }
+    
+    const oldHopper = spawn.hopper;
+    spawn.hopper = (x, y, radius = 35 + Math.ceil(Math.random() * 30)) => {
+        oldHopper(x, y, radius);
+        mob[mob.length - 1].mobType = 15;
+    }
+    
+    const oldHopMother = spawn.hopMother;
+    spawn.hopMother = (x, y, radius = 20 + Math.ceil(Math.random() * 20)) => {
+        oldHopMother(x, y, radius);
+        mob[mob.length - 1].mobType = 16;
+    }
+    
+    const oldHopEgg = spawn.hopEgg;
+    spawn.hopEgg = (x, y) => {
+        oldHopEgg(x, y);
+        mob[mob.length - 1].mobType = 17;
+    }
+    
+    const oldHopBullet = spawn.hopBullet;
+    spawn.hopBullet = (x, y, radius = 10 + Math.ceil(Math.random() * 8)) => {
+        oldHopBullet(x, y, radius);
+        mob[mob.length - 1].mobType = 18;
+    }
+    
+    const oldHopMotherBoss = spawn.hopMotherBoss;
+    spawn.hopMotherBoss = (x, y, radius = 120) => {
+        oldHopMotherBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 19;
+    }
+    
+    const oldSpinner = spawn.spinner;
+    spawn.spinner = (x, y, radius = 30 + Math.ceil(Math.random() * 35)) => {
+        oldSpinner(x, y, radius);
+        mob[mob.length - 1].mobType = 20;
+    }
+    
+    const oldSucker = spawn.sucker;
+    spawn.sucker = (x, y, radius = 30 + Math.ceil(Math.random() * 25)) => {
+        oldSucker(x, y, radius);
+        mob[mob.length - 1].mobType = 21;
+    }
+    
+    const oldSuckerBoss = spawn.suckerBoss;
+    spawn.suckerBoss = (x, y, radius = 25) => {
+        oldSuckerBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 22;
+    }
+    
+    const oldSpiderBoss = spawn.spiderBoss;
+    spawn.spiderBoss = (x, y, radius = 60 + Math.ceil(Math.random() * 10)) => {
+        oldSpiderBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 23;
+    }
+    
+    const oldMantisBoss = spawn.mantisBoss;
+    spawn.mantisBoss = (x, y, radius = 35, isSpawnBossPowerUp = true) => {
+        oldMantisBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 24;
+    }
+    
+    const oldBeamer = spawn.beamer;
+    spawn.beamer = (x, y, radius = 15 + Math.ceil(Math.random() * 15)) => {
+        oldBeamer(x, y, radius);
+        mob[mob.length - 1].mobType = 25;
+    }
+    
+    const oldHistoryBoss = spawn.historyBoss;
+    spawn.historyBoss = (x, y, radius = 30) => {
+        oldHistoryBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 26;
+    }
+    
+    const oldFocuser = spawn.focuser;
+    spawn.focuser = (x, y, radius = 30 + Math.ceil(Math.random() * 10)) => {
+        oldFocuser(x, y, radius);
+        mob[mob.length - 1].mobType = 27;
+    }
+    
+    const oldFlutter = spawn.flutter;
+    spawn.flutter = (x, y, radius = 20 + 6 * Math.random()) => {
+        oldFlutter(x, y, radius);
+        mob[mob.length - 1].mobType = 28;
+    }
+    
+    const oldStinger = spawn.stinger;
+    spawn.stinger = (x, y, radius = 18 + 4 * Math.random()) => {
+        oldStinger(x, y, radius);
+        mob[mob.length - 1].mobType = 29;
+    }
+    
+    const oldBeetleBoss = spawn.beetleBoss;
+    spawn.beetleBoss = (x, y, radius = 50) => {
+        oldBeetleBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 30;
+    }
+    
+    const oldLaserTargetingBoss = spawn.laserTargetingBoss;
+    spawn.laserTargetingBoss = (x, y, radius = 80) => {
+        oldLaserTargetingBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 31;
+    }
+    
+    const oldLaserBombingBoss = spawn.laserBombingBoss;
+    spawn.laserBombingBoss = (x, y, radius = 80) => {
+        oldLaserBombingBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 32;
+    }
+    
+    const oldBlinkBoss = spawn.blinkBoss;
+    spawn.blinkBoss = (x, y) => {
+        oldBlinkBoss(x, y);
+        mob[mob.length - 1].mobType = 33;
+    }
+    
+    const oldPulsarBoss = spawn.pulsarBoss;
+    spawn.pulsarBoss = (x, y, radius = 90, isNonCollide = false) => {
+        oldPulsarBoss(x, y, radius, isNonCollide);
+        mob[mob.length - 1].mobType = 34;
+    }
+    
+    const oldPulsar = spawn.pulsar;
+    spawn.pulsar = (x, y, radius = 40) => {
+        oldPulsar(x, y, radius);
+        mob[mob.length - 1].mobType = 35;
+    }
+    
+    const oldLaserLayer = spawn.laserLayer;
+    spawn.laserLayer = (x, y, radius = 18 + Math.floor(6 * Math.random())) => {
+        oldLaserLayer(x, y, radius);
+        mob[mob.length - 1].mobType = 36;
+    }
+    
+    const oldLaserLayerBoss = spawn.laserLayerBoss;
+    spawn.laserLayerBoss = (x, y, radius = 65) => {
+        oldLaserLayerBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 37;
+    }
+    
+    const oldMobLaser = spawn.laser;
+    spawn.laser = (x, y, radius = 30) => {
+        oldMobLaser(x, y, radius);
+        mob[mob.length - 1].mobType = 38;
+    }
+    
+    const oldLaserBoss = spawn.laserBoss;
+    spawn.laserBoss = (x, y, radius = 30) => {
+        oldLaserBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 39;
+    }
+    
+    const oldStabber = spawn.stabber;
+    spawn.stabber = (x, y, radius = 25 + Math.ceil(Math.random() * 12), spikeMax = 7) => {
+        oldStabber(x, y, radius, spikeMax);
+        mob[mob.length - 1].mobType = 40;
+    }
+    
+    const oldStriker = spawn.striker;
+    spawn.striker = (x, y, radius = 14 + Math.ceil(Math.random() * 25)) => {
+        oldStriker(x, y, radius);
+        mob[mob.length - 1].mobType = 41;
+    }
+    
+    const oldRevolutionBoss = spawn.revolutionBoss;
+    spawn.revolutionBoss = (x, y, radius = 70) => {
+        oldRevolutionBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 42;
+    }
+    
+    const oldSprayBoss = spawn.sprayBoss;
+    spawn.sprayBoss = (x, y, radius = 40, isSpawnBossPowerUp = true) => {
+        oldSprayBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 43;
+    }
+    
+    const oldMineBoss = spawn.mineBoss;
+    spawn.mineBoss = (x, y, radius = 120, isSpawnBossPowerUp = true) => {
+        oldMineBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 44;
+    }
+    
+    const oldMine = spawn.mine;
+    spawn.mine = (x, y) => {
+        oldMine(x, y);
+        mob[mob.length - 1].mobType = 45;
+    }
+    
+    const oldBounceBoss = spawn.bounceBoss;
+    spawn.bounceBoss = (x, y, radius = 80, isSpawnBossPowerUp = true) => {
+        oldBounceBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 46;
+    }
+    
+    const oldTimeBoss = spawn.timeBoss;
+    spawn.timeBoss = (x, y, radius = 50, isSpawnBossPowerUp = true) => {
+        oldTimeBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 47;
+    }
+    
+    const oldBounceBullet = spawn.bounceBullet;
+    spawn.bounceBullet = (x, y, velocity = { x: 0, y: 0 }, radius = 11, sides = 6) => {
+        oldBounceBullet(x, y, velocity, radius, sides);
+        mob[mob.length - 1].mobType = 48;
+    }
+    
+    const oldSlashBoss = spawn.slashBoss;
+    spawn.slashBoss = (x, y, radius = 80) => {
+        oldSlashBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 49;
+    }
+    
+    const oldSlasher = spawn.slasher;
+    spawn.slasher = (x, y, radius = 33 + Math.ceil(Math.random() * 30)) => {
+        oldSlasher(x, y, radius);
+        mob[mob.length - 1].mobType = 50;
+    }
+    
+    const oldSlasher2 = spawn.slasher2;
+    spawn.slasher2 = (x, y, radius = 33 + Math.ceil(Math.random() * 30)) => {
+        oldSlasher2(x, y, radius);
+        mob[mob.length - 1].mobType = 51;
+    }
+    
+    const oldSlasher3 = spawn.slasher3;
+    spawn.slasher3 = (x, y, radius = 33 + Math.ceil(Math.random() * 30)) => {
+        oldSlasher3(x, y, radius);
+        mob[mob.length - 1].mobType = 52;
+    }
+    
+    const oldSneakBoss = spawn.sneakBoss;
+    spawn.sneakBoss = (x, y, radius = 70) => {
+        oldSneakBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 53;
+    }
+    
+    const oldSneaker = spawn.sneaker;
+    spawn.sneaker = (x, y, radius = 15 + Math.ceil(Math.random() * 10)) => {
+        oldSneaker(x, y, radius);
+        mob[mob.length - 1].mobType = 54;
+    }
+    
+    const oldGhoster = spawn.ghoster;
+    spawn.ghoster = (x, y, radius = 50 + Math.ceil(Math.random() * 90)) => {
+        oldGhoster(x, y, radius);
+        mob[mob.length - 1].mobType = 55;
+    }
+    
+    const oldBomberBoss = spawn.bomberBoss;
+    spawn.bomberBoss = (x, y, radius = 88) => {
+        oldBomberBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 56;
+    }
+    
+    const oldShooter = spawn.shooter;
+    spawn.shooter = (x, y, radius = 25 + Math.ceil(Math.random() * 50)) => {
+        oldShooter(x, y, radius);
+        mob[mob.length - 1].mobType = 57;
+    }
+    
+    const oldShooterBoss = spawn.shooterBoss;
+    spawn.shooterBoss = (x, y, radius = 110, isSpawnBossPowerUp = true) => {
+        oldShooterBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 58;
+    }
+    
+    const oldBullet = spawn.bullet;
+    spawn.bullet = (x, y, radius = 9, sides = 0) => {
+        oldBullet(x, y, radius, sides);
+        mob[mob.length - 1].mobType = 59;
+    }
+    
+    const oldBomb = spawn.bomb;
+    spawn.bomb = (x, y, radius = 9, sides = 5) => {
+        oldBomb(x, y, radius, sides);
+        mob[mob.length - 1].mobType = 60;
+    }
+    
+    const oldSniper = spawn.sniper;
+    spawn.sniper = (x, y, radius = 35 + Math.ceil(Math.random() * 30)) => {
+        oldSniper(x, y, radius);
+        mob[mob.length - 1].mobType = 61;
+    }
+    
+    const oldSniperBullet = spawn.sniperBullet;
+    spawn.sniperBullet = (x, y, radius = 9, sides = 5) => {
+        oldSniperBullet(x, y, radius, sides);
+        mob[mob.length - 1].mobType = 62;
+    }
+    
+    const oldLauncherOne = spawn.launcherOne;
+    spawn.launcherOne = (x, y, radius = 30 + Math.ceil(Math.random() * 40)) => {
+        oldLauncherOne(x, y, radius);
+        mob[mob.length - 1].mobType = 63;
+    }
+    
+    const oldLauncher = spawn.launcher;
+    spawn.launcher = (x, y, radius = 30 + Math.ceil(Math.random() * 40)) => {
+        oldLauncher(x, y, radius);
+        mob[mob.length - 1].mobType = 64;
+    }
+    
+    const oldLauncherBoss = spawn.launcherBoss;
+    spawn.launcherBoss = (x, y, radius = 90, isSpawnBossPowerUp = true) => {
+        oldLauncherBoss(x, y, radius, isSpawnBossPowerUp);
+        mob[mob.length - 1].mobType = 65;
+    }
+    
+    const oldGrenadierBoss = spawn.grenadierBoss;
+    spawn.grenadierBoss = (x, y, radius = 95) => {
+        oldGrenadierBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 66;
+    }
+    
+    const oldGrenadier = spawn.grenadier;
+    spawn.grenadier = (x, y, radius = 35 + Math.ceil(Math.random() * 20)) => {
+        oldGrenadier(x, y, radius);
+        mob[mob.length - 1].mobType = 67;
+    }
+    
+    const oldMobGrenade = spawn.grenade;
+    spawn.grenade = (x, y, lifeSpan = 90 + Math.ceil(60 / simulation.accelScale), pulseRadius = Math.min(550, 250 + simulation.difficulty * 3), size = 3) => {
+        oldMobGrenade(x, y, lifeSpan, pulseRadius, size);
+        mob[mob.length - 1].mobType = 68;
+    }
+    
+    const oldShieldingBoss = spawn.shieldingBoss;
+    spawn.shieldingBoss = (x, y, radius = 200) => {
+        oldShieldingBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 69;
+    }
+    
+    const oldTimeSkipBoss = spawn.timeSkipBoss;
+    spawn.timeSkipBoss = (x, y, radius = 50) => {
+        oldTimeSkipBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 70;
+    }
+    
+    const oldStreamBoss = spawn.streamBoss;
+    spawn.streamBoss = (x, y, radius = 110) => {
+        oldStreamBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 71;
+    }
+    
+    const oldSeeker = spawn.seeker;
+    spawn.seeker = (x, y, radius = 8, sides = 6) => {
+        oldSeeker(x, y, radius, sides);
+        mob[mob.length - 1].mobType = 72;
+    }
+    
+    const oldSpawner = spawn.spawner;
+    spawn.spawner = (x, y, radius = 55 + Math.ceil(Math.random() * 50)) => {
+        oldSpawner(x, y, radius);
+        mob[mob.length - 1].mobType = 73;
+    }
+    
+    const oldSpawns = spawn.spawns;
+    spawn.spawns = (x, y, radius = 15) => {
+        oldSpawns(x, y, radius);
+        mob[mob.length - 1].mobType = 74;
+    }
+    
+    const oldExploder = spawn.exploder;
+    spawn.exploder = (x, y, radius = 40 + Math.ceil(Math.random() * 50)) => {
+        oldExploder(x, y, radius);
+        mob[mob.length - 1].mobType = 75;
+    }
+    
+    const oldSnakeSpitBoss = spawn.snakeSpitBoss;
+    spawn.snakeSpitBoss = (x, y, radius = 50) => {
+        oldSnakeSpitBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 76;
+    }
+    
+    const oldDragonFlyBoss = spawn.dragonFlyBoss;
+    spawn.dragonFlyBoss = (x, y, radius = 42) => {
+        oldDragonFlyBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 77;
+    }
+    
+    const oldSnakeBody = spawn.snakeBody;
+    spawn.snakeBody = (x, y, radius = 10) => {
+        oldSnakeBody(x, y, radius);
+        mob[mob.length - 1].mobType = 78;
+    }
+    
+    const oldTetherBoss = spawn.tetherBoss;
+    spawn.tetherBoss = (x, y, constraint, radius = 90) => {
+        oldTetherBoss(x, y, constraint, radius);
+        mob[mob.length - 1].mobType = 79;
+    }
+    
+    const oldShield = spawn.shield;
+    spawn.shield = (target, x, y, chance = Math.min(0.02 + simulation.difficulty * 0.005, 0.2) + tech.duplicationChance(), isExtraShield = false) => {
+        oldShield(target, x, y, chance, isExtraShield);
+        mob[mob.length - 1].mobType = 80;
+    }
+    
+    const oldGroupShield = spawn.groupShield;
+    spawn.groupShield = (targets, x, y, radius, stiffness = 0.4) => {
+        oldGroupShield(targets, x, y, radius, stiffness);
+        mob[mob.length - 1].mobType = 81;
+    }
+    
+    const oldOrbital = spawn.orbital;
+    spawn.orbital = (who, radius, phase, speed) => {
+        oldOrbital(who, radius, phase, speed);
+        mob[mob.length - 1].mobType = 82;
+    }
+    
+    const oldOrbitalBoss = spawn.orbitalBoss;
+    spawn.orbitalBoss = (x, y, radius = 70) => {
+        oldOrbitalBoss(x, y, radius);
+        mob[mob.length - 1].mobType = 83;
+    }
+
     const oldExplosion = b.explosion;
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
         const textEncoder = new TextEncoder();
@@ -3362,8 +3867,40 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 }
             }
 
+            blockChanges.length = 0;
+            for (const block of body) {
+                let changed = false;
+                let found = false;
+                for (let i = 0; i < oldBlocks.length && !found; i++) {
+                    if (block.id == oldBlocks[i].id) {
+                        found = true;
+                        if (block.vertices.length != oldBlocks[i].vertices.length) changed = true;
+                        else for (let j = 0; j < block.vertices.length; j++) if (block.vertices[j].x != oldBlocks[i].vertices[j].x || block.vertices[j].y != oldBlocks[i].vertices[j].y) changed = true;
+                    }
+                }
+                if (changed || !found) blockChanges.push(block);
+            }
+            for (const block of blockChanges) {
+                const data = new Uint8Array(new ArrayBuffer(3 + 16 * block.vertices.length));
+                data[0] = 35;
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(1, block.id);
+                let index = 3;
+                for (const vertex of block.vertices) {
+                    dataView.setFloat64(index, vertex.x);
+                    dataView.setFloat64(index + 8, vertex.y);
+                    index += 16;
+                }
+                dcLocal.send(dataView);
+            }
+            
+
             oldBlocks.length = 0;
-            for (const block of body) oldBlocks.push({ id: block.id, position: { x: block.position.x, y: block.position.y }, angle: block.angle });
+            for (const block of body) {
+                vertices = [];
+                for (const vertex of block.vertices) vertices.push({ x: vertex.x, y: vertex.y });
+                oldBlocks.push({ id: block.id, position: { x: block.position.x, y: block.position.y }, angle: block.angle, vertices });
+            }
 
 
             // powerup update
@@ -3457,12 +3994,39 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 dcLocal.send(dataView);
             }
 
+            mobChanges.length = 0;
+            for (const newMob of mob) {
+                let changed = false;
+                let found = false;
+                for (let i = 0; i < oldMobs.length && !found; i++) {
+                    if (newMob.id == oldMobs[i].id) {
+                        found = true;
+                        if (newMob.fill != oldMobs[i].fill || newMob.alpha != oldMobs[i].alpha || newMob.stroke != oldMobs[i].stroke) changed = true;
+                    }
+                }
+                if (changed || !found) mobChanges.push(newMob);
+            }
+            for (const newMob of mobChanges) {
+                const color = new TextEncoder().encode(newMob.fill);
+                const stroke = new TextEncoder().encode(newMob.stroke);
+                const data = new Uint8Array(new ArrayBuffer(9 + color.length + stroke.length));
+                data[0] = 33;
+                data.set(color, 4);
+                data.set(stroke, 9 + color.length);
+                const dataView = new DataView(data.buffer);
+                dataView.setUint16(1, newMob.id);
+                dataView.setUint8(3, color.length);
+                dataView.setFloat32(4 + color.length, newMob.alpha || 1);
+                dataView.setUint8(8 + color.length, stroke.length);
+                dcLocal.send(dataView);
+            }
+
             for (const oldMob of oldMobs) {
                 let found = false;
                 for (let i = 0; i < mob.length; i++) if (oldMob.id == mob[i].id) found = true;
                 if (!found) {
                     const data = new Uint8Array(new ArrayBuffer(3));
-                    data[0] = 33;
+                    data[0] = 34;
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, oldMob.id);
                     dcLocal.send(dataView);
@@ -3473,7 +4037,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             for (const newMob of mob) {
                 vertices = [];
                 for (const vertex of newMob.vertices) vertices.push({ x: vertex.x, y: vertex.y });
-                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices });
+                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices, fill: newMob.fill, stroke: newMob.stroke });
             };
         }})
     }

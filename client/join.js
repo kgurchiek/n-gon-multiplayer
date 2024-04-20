@@ -1,4 +1,5 @@
 let player1;
+const mobNames = ['MACHO', 'WIMP', 'finalBoss', 'zombie', 'starter', 'blockGroupMob', 'blockBoss', 'blockMob', 'cellBoss', 'spawnerBoss', 'growBoss', 'powerUpBossBaby', 'powerUpBoss', 'grower', 'springer', 'hopper', 'hopMother', 'hopEgg', 'hopBullet', 'hopMotherBoss', 'spinner', 'sucker', 'suckerBoss', 'spiderBoss', 'mantisBoss', 'beamer', 'historyBoss', 'focuser', 'flutter', 'stinger', 'beetleBoss', 'laserTargetingBoss', 'laserBombingBoss', 'blinkBoss', 'pulsarBoss', 'pulsar', 'laserLayer', 'laserLayerBoss', 'laser', 'laserBoss', 'stabber', 'striker', 'revolutionBoss', 'sprayBoss', 'mineBoss', 'mine', 'bounceBoss', 'timeBoss', 'bounceBullet', 'slashBoss', 'slasher', 'slasher2', 'slasher3', 'sneakBoss', 'sneaker', 'ghoster', 'bomberBoss', 'shooter', 'shooterBoss', 'bullet', 'bomb', 'sniper', 'sniperBullet', 'launcherOne', 'launcher', 'launcherBoss', 'grenadierBoss', 'grenadier', 'grenade', 'shieldingBoss', 'timeSkipBoss', 'streamBoss', 'seeker', 'spawner', 'spawns', 'exploder', 'snakeSpitBoss', 'dragonFlyBoss', 'snakeBody', 'tetherBoss', 'shield', 'groupShield', 'orbital', 'orbitalBoss']
 
 b.multiplayerExplosion = (where, radius, color) => { // typically explode is used for some bullets with .onEnd
     radius *= 1; //tech.explosiveRadius
@@ -1357,11 +1358,11 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     // mob info
                     if (mob.find(a => a.id == data.getUint16(1)) == null) {
                         const me = mob.length;
-                        const alpha = data.getFloat32(37 + new Uint8Array(data.buffer)[36]);
-                        const colorLength = data.getUint8(36);
-                        let color = new TextDecoder().decode(data.buffer.slice(37, 37 + colorLength));
-                        const strokeLength = data.getUint8(41 + colorLength);
-                        let stroke = new TextDecoder().decode(data.buffer.slice(42 + colorLength, 42 + colorLength + strokeLength));
+                        const colorLength = data.getUint8(37);
+                        let color = new TextDecoder().decode(data.buffer.slice(38, 38 + colorLength));
+                        console.log(color)
+                        const strokeLength = data.getUint8(42 + colorLength);
+                        let stroke = new TextDecoder().decode(data.buffer.slice(43 + colorLength, 43 + colorLength + strokeLength));
                         // console.log(1, color)
                         // if (color.startsWith('#')) {
                         //     if (color.length == 4) color = `rgba(${color[1]},${color[2]},${color[3]},${alpha})`;
@@ -1402,12 +1403,25 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         //     let values = color.substring(5, color.length - 1);
                         //     color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
                         // }
-                        mobs.spawn(data.getFloat64(3), data.getFloat64(11), data.getUint8(27), data.getFloat64(28), color);
+                        mobs.spawn(data.getFloat64(4), data.getFloat64(12), data.getUint8(28), data.getFloat64(29), 'transparent');
                         mob[me].id = data.getUint16(1);
-                        Matter.Body.setAngle(mob[me], data.getFloat64(19));
-                        mob[me].do = () => {};
-                        mob[me].alpha = alpha;
+                        Matter.Body.setAngle(mob[me], data.getFloat64(20));
                         mob[me].stroke = stroke;
+                        mob[me].color = color;
+                        mob[me].alpha = data.getFloat32(38 + colorLength);
+                        mob[me].do = function() {
+                            ctx.beginPath();
+                            ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
+                            for (let i = 1; i < this.vertices.length; i++) ctx.lineTo(this.vertices[i].x, this.vertices[i].y);
+                            const oldGlobalAlpha = ctx.globalAlpha;
+                            ctx.globalAlpha = this.alpha**2;
+                            ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
+                            ctx.fillStyle = this.color;
+                            ctx.fill();
+                            ctx.strokeStyle = this.stroke;
+                            ctx.stroke();
+                            ctx.globalAlpha = oldGlobalAlpha;
+                        };
                     }
                 }
                 if (id == 31) {
@@ -1440,14 +1454,45 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     }
                 }
                 if (id == 33) {
+                    // mob color update
+                    const newMob = mob.find(a => a.id == data.getUint16(1));
+                    if (newMob == null) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 29;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    } else {
+                        const colorLength = data.getUint8(3);
+                        newMob.color = new TextDecoder().decode(data.buffer.slice(4, 4 + colorLength));
+                        newMob.alpha = data.getFloat32(4 + data.getUint8(3));
+                        const strokeLength = data.getUint8(8 + colorLength);
+                        newMob.stroke = new TextDecoder().decode(data.buffer.slice(9 + colorLength, 9 + colorLength + strokeLength));
+                    }
+                }
+                if (id == 34) {
                     // delete mob
                     const index = mob.findIndex(a => a.id == data.getUint16(1));
-                    console.log(data.getUint16(1), index);
                     if (index != -1) {
                         // mob[index].removeConsBB();
                         // mob[index].alive = false;
                         Matter.Composite.remove(engine.world, mob[index]);
                         mob = mob.slice(0, index).concat(mob.slice(index + 1));
+                    }
+                }
+                if (id == 35) {
+                    // block vertex update
+                    const block = body.find(a => a.id == data.getUint16(1));
+                    if (block == null) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 13;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    } else {
+                        const newVertices = [];
+                        for (let i = 3; i < data.byteLength; i += 16) newVertices.push({ x: data.getFloat64(i), y: data.getFloat64(i + 8) });
+                        Matter.Body.setVertices(block, newVertices)
                     }
                 }
             };

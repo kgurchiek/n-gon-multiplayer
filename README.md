@@ -34,7 +34,9 @@
 | 27 | Powerup Update       | 26     | powerupId (Uint16), x (Float64), y (Float64), size (Float64) |
 | 28 | Delete Powerup       | 2      | powerupId (Uint16) |
 | 29 | Mob Info Request     | 2      | mobId (Uint16) |
-| 30 | Mob Info             | 40+    | mobId (Uint16), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string) |
+| 30 | Mob Info             | 41+    | mobId (Uint16), type (Uint8), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string) |
 | 31 | Mob Position Update  | 26     | mobId (Uint16), x (Float64), y (Float64), angle (Float64) |
 | 32 | Mob Vertex Update    | 2+     | mobId (Uint16), vertices (list: x (Float64), y (Float64)) |
-| 33 | Delete Mob           | 2      | mobId (Uint16) |
+| 33 | Mob Color Update     | 7+     | mobId (Uint16), color (string), alpha (Float32), stroke (string) |
+| 34 | Delete Mob           | 2      | mobId (Uint16) |
+| 35 | Block Vertex Update    | 2+     | blockId (Uint16), vertices (list: x (Float64), y (Float64)) |
