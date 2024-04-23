@@ -1405,10 +1405,94 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         // }
                         mobs.spawn(data.getFloat64(4), data.getFloat64(12), data.getUint8(28), data.getFloat64(29), 'transparent');
                         mob[me].id = data.getUint16(1);
+                        mob[me].type = data.getUint8(3);
                         Matter.Body.setAngle(mob[me], data.getFloat64(20));
                         mob[me].stroke = stroke;
                         mob[me].color = color;
                         mob[me].alpha = data.getFloat32(38 + colorLength);
+                        switch (mob[me].type) {
+                            case 21:
+                                mob[me].eventHorizon = radius * 30;
+                                break;
+                            case 26:
+                                mob[me].warpIntensity = 0;
+                                mob[me].laserRange = 350;
+                                break;
+                            case 27:
+                                mob[me].laserPos = mob[me].position;
+                                break;
+                            case 33:
+                                mob[me].delay = 55 + 35 * simulation.CDScale;
+                                mob[me].nextBlinkCycle = me.delay;
+                                break;
+                            case 70:
+                                mob[me].eventHorizon = 0;
+                                break;
+                        }
+                        mob[me].awake = function() {
+                            switch (this.type) {
+                                case 1:
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
+                                    ctx.fillStyle = `rgba(25,139,170,${0.2 + 0.12 * Math.random()})`;
+                                    ctx.fill();
+                                    this.radius = 100 * (1 + 0.25 * Math.sin(simulation.cycle * 0.03))
+                                    break;
+                                case 26:
+                                    ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+                                    ctx.fillRect(x, y, w, h);
+                                    ctx.fillStyle = "rgba(150,0,255,0.7)";
+                                    ctx.fillRect(x, y, w * this.health, h);
+
+                                    //draw eye
+                                    const unit = Vector.normalise(Vector.sub(m.pos, this.position))
+                                    const eye = Vector.add(Vector.mult(unit, 15), this.position)
+                                    ctx.beginPath();
+                                    ctx.arc(eye.x, eye.y, 4, 0, 2 * Math.PI);
+                                    ctx.moveTo(this.position.x + 20 * unit.x, this.position.y + 20 * unit.y);
+                                    ctx.lineTo(this.position.x + 30 * unit.x, this.position.y + 30 * unit.y);
+                                    ctx.strokeStyle = this.stroke;
+                                    ctx.lineWidth = 2;
+                                    ctx.stroke();
+
+                                    ctx.setLineDash([125 * Math.random(), 125 * Math.random()]); //the dashed effect is not set back to normal, because it looks neat for how the player is drawn
+                                    if (this.distanceToPlayer() < this.laserRange) {
+                                        this.warpIntensity += 0.0004;
+                                        requestAnimationFrame(() => {
+                                            if (!simulation.paused && m.alive) {
+                                                ctx.transform(1, this.warpIntensity * (Math.random() - 0.5), this.warpIntensity * (Math.random() - 0.5), 1, 0, 0); //ctx.transform(Horizontal scaling. A value of 1 results in no scaling,  Vertical skewing,   Horizontal skewing,   Vertical scaling. A value of 1 results in no scaling,   Horizontal translation (moving),   Vertical translation (moving)) //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
+                                            }
+                                        })
+                                        ctx.beginPath();
+                                        ctx.moveTo(eye.x, eye.y);
+                                        ctx.lineTo(m.pos.x, m.pos.y);
+                                        ctx.lineTo(m.pos.x + (Math.random() - 0.5) * 3000, m.pos.y + (Math.random() - 0.5) * 3000);
+                                        ctx.lineWidth = 2;
+                                        ctx.strokeStyle = "rgb(150,0,255)";
+                                        ctx.stroke();
+                                        ctx.beginPath();
+                                        ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
+                                        ctx.fillStyle = "rgba(150,0,255,0.1)";
+                                        ctx.fill();
+                                    } else {
+                                        this.warpIntensity = 0;
+                                    }
+
+                                    //several ellipses spinning about the same axis
+                                    const rotation = simulation.cycle * 0.015
+                                    const phase = simulation.cycle * 0.021
+                                    ctx.lineWidth = 1;
+                                    ctx.fillStyle = "rgba(150,0,255,0.05)"
+                                    ctx.strokeStyle = "#70f"
+                                    for (let i = 0, len = 6; i < len; i++) {
+                                        ctx.beginPath();
+                                        ctx.ellipse(this.position.x, this.position.y, this.laserRange * Math.abs(Math.sin(phase + i / len * Math.PI)), this.laserRange, rotation, 0, 2 * Math.PI);
+                                        ctx.fill();
+                                        ctx.stroke();
+                                    }
+                                    break;
+                            }
+                        }
                         mob[me].do = function() {
                             ctx.beginPath();
                             ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
@@ -1421,6 +1505,426 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                             ctx.strokeStyle = this.stroke;
                             ctx.stroke();
                             ctx.globalAlpha = oldGlobalAlpha;
+
+                            switch (this.type) {
+                                case 0:
+                                    if (mag < this.radius) { //buff to player when inside radius
+                                        //draw halo
+                                        ctx.strokeStyle = 'rgba(80,120,200,0.2)';
+                                        ctx.beginPath();
+                                        ctx.arc(m.pos.x, m.pos.y, 36, 0, 2 * Math.PI);
+                                        ctx.lineWidth = 10;
+                                        ctx.stroke();
+                                    }
+
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, this.radius + 15, 0, 2 * Math.PI);
+                                    ctx.strokeStyle = "#000"
+                                    ctx.lineWidth = 1;
+                                    ctx.stroke();
+
+                                    //draw growing and fading out ring around the arc
+                                    ctx.beginPath();
+                                    const rate = 150
+                                    const r = simulation.cycle % rate
+                                    ctx.arc(this.position.x, this.position.y, 15 + this.radius + 0.3 * r, 0, 2 * Math.PI);
+                                    ctx.strokeStyle = `rgba(0,0,0,${0.5 * Math.max(0, 1 - 1.4 * r / rate)})`
+                                    ctx.stroke();
+                                    break;
+                                case 5:
+                                    ctx.beginPath();
+                                    for (let i = 0, len = mob.length; i < len; i++) {
+                                        if (mob[i].isGrouper && mob[i] != this && mob[i].isDropPowerUp) { //don't tether to self, bullets, shields, ...
+                                            const distance2 = Vector.magnitudeSquared(Vector.sub(this.position, mob[i].position))
+                                            if (distance2 < this.groupingRangeMax) {
+                                                ctx.moveTo(this.position.x, this.position.y);
+                                                ctx.lineTo(mob[i].position.x, mob[i].position.y);
+                                            }
+                                        }
+                                    }
+                                    ctx.strokeStyle = "#0ff";
+                                    ctx.lineWidth = 1;
+                                    ctx.stroke();
+                                    break;
+                                case 21:
+                                    eventHorizon = this.eventHorizon * (0.93 + 0.17 * Math.sin(simulation.cycle * 0.011));
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon * 0.25, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,0,0,0.9)";
+                                    ctx.fill();
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon * 0.55, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,0,0,0.5)";
+                                    ctx.fill();
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,0,0,0.1)";
+                                    ctx.fill();
+
+                                    //when player is inside event horizon
+                                    if (Vector.magnitude(Vector.sub(this.position, player.position)) < eventHorizon) {
+                                        const angle = Math.atan2(player.position.y - this.position.y, player.position.x - this.position.x);
+                                        //draw line to player
+                                        ctx.beginPath();
+                                        ctx.moveTo(this.position.x, this.position.y);
+                                        ctx.lineTo(m.pos.x, m.pos.y);
+                                        ctx.lineWidth = Math.min(60, this.radius * 2);
+                                        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                                        ctx.stroke();
+                                        ctx.beginPath();
+                                        ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
+                                        ctx.fillStyle = "rgba(0,0,0,0.3)";
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 22:
+                                    mob[me].eventHorizon = radius * 30;
+                                    eventHorizon = this.eventHorizon * (0.93 + 0.17 * Math.sin(simulation.cycle * 0.011));
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon * 0.2, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,20,40,0.6)";
+                                    ctx.fill();
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon * 0.4, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,20,40,0.4)";
+                                    ctx.fill();
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon * 0.6, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,20,40,0.3)";
+                                    ctx.fill();
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon * 0.8, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,20,40,0.2)";
+                                    ctx.fill();
+                                    ctx.beginPath();
+                                    ctx.arc(this.position.x, this.position.y, eventHorizon, 0, 2 * Math.PI);
+                                    ctx.fillStyle = "rgba(0,0,0,0.05)";
+                                    ctx.fill();
+                                    //when player is inside event horizon
+                                    if (Vector.magnitude(Vector.sub(this.position, player.position)) < eventHorizon) {
+                                        const angle = Math.atan2(player.position.y - this.position.y, player.position.x - this.position.x);
+                                        //draw line to player
+                                        ctx.beginPath();
+                                        ctx.moveTo(this.position.x, this.position.y);
+                                        ctx.lineTo(m.pos.x, m.pos.y);
+                                        ctx.lineWidth = Math.min(60, this.radius * 2);
+                                        ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                                        ctx.stroke();
+                                        ctx.beginPath();
+                                        ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
+                                        ctx.fillStyle = "rgba(0,0,0,0.3)";
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 27:
+                                    if (this.seePlayer.yes && dist2 < 4000000) {
+                                        const rangeWidth = 2000; //this is sqrt of 4000000 from above if()
+                                        //targeting laser will slowly move from the mob to the player's position
+                                        this.laserPos = Vector.add(this.laserPos, Vector.mult(Vector.sub(player.position, this.laserPos), 0.1));
+                                        let targetDist = Vector.magnitude(Vector.sub(this.laserPos, m.pos));
+                                        const r = 12;
+                                        ctx.beginPath();
+                                        ctx.moveTo(this.position.x, this.position.y);
+                                        if (targetDist < r + 16) {
+                                            targetDist = r + 10;
+                                            //charge at player
+                                            const forceMag = this.accelMag * 40 * this.mass;
+                                            const angle = Math.atan2(this.seePlayer.position.y - this.position.y, this.seePlayer.position.x - this.position.x);
+                                        }
+                                        if (dist2 > 80000) {
+                                            const laserWidth = 0.002;
+                                            let laserOffR = Vector.rotateAbout(this.laserPos, (targetDist - r) * laserWidth, this.position);
+                                            let sub = Vector.normalise(Vector.sub(laserOffR, this.position));
+                                            laserOffR = Vector.add(laserOffR, Vector.mult(sub, rangeWidth));
+                                            ctx.lineTo(laserOffR.x, laserOffR.y);
+                        
+                                            let laserOffL = Vector.rotateAbout(this.laserPos, (targetDist - r) * -laserWidth, this.position);
+                                            sub = Vector.normalise(Vector.sub(laserOffL, this.position));
+                                            laserOffL = Vector.add(laserOffL, Vector.mult(sub, rangeWidth));
+                                            ctx.lineTo(laserOffL.x, laserOffL.y);
+                                            ctx.fillStyle = `rgba(0,0,255,${Math.max(0, 0.3 * r / targetDist)})`
+                                            ctx.fill();
+                                        }
+                                    }
+                                    break;
+                                case 28:
+                                    flapArc = 0.7 //don't go past 1.57 for normal flaps
+                                    ctx.fillStyle = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.2)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
+                                    this.wing(this.angle + Math.PI / 2 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                    this.wing(this.angle - Math.PI / 2 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                    break;
+                                case 29:
+                                    flapArc = 0.8 //don't go past 1.57 for normal flaps
+                                    ctx.fillStyle = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.2)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
+                                    this.wing(this.angle + 2.1 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                    this.wing(this.angle - 2.1 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                    const seeRange = 550 + 35 * simulation.difficultyMode;
+                                    if (this.distanceToPlayer() < seeRange) {
+                                        best = {
+                                            x: null,
+                                            y: null,
+                                            dist2: Infinity,
+                                            who: null,
+                                            v1: null,
+                                            v2: null
+                                        };
+                                        const seeRangeRandom = seeRange - 200 - 150 * Math.random()
+                                        const look = { x: this.position.x + seeRangeRandom * Math.cos(this.angle), y: this.position.y + seeRangeRandom * Math.sin(this.angle) };
+                                        best = vertexCollision(this.position, look, m.isCloak ? [map, body] : [map, body, [playerBody, playerHead]]);
+
+                                        // hitting player
+                                        if ((best.who === playerBody || best.who === playerHead) && m.immuneCycle < m.cycle) {
+                                            //draw damage
+                                            ctx.fillStyle = color;
+                                            ctx.beginPath();
+                                            ctx.arc(best.x, best.y, 5 + dmg * 1500, 0, 2 * Math.PI);
+                                            ctx.fill();
+                                        }
+                                        //draw beam
+                                        const vertex = 3
+                                        if (best.dist2 === Infinity) best = look;
+                                        ctx.beginPath();
+                                        ctx.moveTo(this.vertices[vertex].x, this.vertices[vertex].y);
+                                        ctx.lineTo(best.x, best.y);
+                                        ctx.strokeStyle = color;
+                                        ctx.lineWidth = 2;
+                                        ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
+                                        ctx.stroke();
+                                        ctx.setLineDash([]);
+                                    }
+                                    break;
+                                case 33:
+                                    ctx.beginPath();
+                                    ctx.moveTo(this.vertices[1].x, this.vertices[1].y);
+                                    ctx.lineTo(best.x, best.y);
+                                    ctx.strokeStyle = "rgba(0,235,255,1)";
+                                    ctx.lineWidth = 3
+                                    ctx.stroke();
+                                    if (this.targetingCount / this.targetingTime > 0.33) {
+                                        ctx.strokeStyle = "rgba(0,235,255,0.45)";
+                                        ctx.lineWidth = 10
+                                        ctx.stroke();
+                                        if (this.targetingCount / this.targetingTime > 0.66) {
+                                            ctx.strokeStyle = "rgba(0,235,255,0.25)";
+                                            ctx.lineWidth = 30
+                                            ctx.stroke();
+                                        }
+                                    }
+                                    break;
+                                case 34:
+                                    if (this.isFiring) {
+                                        if (this.fireCycle > this.fireDelay) { //fire
+                                            simulation.drawList.push({ //add dmg to draw queue
+                                                x: this.fireTarget.x,
+                                                y: this.fireTarget.y,
+                                                radius: this.pulseRadius,
+                                                color: "rgba(120,0,255,0.6)",
+                                                time: simulation.drawTime
+                                            });
+                                            ctx.beginPath();
+                                            ctx.moveTo(this.vertices[1].x, this.vertices[1].y)
+                                            ctx.lineTo(this.fireTarget.x, this.fireTarget.y)
+                                            ctx.lineWidth = 20;
+                                            ctx.strokeStyle = "rgba(120,0,255,0.3)";
+                                            ctx.stroke();
+                                            ctx.lineWidth = 5;
+                                            ctx.strokeStyle = "rgba(120,0,255,1)";
+                                            ctx.stroke();
+                                        } else { //delay before firing
+                                            this.fireCycle++
+                                            //draw explosion outline
+                                            ctx.beginPath();
+                                            ctx.arc(this.fireTarget.x, this.fireTarget.y, this.pulseRadius, 0, 2 * Math.PI); //* this.fireCycle / this.fireDelay
+                                            ctx.fillStyle = "rgba(120,0,255,0.07)";
+                                            ctx.fill();
+                                            //draw path from mob to explosion
+                                            ctx.beginPath();
+                                            ctx.moveTo(this.vertices[1].x, this.vertices[1].y)
+                                            ctx.lineTo(this.fireTarget.x, this.fireTarget.y)
+                                            ctx.setLineDash([40 * Math.random(), 200 * Math.random()]);
+                                            ctx.lineWidth = 2;
+                                            ctx.strokeStyle = "rgba(120,0,255,0.3)";
+                                            ctx.stroke();
+                                            ctx.setLineDash([]);
+                                        }
+                                    }
+                                    break;
+                                case 35:
+                                    if (this.seePlayer.recall) {
+                                        if (this.isFiring) {
+                                            if (this.fireCycle > this.fireDelay) { //fire
+                                                if (!this.canSeeTarget()) return
+                                                this.isFiring = false
+                                                this.fireCycle = 0
+                                                this.torque += (0.00002 + 0.0002 * Math.random()) * this.inertia * (Math.round(Math.random()) * 2 - 1) //randomly spin around after firing
+                                                //is player in beam path
+                                                if (Matter.Query.ray([player], this.fireTarget, this.position).length) {
+                                                    unit = Vector.mult(Vector.normalise(Vector.sub(this.vertices[1], this.position)), this.distanceToPlayer() - 100)
+                                                    this.fireTarget = Vector.add(this.vertices[1], unit)
+                                                }
+                                                simulation.drawList.push({ //add dmg to draw queue
+                                                    x: this.fireTarget.x,
+                                                    y: this.fireTarget.y,
+                                                    radius: this.pulseRadius,
+                                                    color: "rgba(255,0,100,0.6)",
+                                                    time: simulation.drawTime
+                                                });
+                                                ctx.beginPath();
+                                                ctx.moveTo(this.vertices[1].x, this.vertices[1].y)
+                                                ctx.lineTo(this.fireTarget.x, this.fireTarget.y)
+                                                ctx.lineWidth = 20;
+                                                ctx.strokeStyle = "rgba(255,0,100,0.3)";
+                                                ctx.stroke();
+                                                ctx.lineWidth = 5;
+                                                ctx.strokeStyle = "rgba(255,0,100,1)";
+                                                ctx.stroke();
+                                            } else { //delay before firing
+                                                this.fireCycle++
+                                                if (!(simulation.cycle % 3)) {
+                                                    if (!this.canSeeTarget()) return //if can't see stop firing
+                                                }
+                                                //draw explosion outline
+                                                ctx.beginPath();
+                                                ctx.arc(this.fireTarget.x, this.fireTarget.y, this.pulseRadius, 0, 2 * Math.PI); //* this.fireCycle / this.fireDelay
+                                                ctx.fillStyle = "rgba(255,0,100,0.07)";
+                                                ctx.fill();
+                                                //draw path from mob to explosion
+                                                ctx.beginPath();
+                                                ctx.moveTo(this.vertices[1].x, this.vertices[1].y)
+                                                ctx.lineTo(this.fireTarget.x, this.fireTarget.y)
+                                                ctx.setLineDash([40 * Math.random(), 200 * Math.random()]);
+                                                ctx.lineWidth = 2;
+                                                ctx.strokeStyle = "rgba(255,0,100,0.3)";
+                                                ctx.stroke();
+                                                ctx.setLineDash([]);
+                                            }
+                                        }
+                                    }
+                                    break;
+                                case 41:
+                                    if (this.cd < simulation.cycle && this.seePlayer.recall) {
+                                        this.cd = simulation.cycle + this.delay;
+                                        ctx.beginPath();
+                                        ctx.moveTo(this.position.x, this.position.y);
+                                        ctx.lineTo(this.position.x, this.position.y);
+                                        ctx.lineWidth = radius * 2.1;
+                                        ctx.strokeStyle = this.fill; //"rgba(0,0,0,0.5)"; //'#000'
+                                        ctx.stroke();
+                                    }
+                                    break;
+                                case 53:
+                                    if (this.alpha > 0) {
+                                        //draw body
+                                        ctx.beginPath();
+                                        const vertices = this.vertices;
+                                        ctx.moveTo(vertices[0].x, vertices[0].y);
+                                        for (let j = 1, len = vertices.length; j < len; ++j) ctx.lineTo(vertices[j].x, vertices[j].y);
+                                        ctx.lineTo(vertices[0].x, vertices[0].y);
+                                        ctx.fillStyle = `rgba(0,0,0,${this.alpha * this.alpha})`;
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 54:
+                                    if (this.alpha > 0) {
+                                        //draw body
+                                        ctx.beginPath();
+                                        const vertices = this.vertices;
+                                        ctx.moveTo(vertices[0].x, vertices[0].y);
+                                        for (let j = 1, len = vertices.length; j < len; ++j) {
+                                            ctx.lineTo(vertices[j].x, vertices[j].y);
+                                        }
+                                        ctx.lineTo(vertices[0].x, vertices[0].y);
+                                        ctx.fillStyle = `rgba(0,0,0,${this.alpha * this.alpha})`;
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 55:
+                                    if (this.alpha > 0) {
+                                        //draw body
+                                        ctx.beginPath();
+                                        const vertices = this.vertices;
+                                        ctx.moveTo(vertices[0].x, vertices[0].y);
+                                        for (let j = 1, len = vertices.length; j < len; ++j) ctx.lineTo(vertices[j].x, vertices[j].y);
+                                        ctx.lineTo(vertices[0].x, vertices[0].y);
+                                        // ctx.lineWidth = 1;
+                                        ctx.fillStyle = `rgba(255,255,255,${this.alpha * this.alpha})`;
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 61:
+                                    if (this.alpha > 0) {
+                                        //draw body
+                                        ctx.beginPath();
+                                        const vertices = this.vertices;
+                                        ctx.moveTo(vertices[0].x, vertices[0].y);
+                                        for (let j = 1, len = vertices.length; j < len; ++j) {
+                                            ctx.lineTo(vertices[j].x, vertices[j].y);
+                                        }
+                                        ctx.lineTo(vertices[0].x, vertices[0].y);
+                                        ctx.fillStyle = `rgba(25,0,50,${this.alpha * this.alpha})`;
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 68:
+                                    ctx.beginPath(); //draw explosion outline
+                                    ctx.arc(this.position.x, this.position.y, pulseRadius * (1.01 - this.timeLeft / this.lifeSpan), 0, 2 * Math.PI); //* this.fireCycle / this.fireDelay
+                                    ctx.fillStyle = "rgba(255,0,220,0.05)";
+                                    ctx.fill();
+                                    break;
+                                case 69:
+                                    ctx.beginPath(); //draw cycle timer
+                                    ctx.moveTo(this.vertices[this.vertices.length - 1].x, this.vertices[this.vertices.length - 1].y)
+                                    const phase = (this.vertices.length + 1) * this.cycle / this.maxCycles
+                                    if (phase > 1) ctx.lineTo(this.vertices[0].x, this.vertices[0].y)
+                                    for (let i = 1; i < phase - 1; i++) {
+                                        ctx.lineTo(this.vertices[i].x, this.vertices[i].y)
+                                    }
+                                    ctx.lineWidth = 5
+                                    ctx.strokeStyle = "rgb(255,255,255)"
+                                    ctx.stroke();
+
+                                    this.cycle++
+                                    if (this.cycle > this.maxCycles) {
+                                        this.cycle = 0
+                                        ctx.beginPath();
+                                        for (let i = 0; i < mob.length; i++) {
+                                            if (!mob[i].isShielded && !mob[i].shield && mob[i].isDropPowerUp && mob[i].alive && !mob[i].isBoss) {
+                                                ctx.moveTo(this.position.x, this.position.y)
+                                                ctx.lineTo(mob[i].position.x, mob[i].position.y)
+                                            }
+                                        }
+                                        ctx.lineWidth = 20
+                                        ctx.strokeStyle = "rgb(200,200,255)"
+                                        ctx.stroke();
+                                    }
+                                    break;
+                                case 70:
+                                    this.eventHorizon = 950 + 250 * Math.sin(simulation.cycle * 0.005);
+                                    if (!simulation.isTimeSkipping) {
+                                        if (Vector.magnitude(Vector.sub(this.position, m.pos)) < this.eventHorizon) {
+                                            ctx.beginPath();
+                                            ctx.arc(this.position.x, this.position.y, this.eventHorizon, 0, 2 * Math.PI);
+                                            ctx.fillStyle = "#fff";
+                                            ctx.globalCompositeOperation = "destination-in"; //in or atop
+                                            ctx.fill();
+                                            ctx.globalCompositeOperation = "source-over";
+                                            ctx.beginPath();
+                                            ctx.arc(this.position.x, this.position.y, this.eventHorizon, 0, 2 * Math.PI);
+                                            ctx.clip();
+                                        } else {
+                                            requestAnimationFrame(() => {
+                                                simulation.camera();
+                                                ctx.beginPath(); //gets rid of already draw shapes
+                                                ctx.arc(this.position.x, this.position.y, this.eventHorizon, 0, 2 * Math.PI, false); //part you can't see
+                                                ctx.fillStyle = document.body.style.backgroundColor;
+                                                ctx.fill();
+                                                ctx.restore();
+                                            })
+                                        }
+                                    }
+                                    break;
+                                
+                            }
                         };
                     }
                 }
