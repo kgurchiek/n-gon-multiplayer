@@ -1358,59 +1358,29 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     // mob info
                     if (mob.find(a => a.id == data.getUint16(1)) == null) {
                         const me = mob.length;
-                        const colorLength = data.getUint8(37);
-                        let color = new TextDecoder().decode(data.buffer.slice(38, 38 + colorLength));
-                        console.log(color)
-                        const strokeLength = data.getUint8(42 + colorLength);
-                        let stroke = new TextDecoder().decode(data.buffer.slice(43 + colorLength, 43 + colorLength + strokeLength));
-                        // console.log(1, color)
-                        // if (color.startsWith('#')) {
-                        //     if (color.length == 4) color = `rgba(${color[1]},${color[2]},${color[3]},${alpha})`;
-                        //     else color = `rgba(${color.substring(1, 3)},${color.substring(3, 5)},${color.substring(5)},${alpha})`;
-                        // } else if (color.startsWith('hsl(')) {
-                        //     let values = color.substring(4, color.length - 1);
-                        //     let [h, s, l] = values.split(',');
-                        //     h = parseInt(h);
-                        //     s = parseInt(s.replaceAll('%', ''));
-                        //     l = parseInt(l.replaceAll('%', ''));
-
-                        //     // https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
-                        //     function hueToRgb(p, q, t) {
-                        //         if (t < 0) t += 1;
-                        //         if (t > 1) t -= 1;
-                        //         if (t < 1/6) return p + (q - p) * 6 * t;
-                        //         if (t < 1/2) return q;
-                        //         if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                        //         return p;
-                        //     }
-
-                        //     let r, g, b;
-                        
-                        //     if (s === 0) r = g = b = l; // achromatic
-                        //     else {
-                        //         const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-                        //         const p = 2 * l - q;
-                        //         r = hueToRgb(p, q, h + 1/3);
-                        //         g = hueToRgb(p, q, h);
-                        //         b = hueToRgb(p, q, h - 1/3);
-                        //     }
-                        
-                        //     color = `rgba(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)},${alpha})`;
-                        // } else if (color.startsWith('rgb(')) {
-                        //     let values = color.substring(4, color.length - 1);
-                        //     color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
-                        // } else if (color.startsWith('rgba(')) {
-                        //     let values = color.substring(5, color.length - 1);
-                        //     color = `rgba(${values.split(',')[0]},${values.split(',')[1]},${values.split(',')[2]},${alpha})`;
-                        // }
                         mobs.spawn(data.getFloat64(4), data.getFloat64(12), data.getUint8(28), data.getFloat64(29), 'transparent');
                         mob[me].id = data.getUint16(1);
-                        mob[me].type = data.getUint8(3);
+                        mob[me].mobType = data.getUint8(3);
                         Matter.Body.setAngle(mob[me], data.getFloat64(20));
-                        mob[me].stroke = stroke;
-                        mob[me].color = color;
+                        const colorLength = data.getUint8(37);
+                        mob[me].color = new TextDecoder().decode(data.buffer.slice(38, 38 + colorLength));
                         mob[me].alpha = data.getFloat32(38 + colorLength);
-                        switch (mob[me].type) {
+                        const strokeLength = data.getUint8(42 + colorLength);
+                        mob[me].stroke = new TextDecoder().decode(data.buffer.slice(43 + colorLength, 43 + colorLength + strokeLength));
+                        mob[me].isDropPowerUp = false;
+                        mob[me].isShielded = data.getUint8(43 + colorLength + strokeLength) == 1;
+                        mob[me].isUnblockable = data.getUint8(44 + colorLength + strokeLength) == 1;
+                        mob[me].showHealthBar = data.getUint8(45 + colorLength + strokeLength) == 1;
+                        mob[me].collisionFilter.category = Number(data.getBigUint64(46 + colorLength + strokeLength));
+                        mob[me].collisionFilter.mask = Number(data.getBigUint64(54 + colorLength + strokeLength));
+                        mob[me].isBoss = data.getUint8(62 + colorLength + strokeLength) == 1;
+                        mob[me].isFinalBoss = data.getUint8(63 + colorLength + strokeLength) == 1;
+                        mob[me].isInvulnerable = data.getUint8(64 + colorLength + strokeLength) == 1;
+                        mob[me].isZombie = data.getUint8(65 + colorLength + strokeLength) == 1;
+                        mob[me].isGrouper = data.getUint8(66 + colorLength + strokeLength) == 1;
+                        mob[me].isMobBullet = data.getUint8(67 + colorLength + strokeLength) == 1;
+                        
+                        switch (mob[me].mobType) {
                             case 21:
                                 mob[me].eventHorizon = radius * 30;
                                 break;
@@ -1429,70 +1399,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                 mob[me].eventHorizon = 0;
                                 break;
                         }
-                        mob[me].awake = function() {
-                            switch (this.type) {
-                                case 1:
-                                    ctx.beginPath();
-                                    ctx.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
-                                    ctx.fillStyle = `rgba(25,139,170,${0.2 + 0.12 * Math.random()})`;
-                                    ctx.fill();
-                                    this.radius = 100 * (1 + 0.25 * Math.sin(simulation.cycle * 0.03))
-                                    break;
-                                case 26:
-                                    ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
-                                    ctx.fillRect(x, y, w, h);
-                                    ctx.fillStyle = "rgba(150,0,255,0.7)";
-                                    ctx.fillRect(x, y, w * this.health, h);
-
-                                    //draw eye
-                                    const unit = Vector.normalise(Vector.sub(m.pos, this.position))
-                                    const eye = Vector.add(Vector.mult(unit, 15), this.position)
-                                    ctx.beginPath();
-                                    ctx.arc(eye.x, eye.y, 4, 0, 2 * Math.PI);
-                                    ctx.moveTo(this.position.x + 20 * unit.x, this.position.y + 20 * unit.y);
-                                    ctx.lineTo(this.position.x + 30 * unit.x, this.position.y + 30 * unit.y);
-                                    ctx.strokeStyle = this.stroke;
-                                    ctx.lineWidth = 2;
-                                    ctx.stroke();
-
-                                    ctx.setLineDash([125 * Math.random(), 125 * Math.random()]); //the dashed effect is not set back to normal, because it looks neat for how the player is drawn
-                                    if (this.distanceToPlayer() < this.laserRange) {
-                                        this.warpIntensity += 0.0004;
-                                        requestAnimationFrame(() => {
-                                            if (!simulation.paused && m.alive) {
-                                                ctx.transform(1, this.warpIntensity * (Math.random() - 0.5), this.warpIntensity * (Math.random() - 0.5), 1, 0, 0); //ctx.transform(Horizontal scaling. A value of 1 results in no scaling,  Vertical skewing,   Horizontal skewing,   Vertical scaling. A value of 1 results in no scaling,   Horizontal translation (moving),   Vertical translation (moving)) //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
-                                            }
-                                        })
-                                        ctx.beginPath();
-                                        ctx.moveTo(eye.x, eye.y);
-                                        ctx.lineTo(m.pos.x, m.pos.y);
-                                        ctx.lineTo(m.pos.x + (Math.random() - 0.5) * 3000, m.pos.y + (Math.random() - 0.5) * 3000);
-                                        ctx.lineWidth = 2;
-                                        ctx.strokeStyle = "rgb(150,0,255)";
-                                        ctx.stroke();
-                                        ctx.beginPath();
-                                        ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
-                                        ctx.fillStyle = "rgba(150,0,255,0.1)";
-                                        ctx.fill();
-                                    } else {
-                                        this.warpIntensity = 0;
-                                    }
-
-                                    //several ellipses spinning about the same axis
-                                    const rotation = simulation.cycle * 0.015
-                                    const phase = simulation.cycle * 0.021
-                                    ctx.lineWidth = 1;
-                                    ctx.fillStyle = "rgba(150,0,255,0.05)"
-                                    ctx.strokeStyle = "#70f"
-                                    for (let i = 0, len = 6; i < len; i++) {
-                                        ctx.beginPath();
-                                        ctx.ellipse(this.position.x, this.position.y, this.laserRange * Math.abs(Math.sin(phase + i / len * Math.PI)), this.laserRange, rotation, 0, 2 * Math.PI);
-                                        ctx.fill();
-                                        ctx.stroke();
-                                    }
-                                    break;
-                            }
-                        }
                         mob[me].do = function() {
                             ctx.beginPath();
                             ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
@@ -1506,8 +1412,10 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                             ctx.stroke();
                             ctx.globalAlpha = oldGlobalAlpha;
 
-                            switch (this.type) {
+                            switch (this.mobType) {
                                 case 0:
+                                    const sub = Vector.sub(player.position, this.position)
+                                    const mag = Vector.magnitude(sub);
                                     if (mag < this.radius) { //buff to player when inside radius
                                         //draw halo
                                         ctx.strokeStyle = 'rgba(80,120,200,0.2)';
@@ -1530,6 +1438,20 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                     ctx.arc(this.position.x, this.position.y, 15 + this.radius + 0.3 * r, 0, 2 * Math.PI);
                                     ctx.strokeStyle = `rgba(0,0,0,${0.5 * Math.max(0, 1 - 1.4 * r / rate)})`
                                     ctx.stroke();
+                                    break;
+                                case 1:
+                                    if ((player.speed > 1 && !m.isCloak)) { // TODO: activate if player1 moves
+                                        setTimeout(() => {
+                                            this.isAwake = true;
+                                        }, 1000 * Math.random());
+                                    }
+                                    if (this.isAwake) {
+                                        ctx.beginPath();
+                                        ctx.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI);
+                                        ctx.fillStyle = `rgba(25,139,170,${0.2 + 0.12 * Math.random()})`;
+                                        ctx.fill();
+                                        this.radius = 100 * (1 + 0.25 * Math.sin(simulation.cycle * 0.03))
+                                    }
                                     break;
                                 case 5:
                                     ctx.beginPath();
@@ -1614,6 +1536,68 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                         ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
                                         ctx.fillStyle = "rgba(0,0,0,0.3)";
                                         ctx.fill();
+                                    }
+                                    break;
+                                case 26:
+                                    if (this.seePlayer.recall || (!(simulation.cycle % this.seePlayerFreq) && this.distanceToPlayer2() < this.seeAtDistance2 && !m.isCloak)) {
+                                        setTimeout(() => {
+                                            this.isAwake = true;
+                                            this.stroke = "rgba(205,0,255,0.5)";
+                                            this.fill = "rgba(205,0,255,0.1)";
+                                        }, 2000);
+                                    }
+                                    if (this.isAwake) {
+                                        ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+                                        ctx.fillRect(x, y, w, h);
+                                        ctx.fillStyle = "rgba(150,0,255,0.7)";
+                                        ctx.fillRect(x, y, w * this.health, h);
+
+                                        //draw eye
+                                        const unit = Vector.normalise(Vector.sub(m.pos, this.position))
+                                        const eye = Vector.add(Vector.mult(unit, 15), this.position)
+                                        ctx.beginPath();
+                                        ctx.arc(eye.x, eye.y, 4, 0, 2 * Math.PI);
+                                        ctx.moveTo(this.position.x + 20 * unit.x, this.position.y + 20 * unit.y);
+                                        ctx.lineTo(this.position.x + 30 * unit.x, this.position.y + 30 * unit.y);
+                                        ctx.strokeStyle = this.stroke;
+                                        ctx.lineWidth = 2;
+                                        ctx.stroke();
+
+                                        ctx.setLineDash([125 * Math.random(), 125 * Math.random()]); //the dashed effect is not set back to normal, because it looks neat for how the player is drawn
+                                        if (this.distanceToPlayer() < this.laserRange) {
+                                            this.warpIntensity += 0.0004;
+                                            requestAnimationFrame(() => {
+                                                if (!simulation.paused && m.alive) {
+                                                    ctx.transform(1, this.warpIntensity * (Math.random() - 0.5), this.warpIntensity * (Math.random() - 0.5), 1, 0, 0); //ctx.transform(Horizontal scaling. A value of 1 results in no scaling,  Vertical skewing,   Horizontal skewing,   Vertical scaling. A value of 1 results in no scaling,   Horizontal translation (moving),   Vertical translation (moving)) //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
+                                                }
+                                            })
+                                            ctx.beginPath();
+                                            ctx.moveTo(eye.x, eye.y);
+                                            ctx.lineTo(m.pos.x, m.pos.y);
+                                            ctx.lineTo(m.pos.x + (Math.random() - 0.5) * 3000, m.pos.y + (Math.random() - 0.5) * 3000);
+                                            ctx.lineWidth = 2;
+                                            ctx.strokeStyle = "rgb(150,0,255)";
+                                            ctx.stroke();
+                                            ctx.beginPath();
+                                            ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
+                                            ctx.fillStyle = "rgba(150,0,255,0.1)";
+                                            ctx.fill();
+                                        } else {
+                                            this.warpIntensity = 0;
+                                        }
+
+                                        //several ellipses spinning about the same axis
+                                        const rotation = simulation.cycle * 0.015
+                                        const phase = simulation.cycle * 0.021
+                                        ctx.lineWidth = 1;
+                                        ctx.fillStyle = "rgba(150,0,255,0.05)"
+                                        ctx.strokeStyle = "#70f"
+                                        for (let i = 0, len = 6; i < len; i++) {
+                                            ctx.beginPath();
+                                            ctx.ellipse(this.position.x, this.position.y, this.laserRange * Math.abs(Math.sin(phase + i / len * Math.PI)), this.laserRange, rotation, 0, 2 * Math.PI);
+                                            ctx.fill();
+                                            ctx.stroke();
+                                        }
                                     }
                                     break;
                                 case 27:
@@ -1923,7 +1907,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                         }
                                     }
                                     break;
-                                
                             }
                         };
                     }

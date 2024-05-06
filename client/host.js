@@ -1362,14 +1362,14 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             if (id == 29) {
                 // mob info request
                 const requestedMob = mob.find(a => a.id == data.getUint16(1));
-                if (requestedMob != null && !requestedMob.isUnblockable) {
-                    const color = requestedMob.fill;
-                    const stroke = requestedMob.stroke;
+                if (requestedMob != null && requestedMob.mobType != null) {
                     const textEncoder = new TextEncoder();
-                    const data = new Uint8Array(new ArrayBuffer(43 + textEncoder.encode(color).length + textEncoder.encode(stroke).length));
+                    const color = textEncoder.encode(requestedMob.fill);
+                    const stroke = textEncoder.encode(requestedMob.stroke);
+                    const data = new Uint8Array(new ArrayBuffer(68 + color.length + stroke.length));
                     data[0] = 30;
-                    data.set(textEncoder.encode(color), 38);
-                    data.set(textEncoder.encode(stroke), 43 + textEncoder.encode(color).length);
+                    data.set(color, 38);
+                    data.set(stroke, 43 + color.length);
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, requestedMob.id);
                     dataView.setUint8(3, requestedMob.mobType);
@@ -1378,9 +1378,20 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setFloat64(20, requestedMob.angle);
                     dataView.setUint8(28, requestedMob.vertices.length);
                     dataView.setFloat64(29, requestedMob.radius);
-                    dataView.setUint8(37, textEncoder.encode(color).length);
-                    dataView.setFloat32(38 + textEncoder.encode(color).length, requestedMob.alpha || 1);
-                    dataView.setUint8(42 + textEncoder.encode(color).length, textEncoder.encode(stroke).length);
+                    dataView.setUint8(37, color.length);
+                    dataView.setFloat32(38 + color.length, requestedMob.alpha || 1);
+                    dataView.setUint8(42 + color.length, stroke.length);
+                    dataView.setUint8(43 + color.length + stroke.length, requestedMob.isShielded ? 1 : 0);
+                    dataView.setUint8(44 + color.length + stroke.length, requestedMob.isUnblockable ? 1 : 0);
+                    dataView.setUint8(45 + color.length + stroke.length, requestedMob.showHealthBar ? 1 : 0);
+                    dataView.setBigUint64(46 + color.length + stroke.length, BigInt(requestedMob.collisionFilter.category));
+                    dataView.setBigUint64(54 + color.length + stroke.length, BigInt(requestedMob.collisionFilter.mask));
+                    dataView.setUint8(62 + color.length + stroke.length, requestedMob.isBoss ? 1 : 0);
+                    dataView.setUint8(63 + color.length + stroke.length, requestedMob.isFinalBoss ? 1 : 0);
+                    dataView.setUint8(64 + color.length + stroke.length, requestedMob.isInvulnerable ? 1 : 0);
+                    dataView.setUint8(65 + color.length + stroke.length, requestedMob.isZombie ? 1 : 0);
+                    dataView.setUint8(66 + color.length + stroke.length, requestedMob.isGrouper ? 1 : 0);
+                    dataView.setUint8(67 + color.length + stroke.length, requestedMob.isMobBullet ? 1 : 0);
                     dcLocal.send(dataView);
                 }
             }
