@@ -5,7 +5,7 @@ const http = require('http');
 http.createServer((req, res) => {
     switch(req.url) {
         case '/host':
-            res.end(fs.readFileSync('./client/join.js'));
+            res.end(fs.readFileSync('./client/host.js'));
             break;
         case '/join':
             res.end(fs.readFileSync('./client/join.js'));
