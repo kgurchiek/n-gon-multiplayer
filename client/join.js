@@ -1982,6 +1982,29 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         Matter.Body.setVertices(block, newVertices)
                     }
                 }
+                if (id == 36) {
+                    // mob property update
+                    const newMob = mob.find(a => a.id == data.getUint16(1));
+                    if (newMob == null) {
+                        const newData = new Uint8Array(new ArrayBuffer(3));
+                        newData[0] = 29;
+                        const dataView = new DataView(newData.buffer);
+                        dataView.setUint16(1, data.getUint16(1));
+                        dcRemote.send(dataView);
+                    } else {
+                        newMob.isShielded = data.getUint8(1) == 1;
+                        newMob.isUnblockable = dataView.getUint8(2) == 1;
+                        newMob.showHealthBar = dataView.getUint8(3) == 1;
+                        newMob.collisionFilter.category = dataView.getBigUint64(4);
+                        newMob.collisionFilter.mask = dataView.getBigUint64(12);
+                        newMob.isBoss = dataView.getUint8(20) == 1;
+                        newMob.isFinalBoss = dataView.getUint8(21) == 1;
+                        newMob.isInvulnerable = dataView.getUint8(22) == 1;
+                        newMob.isZombie = dataView.getUint8(23) == 1;
+                        newMob.isGrouper = dataView.getUint8(24) == 1;
+                        newMob.isMobBullet = dataView.getUint8(25) == 1;
+                    }
+                }
             };
             window.dcRemote.onerror = function(e) {
                 console.error('dcRemote', 'onerror', e);
@@ -2030,7 +2053,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             console.error(err);
         }
         ws.onclose = () => {
-            console.log('disconnected');
+            console.log('Signaling complete');
             resolve();
         }
     })

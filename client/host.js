@@ -1434,7 +1434,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             console.error(err);
         }
         ws.onclose = () => {
-            console.log('disconnected');
+            console.log('Signaling complete');
         }
     });
 
@@ -3915,7 +3915,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
 
 
             // powerup update
-            const powerupChanges = [];
             for (const powerup of powerUp) {
                 let changed = false;
                 let found = false; 
@@ -3925,17 +3924,16 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         if (powerup.position.x != oldPowerups[i].position.x || powerup.position.y != oldPowerups[i].position.y || powerup.size != oldPowerups[i].size) changed = true;
                     }
                 }
-                if (changed || !found) powerupChanges.push(powerup);
-            }
-            for (const powerup of powerupChanges) {
-                const data = new Uint8Array(new ArrayBuffer(27));
-                data[0] = 27;
-                const dataView = new DataView(data.buffer);
-                dataView.setUint16(1, powerup.id);
-                dataView.setFloat64(3, powerup.position.x);
-                dataView.setFloat64(11, powerup.position.y);
-                dataView.setFloat64(19, powerup.size);
-                dcLocal.send(dataView);
+                 if (changed || !found) {
+                    const data = new Uint8Array(new ArrayBuffer(27));
+                    data[0] = 27;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, powerup.id);
+                    dataView.setFloat64(3, powerup.position.x);
+                    dataView.setFloat64(11, powerup.position.y);
+                    dataView.setFloat64(19, powerup.size);
+                    dcLocal.send(dataView);
+                 }
             }
 
             for (const oldPowerup of oldPowerups) {
@@ -3955,87 +3953,84 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
 
 
             // mob update
-            const mobChanges = [];
             for (const newMob of mob) {
-                let changed = false;
+                let moved = false;
                 let found = false;
+                let vertexChange = false;
+                let colorChange = false;
+                let propertyChange = false;
                 for (let i = 0; i < oldMobs.length && !found; i++) {
                     if (newMob.id == oldMobs[i].id) {
                         found = true;
-                        if (newMob.position.x != oldMobs[i].position.x || newMob.position.y != oldMobs[i].position.y || newMob.angle != oldMobs[i].angle) changed = true;
+                        if (newMob.position.x != oldMobs[i].position.x || newMob.position.y != oldMobs[i].position.y || newMob.angle != oldMobs[i].angle) moved = true;
+                        if (newMob.vertices.length != oldMobs[i].vertices.length) vertexChange = true;
+                        else for (let j = 0; j < newMob.vertices.length; j++) if (newMob.vertices[j].x != oldMobs[i].vertices[j].x || newMob.vertices[j].y != oldMobs[i].vertices[j].y) vertexChange = true;
+                        if (newMob.fill != oldMobs[i].fill || newMob.alpha != oldMobs[i].alpha || newMob.stroke != oldMobs[i].stroke) colorChange = true;
+                        if (newMob.isShielded != oldMobs[i].isShielded || newMob.isUnblockable != oldMobs[i].isUnblockable || newMob.showHealthBar != oldMobs[i].showHealthBar || newMob.collisionFilter.category != oldMobs[i].collisionFilter.category || newMob.collisionFilter.mask != oldMobs[i].collisionFilter.mask || newMob.isBoss != oldMobs[i].isBoss || newMob.isFinalBoss != oldMobs[i].isFinalBoss || newMob.isInvulnerable != oldMobs[i].isInvulnerable || newMob.isZombie != oldMobs[i].isZombie || newMob.isGrouper != oldMobs[i].isGrouper || newMob.isMobBullet != oldMobs[i].isMobBullet) propertyChange = true;
                     }
                 }
-                if (changed || !found) mobChanges.push(newMob);
-            }
-            for (const newMob of mobChanges) {
-                const data = new Uint8Array(new ArrayBuffer(27));
-                data[0] = 31;
-                const dataView = new DataView(data.buffer);
-                dataView.setUint16(1, newMob.id);
-                dataView.setFloat64(3, newMob.position.x);
-                dataView.setFloat64(11, newMob.position.y);
-                dataView.setFloat64(19, newMob.angle);
-                dcLocal.send(dataView);
-            }
-
-            mobChanges.length = 0;
-            for (const newMob of mob) {
-                let changed = false;
-                let found = false;
-                for (let i = 0; i < oldMobs.length && !found; i++) {
-                    if (newMob.id == oldMobs[i].id) {
-                        found = true;
-                        if (newMob.vertices.length != oldMobs[i].vertices.length) changed = true;
-                        for (let j = 0; j < newMob.vertices.length; j++) if (newMob.vertices[j].x != oldMobs[i].vertices[j].x || newMob.vertices[j].y != oldMobs[i].vertices[j].y) changed = true;
+                if (!found || moved) {
+                    // mob position update
+                    const data = new Uint8Array(new ArrayBuffer(27));
+                    data[0] = 31;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, newMob.id);
+                    dataView.setFloat64(3, newMob.position.x);
+                    dataView.setFloat64(11, newMob.position.y);
+                    dataView.setFloat64(19, newMob.angle);
+                    dcLocal.send(dataView);
+                }
+                if (vertexChange) {
+                    // mob vertex uodate
+                    const data = new Uint8Array(new ArrayBuffer(3 + 16 * newMob.vertices.length));
+                    data[0] = 32;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, newMob.id);
+                    let index = 3;
+                    for (const vertex of newMob.vertices) {
+                        dataView.setFloat64(index, vertex.x);
+                        dataView.setFloat64(index + 8, vertex.y);
+                        index += 16;
                     }
+                    dcLocal.send(dataView);
                 }
-                if (changed || !found) mobChanges.push(newMob);
-            }
-            for (const newMob of mobChanges) {
-                const data = new Uint8Array(new ArrayBuffer(3 + 16 * newMob.vertices.length));
-                data[0] = 32;
-                const dataView = new DataView(data.buffer);
-                dataView.setUint16(1, newMob.id);
-                let index = 3;
-                for (const vertex of newMob.vertices) {
-                    dataView.setFloat64(index, vertex.x);
-                    dataView.setFloat64(index + 8, vertex.y);
-                    index += 16;
+                if (colorChange) {
+                    // mob color update
+                    const color = new TextEncoder().encode(newMob.fill);
+                    const stroke = new TextEncoder().encode(newMob.stroke);
+                    const data = new Uint8Array(new ArrayBuffer(9 + color.length + stroke.length));
+                    data[0] = 33;
+                    data.set(color, 4);
+                    data.set(stroke, 9 + color.length);
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, newMob.id);
+                    dataView.setUint8(3, color.length);
+                    dataView.setFloat32(4 + color.length, newMob.alpha || 1);
+                    dataView.setUint8(8 + color.length, stroke.length);
+                    dcLocal.send(dataView);   
                 }
-                dcLocal.send(dataView);
-            }
-
-            mobChanges.length = 0;
-            for (const newMob of mob) {
-                let changed = false;
-                let found = false;
-                for (let i = 0; i < oldMobs.length && !found; i++) {
-                    if (newMob.id == oldMobs[i].id) {
-                        found = true;
-                        if (newMob.fill != oldMobs[i].fill || newMob.alpha != oldMobs[i].alpha || newMob.stroke != oldMobs[i].stroke) changed = true;
-                    }
+                if (propertyChange) {
+                    // mob property update
+                    const data = new Uint8Array(new ArrayBuffer(26));
+                    data[0] = 36;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint8(1, newMob.isShielded ? 1 : 0);
+                    dataView.setUint8(2, newMob.isUnblockable ? 1 : 0);
+                    dataView.setUint8(3, newMob.showHealthBar ? 1 : 0);
+                    dataView.setBigUint64(4, BigInt(newMob.collisionFilter.category));
+                    dataView.setBigUint64(12, BigInt(newMob.collisionFilter.mask));
+                    dataView.setUint8(20, newMob.isBoss ? 1 : 0);
+                    dataView.setUint8(21, newMob.isFinalBoss ? 1 : 0);
+                    dataView.setUint8(22, newMob.isInvulnerable ? 1 : 0);
+                    dataView.setUint8(23, newMob.isZombie ? 1 : 0);
+                    dataView.setUint8(24, newMob.isGrouper ? 1 : 0);
+                    dataView.setUint8(25, newMob.isMobBullet ? 1 : 0);
                 }
-                if (changed || !found) mobChanges.push(newMob);
-            }
-            for (const newMob of mobChanges) {
-                const color = new TextEncoder().encode(newMob.fill);
-                const stroke = new TextEncoder().encode(newMob.stroke);
-                const data = new Uint8Array(new ArrayBuffer(9 + color.length + stroke.length));
-                data[0] = 33;
-                data.set(color, 4);
-                data.set(stroke, 9 + color.length);
-                const dataView = new DataView(data.buffer);
-                dataView.setUint16(1, newMob.id);
-                dataView.setUint8(3, color.length);
-                dataView.setFloat32(4 + color.length, newMob.alpha || 1);
-                dataView.setUint8(8 + color.length, stroke.length);
-                dcLocal.send(dataView);
             }
 
             for (const oldMob of oldMobs) {
-                let found = false;
-                for (let i = 0; i < mob.length; i++) if (oldMob.id == mob[i].id) found = true;
-                if (!found) {
+                if (mob.findIndex(a => { a.id == oldMob.id }) == -1) {
+                    // delete mob
                     const data = new Uint8Array(new ArrayBuffer(3));
                     data[0] = 34;
                     const dataView = new DataView(data.buffer);
@@ -4048,7 +4043,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             for (const newMob of mob) {
                 vertices = [];
                 for (const vertex of newMob.vertices) vertices.push({ x: vertex.x, y: vertex.y });
-                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices, fill: newMob.fill, stroke: newMob.stroke });
+                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices, fill: newMob.fill, stroke: newMob.stroke, isShielded: newMob.isShielded, isUnblockable: newMob.isUnblockable, showHealthBar: newMob.showHealthBar, collisionFilter: { category: newMob.collisionFilter.category, mask: newMob.collisionFilter.mask }, isBoss: newMob.isBoss, isFinalBoss: newMob.isFinalBoss, isInvulnerable: newMob.isInvulnerable, isZombie: newMob.isZombie, isGrouper: newMob.isGrouper, isMobBullet: newMob.isMobBullet });
             };
         }})
     }

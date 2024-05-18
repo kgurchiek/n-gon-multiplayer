@@ -39,4 +39,5 @@
 | 32 | Mob Vertex Update    | 2+     | mobId (Uint16), vertices (list: x (Float64), y (Float64)) |
 | 33 | Mob Color Update     | 7+     | mobId (Uint16), color (string), alpha (Float32), stroke (string) |
 | 34 | Delete Mob           | 2      | mobId (Uint16) |
-| 35 | Block Vertex Update    | 2+     | blockId (Uint16), vertices (list: x (Float64), y (Float64)) |
+| 35 | Block Vertex Update  | 2+     | blockId (Uint16), vertices (list: x (Float64), y (Float64)) |
+| 36 | Mob Property Update  | 25     | isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean) |
