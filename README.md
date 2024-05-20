@@ -34,10 +34,10 @@
 | 27 | Powerup Update        | 26     | powerupId (Uint16), x (Float64), y (Float64), size (Float64) |
 | 28 | Delete Powerup        | 2      | powerupId (Uint16) |
 | 29 | Mob Info Request      | 2      | mobId (Uint16) |
-| 30 | Mob Info              | 75+    | mobId (Uint16), type (Uint8), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64) |
+| 30 | Mob Info              | 83+    | mobId (Uint16), type (Uint8), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64) |
 | 31 | Mob Position Update   | 26     | mobId (Uint16), x (Float64), y (Float64), angle (Float64) |
 | 32 | Mob Vertex Update     | 2+     | mobId (Uint16), vertices (list: x (Float64), y (Float64)) |
 | 33 | Mob Color Update      | 7+     | mobId (Uint16), color (string), alpha (Float32), stroke (string) |
 | 34 | Delete Mob            | 2      | mobId (Uint16) |
 | 35 | Block Vertex Update   | 2+     | blockId (Uint16), vertices (list: x (Float64), y (Float64)) |
-| 36 | Mob Property Update   | 35     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64) |
+| 36 | Mob Property Update   | 43     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64) |

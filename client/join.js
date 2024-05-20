@@ -1380,6 +1380,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         mob[me].isGrouper = data.getUint8(66 + colorLength + strokeLength) == 1;
                         mob[me].isMobBullet = data.getUint8(67 + colorLength + strokeLength) == 1;
                         mob[me].seePlayer.recall = data.getFloat64(68 + colorLength + strokeLength);
+                        mob[me].health = data.getFloat64(76 + colorLength + strokeLength);
                         
                         switch (mob[me].mobType) {
                             case 21:
@@ -2008,6 +2009,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         newMob.isGrouper = data.getUint8(26) == 1;
                         newMob.isMobBullet = data.getUint8(27) == 1;
                         newMob.seePlayer.recall = data.getFloat64(28);
+                        newMob.health = data.getFloat64(36);
                     }
                 }
             };
@@ -2963,6 +2965,30 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    mobs.healthBar = () => {
+        for (let i = 0, len = mob.length; i < len; i++) {
+            if (mob[i].isZombie) {
+                const h = mob[i].radius * 0.3;
+                const w = mob[i].radius * 2;
+                const x = mob[i].position.x - w / 2;
+                const y = mob[i].position.y - w * 0.7;
+                ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+                ctx.fillRect(x, y, w, h);
+                ctx.fillStyle = "rgba(136, 51, 170,0.7)";
+                ctx.fillRect(x, y, w * mob[i].health, h);
+            } else if (mob[i].seePlayer.recall && mob[i].showHealthBar) {
+                const h = mob[i].radius * 0.3;
+                const w = mob[i].radius * 2;
+                const x = mob[i].position.x - w / 2;
+                const y = mob[i].position.y - w * 0.7;
+                ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
+                ctx.fillRect(x, y, w, h);
+                ctx.fillStyle = "rgba(255,0,0,0.7)";
+                ctx.fillRect(x, y, w * mob[i].health, h);
             }
         }
     }
