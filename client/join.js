@@ -1381,6 +1381,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         mob[me].isMobBullet = data.getUint8(67 + colorLength + strokeLength) == 1;
                         mob[me].seePlayer.recall = data.getFloat64(68 + colorLength + strokeLength);
                         mob[me].health = data.getFloat64(76 + colorLength + strokeLength);
+                        mob[me].radius = data.getFloat64(84 + colorLength + strokeLength);
 
                         mob[me].replace = () => {}
                         
@@ -2012,6 +2013,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         newMob.isMobBullet = data.getUint8(27) == 1;
                         newMob.seePlayer.recall = data.getFloat64(28);
                         newMob.health = data.getFloat64(36);
+                        newMob.radius = data.getFloat64(44);
                     }
                 }
             };
