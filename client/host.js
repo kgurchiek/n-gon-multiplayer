@@ -1325,6 +1325,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     player2.holdingTarget.collisionFilter.mask = cat.player | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
                 }
                 player2.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
+                if (player2.holdingTarget == null) player2.isHolding = false;
                 if (player2.isHolding) {
                     player2.holdingTarget.collisionFilter.category = 0;
                     player2.holdingTarget.collisionFilter.mask = 0;

@@ -1381,6 +1381,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         mob[me].isMobBullet = data.getUint8(67 + colorLength + strokeLength) == 1;
                         mob[me].seePlayer.recall = data.getFloat64(68 + colorLength + strokeLength);
                         mob[me].health = data.getFloat64(76 + colorLength + strokeLength);
+
+                        mob[me].replace = () => {}
                         
                         switch (mob[me].mobType) {
                             case 21:
@@ -2000,8 +2002,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         newMob.isShielded = data.getUint8(3) == 1;
                         newMob.isUnblockable = data.getUint8(4) == 1;
                         newMob.showHealthBar = data.getUint8(5) == 1;
-                        newMob.collisionFilter.category = data.getBigUint64(6);
-                        newMob.collisionFilter.mask = data.getBigUint64(14);
+                        newMob.collisionFilter.category = Number(data.getBigUint64(6));
+                        newMob.collisionFilter.mask = Number(data.getBigUint64(14));
                         newMob.isBoss = data.getUint8(22) == 1;
                         newMob.isFinalBoss = data.getUint8(23) == 1;
                         newMob.isInvulnerable = data.getUint8(24) == 1;
