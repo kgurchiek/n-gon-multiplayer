@@ -1332,6 +1332,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         oldPowerupSpawn(data.getFloat64(3), data.getFloat64(11), new TextDecoder().decode(data.buffer.slice(28, new Uint8Array(data.buffer)[27] + 28)));
                         powerUp[me].id = data.getUint16(1);
                         powerUp[me].size = data.getFloat64(19);
+                        powerUp[me].collisionFilter.category = Number(data.getBigUint64(28 + data.getUint8(27)));
+                        powerUp[me].collisionFilter.mask = Number(data.getBigUint64(36 + data.getUint8(27)));
                     }
                 }
                 if (id == 27) {
@@ -1346,6 +1348,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     } else {
                         Matter.Body.setPosition(powerup, { x: data.getFloat64(3), y: data.getFloat64(11) });
                         powerup.size = data.getFloat64(19);
+                        powerup.collisionFilter.category = Number(data.getBigUint64(27));
+                        powerup.collisionFilter.mask = Number(data.getBigUint64(35));
                     }
                 }
                 if (id == 28) {

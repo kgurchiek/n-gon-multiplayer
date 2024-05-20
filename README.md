@@ -30,8 +30,8 @@
 | 23 | Laser                 | 51     | startX (Float64), startY (Float64), endX (Float64), endY (Float64), dmg (Float64), reflections (Uint8), isThickBeam (boolean), push (Float64), playerId (Uint8) |
 | 24 | Delete Block          | 2      | blockId (Uint16) |
 | 25 | Powerup Info Request  | 2      | powerupId (Uint16) |
-| 26 | Powerup Info          | 27+    | powerupId (Uint16), x (Float64), y (Float64), size (Float64), name (string) |
-| 27 | Powerup Update        | 26     | powerupId (Uint16), x (Float64), y (Float64), size (Float64) |
+| 26 | Powerup Info          | 43+    | powerupId (Uint16), x (Float64), y (Float64), size (Float64), name (string), collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64) |
+| 27 | Powerup Update        | 42     | powerupId (Uint16), x (Float64), y (Float64), size (Float64), collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64) |
 | 28 | Delete Powerup        | 2      | powerupId (Uint16) |
 | 29 | Mob Info Request      | 2      | mobId (Uint16) |
 | 30 | Mob Info              | 91+    | mobId (Uint16), type (Uint8), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64) |

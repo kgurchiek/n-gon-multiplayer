@@ -250,7 +250,6 @@ b.multiplayerPulse = (charge, angle, where) => {
 }
 
 b.multiplayerGrenade = (where, angle, size, crouch) => {
-    console.log(size)
     const me = bullet.length;
     bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
     Matter.Body.setDensity(bullet[me], 0.0003);
@@ -1347,16 +1346,18 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 // powerup info request
                 const powerup = powerUp.find(a => a.id == data.getUint16(1));
                 if (powerUp != null) {
-                    const textEncoder = new TextEncoder();
-                    const data = new Uint8Array(new ArrayBuffer(28 + textEncoder.encode(powerup.name).length));
+                    const powerupName = new TextEncoder().encode(powerup.name);
+                    const data = new Uint8Array(new ArrayBuffer(44 + powerupName.length));
                     data[0] = 26;
-                    data.set(textEncoder.encode(powerup.name), 28)
+                    data.set(powerupName, 28)
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, powerup.id);
                     dataView.setFloat64(3, powerup.position.x);
                     dataView.setFloat64(11, powerup.position.y);
                     dataView.setFloat64(19, powerup.size);
-                    dataView.setUint8(27, textEncoder.encode(powerup.name).length);
+                    dataView.setUint8(27, powerupName.length);
+                    dataView.setBigUint64(28 + powerupName.length, BigInt(powerup.collisionFilter.category));
+                    dataView.setBigUint64(36 + powerupName.length, BigInt(powerup.collisionFilter.mask));
                     dcLocal.send(dataView);
                 }
             }
@@ -3905,15 +3906,17 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             // powerup update
             for (const powerup of powerUp) {
                 const oldPowerup = oldPowerups.find(a => a.id == powerup.id);
-                if (oldPowerup == null || powerup.position.x != oldPowerup.position.x || powerup.position.y != oldPowerup.position.y || powerup.size != oldPowerup.size) {
+                if (oldPowerup == null || powerup.position.x != oldPowerup.position.x || powerup.position.y != oldPowerup.position.y || powerup.size != oldPowerup.size || powerup.collisionFilter.category != oldPowerup.collisionFilter.category || powerup.collisionFilter.mask != oldPowerup.collisionFilter.mask) {
                     // powerup update
-                    const data = new Uint8Array(new ArrayBuffer(27));
+                    const data = new Uint8Array(new ArrayBuffer(43));
                     data[0] = 27;
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, powerup.id);
                     dataView.setFloat64(3, powerup.position.x);
                     dataView.setFloat64(11, powerup.position.y);
                     dataView.setFloat64(19, powerup.size);
+                    dataView.setBigUint64(27, BigInt(powerup.collisionFilter.category));
+                    dataView.setBigUint64(35, BigInt(powerup.collisionFilter.mask));
                     dcLocal.send(dataView);
                 }
             }
@@ -3930,7 +3933,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             }
 
             oldPowerups.length = 0;
-            for (const powerup of powerUp) oldPowerups.push({ id: powerup.id, position: { x: powerup.position.x, y: powerup.position.y }, size: powerup.size });
+            for (const powerup of powerUp) oldPowerups.push({ id: powerup.id, position: { x: powerup.position.x, y: powerup.position.y }, size: powerup.size, collisionFilter: { category: powerup.collisionFilter.category, mask: powerup.collisionFilter.mask } });
 
 
             // mob update
