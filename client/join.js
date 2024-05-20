@@ -261,6 +261,7 @@ b.multiplayerGrenade = (where, angle, size, crouch) => {
     bullet[me].beforeDmg = function () {
         this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
     };
+    bullet[me].onEnd = () => {};
     speed = crouch ? 43 : 32
     Matter.Body.setVelocity(bullet[me], {
         x: m.Vx / 2 + speed * Math.cos(angle),
@@ -2748,7 +2749,10 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     }
     
                     function collideMob(obj) {
-                        if (obj.multiplayer) return;
+                        if (obj.multiplayer) {
+                            if (!(m.immuneCycle < m.cycle && (obj === playerBody || obj === playerHead) && !mob[k].isSlowed && !mob[k].isStunned) && obj.classType === "bullet" && obj.speed > obj.minDmgSpeed) obj.beforeDmg(mob[k]);
+                            return;
+                        }
                         //player + mob collision
                         if (
                             m.immuneCycle < m.cycle &&

@@ -253,7 +253,6 @@ b.multiplayerGrenade = (where, angle, size, crouch) => {
     const me = bullet.length;
     bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
     Matter.Body.setDensity(bullet[me], 0.0003);
-    // bullet[me].multiplayer = true;
     bullet[me].explodeRad = 300 * size; //+ 100 * tech.isBlockExplode;
     bullet[me].onEnd = b.grenadeEnd
     bullet[me].minDmgSpeed = 1;
@@ -848,7 +847,6 @@ b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles
             },
         }
     );
-    bullet[me].multiplayer = true;
     if (!isReturn && !target) {
         Matter.Body.setVelocity(bullet[me], {
             x: origin.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
@@ -969,7 +967,6 @@ b.multiplayerMissile = (where, angle, speed, size) => {
             ctx.fill();
         },
     });
-    // bullet[me].multiplayer = true;
     const thrust = 0.0066 * bullet[me].mass; //* (tech.isMissileBig ? (tech.isMissileBiggest ? 0.3 : 0.7) : 1);
     Matter.Body.setVelocity(bullet[me], {
         x: player2.Vx / 2 + speed * Math.cos(angle),
@@ -2175,7 +2172,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     }
     
                     function collideMob(obj) {
-                        if (obj.multiplayer) return;
                         //player + mob collision
                         if (
                             m.immuneCycle < m.cycle &&
