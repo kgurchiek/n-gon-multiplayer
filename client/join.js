@@ -1379,6 +1379,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         mob[me].isZombie = data.getUint8(65 + colorLength + strokeLength) == 1;
                         mob[me].isGrouper = data.getUint8(66 + colorLength + strokeLength) == 1;
                         mob[me].isMobBullet = data.getUint8(67 + colorLength + strokeLength) == 1;
+                        mob[me].seePlayer.recall = data.getFloat64(68 + colorLength + strokeLength);
                         
                         switch (mob[me].mobType) {
                             case 21:
@@ -1995,17 +1996,18 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         dataView.setUint16(1, data.getUint16(1));
                         dcRemote.send(dataView);
                     } else {
-                        newMob.isShielded = data.getUint8(1) == 1;
-                        newMob.isUnblockable = dataView.getUint8(2) == 1;
-                        newMob.showHealthBar = dataView.getUint8(3) == 1;
-                        newMob.collisionFilter.category = dataView.getBigUint64(4);
-                        newMob.collisionFilter.mask = dataView.getBigUint64(12);
-                        newMob.isBoss = dataView.getUint8(20) == 1;
-                        newMob.isFinalBoss = dataView.getUint8(21) == 1;
-                        newMob.isInvulnerable = dataView.getUint8(22) == 1;
-                        newMob.isZombie = dataView.getUint8(23) == 1;
-                        newMob.isGrouper = dataView.getUint8(24) == 1;
-                        newMob.isMobBullet = dataView.getUint8(25) == 1;
+                        newMob.isShielded = data.getUint8(3) == 1;
+                        newMob.isUnblockable = data.getUint8(4) == 1;
+                        newMob.showHealthBar = data.getUint8(5) == 1;
+                        newMob.collisionFilter.category = data.getBigUint64(6);
+                        newMob.collisionFilter.mask = data.getBigUint64(14);
+                        newMob.isBoss = data.getUint8(22) == 1;
+                        newMob.isFinalBoss = data.getUint8(23) == 1;
+                        newMob.isInvulnerable = data.getUint8(24) == 1;
+                        newMob.isZombie = data.getUint8(25) == 1;
+                        newMob.isGrouper = data.getUint8(26) == 1;
+                        newMob.isMobBullet = data.getUint8(27) == 1;
+                        newMob.seePlayer.recall = data.getFloat64(28);
                     }
                 }
             };

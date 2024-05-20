@@ -1366,7 +1366,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     const textEncoder = new TextEncoder();
                     const color = textEncoder.encode(requestedMob.fill);
                     const stroke = textEncoder.encode(requestedMob.stroke);
-                    const data = new Uint8Array(new ArrayBuffer(68 + color.length + stroke.length));
+                    const data = new Uint8Array(new ArrayBuffer(76 + color.length + stroke.length));
                     data[0] = 30;
                     data.set(color, 38);
                     data.set(stroke, 43 + color.length);
@@ -1392,6 +1392,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setUint8(65 + color.length + stroke.length, requestedMob.isZombie ? 1 : 0);
                     dataView.setUint8(66 + color.length + stroke.length, requestedMob.isGrouper ? 1 : 0);
                     dataView.setUint8(67 + color.length + stroke.length, requestedMob.isMobBullet ? 1 : 0);
+                    dataView.setFloat64(68 + color.length + stroke.length, requestedMob.seePlayer.recall);
                     dcLocal.send(dataView);
                 }
             }
@@ -3941,7 +3942,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     if (newMob.vertices.length != oldMob.vertices.length) vertexChange = true;
                     else for (let j = 0; j < newMob.vertices.length; j++) if (newMob.vertices[j].x != oldMob.vertices[j].x || newMob.vertices[j].y != oldMob.vertices[j].y) vertexChange = true;
                     if (newMob.fill != oldMob.fill || newMob.alpha != oldMob.alpha || newMob.stroke != oldMob.stroke) colorChange = true;
-                    if (newMob.isShielded != oldMob.isShielded || newMob.isUnblockable != oldMob.isUnblockable || newMob.showHealthBar != oldMob.showHealthBar || newMob.collisionFilter.category != oldMob.collisionFilter.category || newMob.collisionFilter.mask != oldMob.collisionFilter.mask || newMob.isBoss != oldMob.isBoss || newMob.isFinalBoss != oldMob.isFinalBoss || newMob.isInvulnerable != oldMob.isInvulnerable || newMob.isZombie != oldMob.isZombie || newMob.isGrouper != oldMob.isGrouper || newMob.isMobBullet != oldMob.isMobBullet) propertyChange = true;
+                    if (newMob.isShielded != oldMob.isShielded || newMob.isUnblockable != oldMob.isUnblockable || newMob.showHealthBar != oldMob.showHealthBar || newMob.collisionFilter.category != oldMob.collisionFilter.category || newMob.collisionFilter.mask != oldMob.collisionFilter.mask || newMob.isBoss != oldMob.isBoss || newMob.isFinalBoss != oldMob.isFinalBoss || newMob.isInvulnerable != oldMob.isInvulnerable || newMob.isZombie != oldMob.isZombie || newMob.isGrouper != oldMob.isGrouper || newMob.isMobBullet != oldMob.isMobBullet || newMob.seePlayer.recall != oldMob.seePlayer.recall) propertyChange = true;
                 }
                 if (oldMob == null || moved) {
                     // mob position update
@@ -3985,20 +3986,23 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 }
                 if (propertyChange) {
                     // mob property update
-                    const data = new Uint8Array(new ArrayBuffer(26));
+                    const data = new Uint8Array(new ArrayBuffer(36));
                     data[0] = 36;
                     const dataView = new DataView(data.buffer);
-                    dataView.setUint8(1, newMob.isShielded ? 1 : 0);
-                    dataView.setUint8(2, newMob.isUnblockable ? 1 : 0);
-                    dataView.setUint8(3, newMob.showHealthBar ? 1 : 0);
-                    dataView.setBigUint64(4, BigInt(newMob.collisionFilter.category));
-                    dataView.setBigUint64(12, BigInt(newMob.collisionFilter.mask));
-                    dataView.setUint8(20, newMob.isBoss ? 1 : 0);
-                    dataView.setUint8(21, newMob.isFinalBoss ? 1 : 0);
-                    dataView.setUint8(22, newMob.isInvulnerable ? 1 : 0);
-                    dataView.setUint8(23, newMob.isZombie ? 1 : 0);
-                    dataView.setUint8(24, newMob.isGrouper ? 1 : 0);
-                    dataView.setUint8(25, newMob.isMobBullet ? 1 : 0);
+                    dataView.setUint16(1, newMob.id);
+                    dataView.setUint8(3, newMob.isShielded ? 1 : 0);
+                    dataView.setUint8(4, newMob.isUnblockable ? 1 : 0);
+                    dataView.setUint8(5, newMob.showHealthBar ? 1 : 0);
+                    dataView.setBigUint64(6, BigInt(newMob.collisionFilter.category));
+                    dataView.setBigUint64(14, BigInt(newMob.collisionFilter.mask));
+                    dataView.setUint8(22, newMob.isBoss ? 1 : 0);
+                    dataView.setUint8(23, newMob.isFinalBoss ? 1 : 0);
+                    dataView.setUint8(24, newMob.isInvulnerable ? 1 : 0);
+                    dataView.setUint8(25, newMob.isZombie ? 1 : 0);
+                    dataView.setUint8(26, newMob.isGrouper ? 1 : 0);
+                    dataView.setUint8(27, newMob.isMobBullet ? 1 : 0);
+                    dataView.setFloat64(28, newMob.seePlayer.recall);
+                    dcLocal.send(dataView);
                 }
             }
 
@@ -4017,7 +4021,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             for (const newMob of mob) {
                 vertices = [];
                 for (const vertex of newMob.vertices) vertices.push({ x: vertex.x, y: vertex.y });
-                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices, fill: newMob.fill, stroke: newMob.stroke, isShielded: newMob.isShielded, isUnblockable: newMob.isUnblockable, showHealthBar: newMob.showHealthBar, collisionFilter: { category: newMob.collisionFilter.category, mask: newMob.collisionFilter.mask }, isBoss: newMob.isBoss, isFinalBoss: newMob.isFinalBoss, isInvulnerable: newMob.isInvulnerable, isZombie: newMob.isZombie, isGrouper: newMob.isGrouper, isMobBullet: newMob.isMobBullet });
+                oldMobs.push({ id: newMob.id, position: { x: newMob.position.x, y: newMob.position.y }, angle: newMob.size, vertices, fill: newMob.fill, stroke: newMob.stroke, isShielded: newMob.isShielded, isUnblockable: newMob.isUnblockable, showHealthBar: newMob.showHealthBar, collisionFilter: { category: newMob.collisionFilter.category, mask: newMob.collisionFilter.mask }, isBoss: newMob.isBoss, isFinalBoss: newMob.isFinalBoss, isInvulnerable: newMob.isInvulnerable, isZombie: newMob.isZombie, isGrouper: newMob.isGrouper, isMobBullet: newMob.isMobBullet, seePlayer: { recall: newMob.seePlayer.recall } });
             };
         }})
     }
