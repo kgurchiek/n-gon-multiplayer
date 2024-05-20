@@ -20,7 +20,7 @@ wss.on('connection', (ws) => {
     ws.on('error', console.error);
 
     ws.on('message', (data) => {
-        console.log('received:', data);
+        console.log('Received:', data);
         const id = data[0];
         data = data.subarray(1);
         if (id == 0) {
@@ -56,7 +56,6 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        console.log(session?.ws?.readyState, session?.ws2?.readyState)
         if (session?.ws && session.ws.readyState == 1) session.ws.close();
         if (session?.ws2 && session.ws2.readyState == 1) session.ws2.close();
         delete sessions[session];

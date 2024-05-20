@@ -1255,7 +1255,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     }
                 }
                 if (id == 15) {
-                    // block update
+                    // block position update
                     let found = false;
                     for (let i = 0; i < body.length && !found; i++) {
                         if (body[i].id == data.getUint16(1)) {
@@ -1382,7 +1382,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         
                         switch (mob[me].mobType) {
                             case 21:
-                                mob[me].eventHorizon = radius * 30;
+                                mob[me].eventHorizon = mob[me].radius * 30;
                                 break;
                             case 26:
                                 mob[me].warpIntensity = 0;
@@ -1394,6 +1394,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                             case 33:
                                 mob[me].delay = 55 + 35 * simulation.CDScale;
                                 mob[me].nextBlinkCycle = me.delay;
+                                break;
+                            case 68:
+                                // mob[me].pulseRadius = 
                                 break;
                             case 70:
                                 mob[me].eventHorizon = 0;
@@ -1851,7 +1854,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                     break;
                                 case 68:
                                     ctx.beginPath(); //draw explosion outline
-                                    ctx.arc(this.position.x, this.position.y, pulseRadius * (1.01 - this.timeLeft / this.lifeSpan), 0, 2 * Math.PI); //* this.fireCycle / this.fireDelay
+                                    ctx.arc(this.position.x, this.position.y, this.pulseRadius * (1.01 - this.timeLeft / this.lifeSpan), 0, 2 * Math.PI); //* this.fireCycle / this.fireDelay
                                     ctx.fillStyle = "rgba(255,0,220,0.05)";
                                     ctx.fill();
                                     break;
@@ -2968,6 +2971,258 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     spawn.bodyVertex = () => {};
     const oldPowerupSpawn = powerUps.spawn;
     powerUps.spawn = () => {};
+
+    const oldMACHO = spawn.MACHO;
+    spawn.MACHO = () => {}
+    
+    const oldWIMP = spawn.WIMP;
+    spawn.WIMP = () => {}
+    
+    const oldFinalBoss = spawn.finalBoss;
+    spawn.finalBoss = () => {}
+    
+    const oldZombie = spawn.zombie;
+    spawn.zombie = () => {}
+    
+    const oldStarter = spawn.starter;
+    spawn.starter = () => {}
+    
+    const oldBlockGroupMob = spawn.blockGroupMob;
+    spawn.blockGroupMob = () => {}
+    
+    const oldBlockBoss = spawn.blockBoss;
+    spawn.blockBoss = () => {}
+    
+    const oldBlockMob = spawn.blockMob;
+    spawn.blockMob = () => {}
+    
+    const oldCellBoss = spawn.cellBoss;
+    spawn.cellBoss = () => {}
+    
+    const oldSpawnerBoss = spawn.spawnerBoss;
+    spawn.spawnerBoss = () => {}
+    
+    const oldGrowBoss = spawn.growBoss;
+    spawn.growBoss = () => {}
+    
+    const oldPowerUpBossBaby = spawn.powerUpBossBaby;
+    spawn.powerUpBossBaby = () => {}
+    
+    const oldPowerUpBoss = spawn.powerUpBoss;
+    spawn.powerUpBoss = () => {}
+    
+    const oldGrower = spawn.grower;
+    spawn.grower = () => {}
+    
+    const oldSpringer = spawn.springer;
+    spawn.springer = () => {}
+    
+    const oldHopper = spawn.hopper;
+    spawn.hopper = () => {}
+    
+    const oldHopMother = spawn.hopMother;
+    spawn.hopMother = () => {}
+    
+    const oldHopEgg = spawn.hopEgg;
+    spawn.hopEgg = () => {}
+    
+    const oldHopBullet = spawn.hopBullet;
+    spawn.hopBullet = () => {}
+    
+    const oldHopMotherBoss = spawn.hopMotherBoss;
+    spawn.hopMotherBoss = () => {}
+    
+    const oldSpinner = spawn.spinner;
+    spawn.spinner = () => {}
+    
+    const oldSucker = spawn.sucker;
+    spawn.sucker = () => {}
+    
+    const oldSuckerBoss = spawn.suckerBoss;
+    spawn.suckerBoss = () => {}
+    
+    const oldSpiderBoss = spawn.spiderBoss;
+    spawn.spiderBoss = () => {}
+    
+    const oldMantisBoss = spawn.mantisBoss;
+    spawn.mantisBoss = () => {}
+    
+    const oldBeamer = spawn.beamer;
+    spawn.beamer = () => {}
+    
+    const oldHistoryBoss = spawn.historyBoss;
+    spawn.historyBoss = () => {}
+    
+    const oldFocuser = spawn.focuser;
+    spawn.focuser = () => {}
+    
+    const oldFlutter = spawn.flutter;
+    spawn.flutter = () => {}
+    
+    const oldStinger = spawn.stinger;
+    spawn.stinger = () => {}
+    
+    const oldBeetleBoss = spawn.beetleBoss;
+    spawn.beetleBoss = () => {}
+    
+    const oldLaserTargetingBoss = spawn.laserTargetingBoss;
+    spawn.laserTargetingBoss = () => {}
+    
+    const oldLaserBombingBoss = spawn.laserBombingBoss;
+    spawn.laserBombingBoss = () => {}
+    
+    const oldBlinkBoss = spawn.blinkBoss;
+    spawn.blinkBoss = () => {}
+    
+    const oldPulsarBoss = spawn.pulsarBoss;
+    spawn.pulsarBoss = () => {}
+    
+    const oldPulsar = spawn.pulsar;
+    spawn.pulsar = () => {}
+    
+    const oldLaserLayer = spawn.laserLayer;
+    spawn.laserLayer = () => {}
+    
+    const oldLaserLayerBoss = spawn.laserLayerBoss;
+    spawn.laserLayerBoss = () => {}
+    
+    const oldMobLaser = spawn.laser;
+    spawn.laser = () => {}
+    
+    const oldLaserBoss = spawn.laserBoss;
+    spawn.laserBoss = () => {}
+    
+    const oldStabber = spawn.stabber;
+    spawn.stabber = () => {}
+    
+    const oldStriker = spawn.striker;
+    spawn.striker = () => {}
+    
+    const oldRevolutionBoss = spawn.revolutionBoss;
+    spawn.revolutionBoss = () => {}
+    
+    const oldSprayBoss = spawn.sprayBoss;
+    spawn.sprayBoss = () => {}
+    
+    const oldMineBoss = spawn.mineBoss;
+    spawn.mineBoss = () => {}
+    
+    const oldMine = spawn.mine;
+    spawn.mine = () => {}
+    
+    const oldBounceBoss = spawn.bounceBoss;
+    spawn.bounceBoss = () => {}
+    
+    const oldTimeBoss = spawn.timeBoss;
+    spawn.timeBoss = () => {}
+    
+    const oldBounceBullet = spawn.bounceBullet;
+    spawn.bounceBullet = () => {}
+    
+    const oldSlashBoss = spawn.slashBoss;
+    spawn.slashBoss = () => {}
+    
+    const oldSlasher = spawn.slasher;
+    spawn.slasher = () => {}
+    
+    const oldSlasher2 = spawn.slasher2;
+    spawn.slasher2 = () => {}
+    
+    const oldSlasher3 = spawn.slasher3;
+    spawn.slasher3 = () => {}
+    
+    const oldSneakBoss = spawn.sneakBoss;
+    spawn.sneakBoss = () => {}
+    
+    const oldSneaker = spawn.sneaker;
+    spawn.sneaker = () => {}
+    
+    const oldGhoster = spawn.ghoster;
+    spawn.ghoster = () => {}
+    
+    const oldBomberBoss = spawn.bomberBoss;
+    spawn.bomberBoss = () => {}
+    
+    const oldShooter = spawn.shooter;
+    spawn.shooter = () => {}
+    
+    const oldShooterBoss = spawn.shooterBoss;
+    spawn.shooterBoss = () => {}
+    
+    const oldBullet = spawn.bullet;
+    spawn.bullet = () => {}
+    
+    const oldBomb = spawn.bomb;
+    spawn.bomb = () => {}
+    
+    const oldSniper = spawn.sniper;
+    spawn.sniper = () => {}
+    
+    const oldSniperBullet = spawn.sniperBullet;
+    spawn.sniperBullet = () => {}
+    
+    const oldLauncherOne = spawn.launcherOne;
+    spawn.launcherOne = () => {}
+    
+    const oldLauncher = spawn.launcher;
+    spawn.launcher = () => {}
+    
+    const oldLauncherBoss = spawn.launcherBoss;
+    spawn.launcherBoss = () => {}
+    
+    const oldGrenadierBoss = spawn.grenadierBoss;
+    spawn.grenadierBoss = () => {}
+    
+    const oldGrenadier = spawn.grenadier;
+    spawn.grenadier = () => {}
+    
+    const oldMobGrenade = spawn.grenade;
+    spawn.grenade = () => {}
+    
+    const oldShieldingBoss = spawn.shieldingBoss;
+    spawn.shieldingBoss = () => {}
+    
+    const oldTimeSkipBoss = spawn.timeSkipBoss;
+    spawn.timeSkipBoss = () => {}
+    
+    const oldStreamBoss = spawn.streamBoss;
+    spawn.streamBoss = () => {}
+    
+    const oldSeeker = spawn.seeker;
+    spawn.seeker = () => {}
+    
+    const oldSpawner = spawn.spawner;
+    spawn.spawner = () => {}
+    
+    const oldSpawns = spawn.spawns;
+    spawn.spawns = () => {}
+    
+    const oldExploder = spawn.exploder;
+    spawn.exploder = () => {}
+    
+    const oldSnakeSpitBoss = spawn.snakeSpitBoss;
+    spawn.snakeSpitBoss = () => {}
+    
+    const oldDragonFlyBoss = spawn.dragonFlyBoss;
+    spawn.dragonFlyBoss = () => {}
+    
+    const oldSnakeBody = spawn.snakeBody;
+    spawn.snakeBody = () => {}
+    
+    const oldTetherBoss = spawn.tetherBoss;
+    spawn.tetherBoss = () => {}
+    
+    const oldShield = spawn.shield;
+    spawn.shield = () => {}
+    
+    const oldGroupShield = spawn.groupShield;
+    spawn.groupShield = () => {}
+    
+    const oldOrbital = spawn.orbital;
+    spawn.orbital = () => {}
+    
+    const oldOrbitalBoss = spawn.orbitalBoss;
+    spawn.orbitalBoss = () => {}
 
     const oldExplosion = b.explosion;
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {

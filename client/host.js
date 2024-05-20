@@ -3842,34 +3842,46 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             // block update
             const blockChanges = [];
             for (const block of body) {
-                let changed = false;
-                let found = false; 
-                for (let i = 0; i < oldBlocks.length && !found; i++) {
-                    if (block.id == oldBlocks[i].id) {
-                        found = true;
-                        if (block.position.x != oldBlocks[i].position.x || block.position.y != oldBlocks[i].position.y || block.angle != oldBlocks[i].angle) changed = true;
-                    }
+                let positionChanged = false;
+                let verticesChanged = false;
+                const oldBlock = oldBlocks.find(a => a.id == block.id);
+                if (oldBlock != null) {
+                    if (block.position.x != oldBlock.position.x || block.position.y != oldBlock.position.y || block.angle != oldBlock.angle) positionChanged = true;
+                    if (block.vertices.length != oldBlock.vertices.length) verticesChanged = true;
+                    else for (let i = 0; i < block.vertices.length; i++) if (block.vertices[i].x != oldBlock.vertices[i].x || block.vertices[i].y != oldBlock.vertices[i].y) verticesChanged = true;
                 }
-                changed = changed || !found;
-                if (changed) blockChanges.push(block);
-            }
-            for (const block of blockChanges) {
-                const data = new Uint8Array(new ArrayBuffer(43));
-                data[0] = 15;
-                const dataView = new DataView(data.buffer);
-                dataView.setUint16(1, block.id);
-                dataView.setFloat64(3, block.position.x);
-                dataView.setFloat64(11, block.position.y);
-                dataView.setFloat64(19, block.angle);
-                dataView.setFloat64(27, block.velocity.x);
-                dataView.setFloat64(35, block.velocity.y);
-                dcLocal.send(dataView);
+                if (oldBlock == null || positionChanged) {
+                    // block position update
+                    const data = new Uint8Array(new ArrayBuffer(43));
+                    data[0] = 15;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, block.id);
+                    dataView.setFloat64(3, block.position.x);
+                    dataView.setFloat64(11, block.position.y);
+                    dataView.setFloat64(19, block.angle);
+                    dataView.setFloat64(27, block.velocity.x);
+                    dataView.setFloat64(35, block.velocity.y);
+                    dcLocal.send(dataView);
+                }
+                if (verticesChanged) {
+                    // block vertex update
+                    const data = new Uint8Array(new ArrayBuffer(3 + 16 * block.vertices.length));
+                    data[0] = 35;
+                    const dataView = new DataView(data.buffer);
+                    dataView.setUint16(1, block.id);
+                    let index = 3;
+                    for (const vertex of block.vertices) {
+                        dataView.setFloat64(index, vertex.x);
+                        dataView.setFloat64(index + 8, vertex.y);
+                        index += 16;
+                    }
+                    dcLocal.send(dataView);
+                }
             }
 
             for (const oldBlock of oldBlocks) {
-                let found = false;
-                for (let i = 0; i < body.length; i++) if (oldBlock.id == body[i].id) found = true;
-                if (!found) {
+                if (body.findIndex(block => block.id == oldBlock.id) == -1) {
+                    // delete block
                     const data = new Uint8Array(new ArrayBuffer(3));
                     data[0] = 24;
                     const dataView = new DataView(data.buffer);
@@ -3877,35 +3889,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dcLocal.send(dataView);
                 }
             }
-
-            blockChanges.length = 0;
-            for (const block of body) {
-                let changed = false;
-                let found = false;
-                for (let i = 0; i < oldBlocks.length && !found; i++) {
-                    if (block.id == oldBlocks[i].id) {
-                        found = true;
-                        if (block.vertices.length != oldBlocks[i].vertices.length) changed = true;
-                        else for (let j = 0; j < block.vertices.length; j++) if (block.vertices[j].x != oldBlocks[i].vertices[j].x || block.vertices[j].y != oldBlocks[i].vertices[j].y) changed = true;
-                    }
-                }
-                if (changed || !found) blockChanges.push(block);
-            }
-            for (const block of blockChanges) {
-                const data = new Uint8Array(new ArrayBuffer(3 + 16 * block.vertices.length));
-                data[0] = 35;
-                const dataView = new DataView(data.buffer);
-                dataView.setUint16(1, block.id);
-                let index = 3;
-                for (const vertex of block.vertices) {
-                    dataView.setFloat64(index, vertex.x);
-                    dataView.setFloat64(index + 8, vertex.y);
-                    index += 16;
-                }
-                dcLocal.send(dataView);
-            }
             
-
             oldBlocks.length = 0;
             for (const block of body) {
                 vertices = [];
@@ -3916,15 +3900,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
 
             // powerup update
             for (const powerup of powerUp) {
-                let changed = false;
-                let found = false; 
-                for (let i = 0; i < oldPowerups.length && !found; i++) {
-                    if (powerup.id == oldPowerups[i].id) {
-                        found = true;
-                        if (powerup.position.x != oldPowerups[i].position.x || powerup.position.y != oldPowerups[i].position.y || powerup.size != oldPowerups[i].size) changed = true;
-                    }
-                }
-                 if (changed || !found) {
+                const oldPowerup = oldPowerups.find(a => a.id == powerup.id);
+                if (oldPowerup == null || powerup.position.x != oldPowerup.position.x || powerup.position.y != oldPowerup.position.y || powerup.size != oldPowerup.size) {
+                    // powerup update
                     const data = new Uint8Array(new ArrayBuffer(27));
                     data[0] = 27;
                     const dataView = new DataView(data.buffer);
@@ -3933,13 +3911,12 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setFloat64(11, powerup.position.y);
                     dataView.setFloat64(19, powerup.size);
                     dcLocal.send(dataView);
-                 }
+                }
             }
 
             for (const oldPowerup of oldPowerups) {
-                let found = false;
-                for (let i = 0; i < powerUp.length; i++) if (oldPowerup.id == powerUp[i].id) found = true;
-                if (!found) {
+                if (powerUp.findIndex(a => a.id == oldPowerup.id) == -1) {
+                    // delete powerup
                     const data = new Uint8Array(new ArrayBuffer(3));
                     data[0] = 28;
                     const dataView = new DataView(data.buffer);
@@ -3955,21 +3932,18 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             // mob update
             for (const newMob of mob) {
                 let moved = false;
-                let found = false;
                 let vertexChange = false;
                 let colorChange = false;
                 let propertyChange = false;
-                for (let i = 0; i < oldMobs.length && !found; i++) {
-                    if (newMob.id == oldMobs[i].id) {
-                        found = true;
-                        if (newMob.position.x != oldMobs[i].position.x || newMob.position.y != oldMobs[i].position.y || newMob.angle != oldMobs[i].angle) moved = true;
-                        if (newMob.vertices.length != oldMobs[i].vertices.length) vertexChange = true;
-                        else for (let j = 0; j < newMob.vertices.length; j++) if (newMob.vertices[j].x != oldMobs[i].vertices[j].x || newMob.vertices[j].y != oldMobs[i].vertices[j].y) vertexChange = true;
-                        if (newMob.fill != oldMobs[i].fill || newMob.alpha != oldMobs[i].alpha || newMob.stroke != oldMobs[i].stroke) colorChange = true;
-                        if (newMob.isShielded != oldMobs[i].isShielded || newMob.isUnblockable != oldMobs[i].isUnblockable || newMob.showHealthBar != oldMobs[i].showHealthBar || newMob.collisionFilter.category != oldMobs[i].collisionFilter.category || newMob.collisionFilter.mask != oldMobs[i].collisionFilter.mask || newMob.isBoss != oldMobs[i].isBoss || newMob.isFinalBoss != oldMobs[i].isFinalBoss || newMob.isInvulnerable != oldMobs[i].isInvulnerable || newMob.isZombie != oldMobs[i].isZombie || newMob.isGrouper != oldMobs[i].isGrouper || newMob.isMobBullet != oldMobs[i].isMobBullet) propertyChange = true;
-                    }
+                const oldMob = oldMobs.find(a => a.id == newMob.id);
+                if (oldMob != null) {
+                    if (newMob.position.x != oldMob.position.x || newMob.position.y != oldMob.position.y || newMob.angle != oldMob.angle) moved = true;
+                    if (newMob.vertices.length != oldMob.vertices.length) vertexChange = true;
+                    else for (let j = 0; j < newMob.vertices.length; j++) if (newMob.vertices[j].x != oldMob.vertices[j].x || newMob.vertices[j].y != oldMob.vertices[j].y) vertexChange = true;
+                    if (newMob.fill != oldMob.fill || newMob.alpha != oldMob.alpha || newMob.stroke != oldMob.stroke) colorChange = true;
+                    if (newMob.isShielded != oldMob.isShielded || newMob.isUnblockable != oldMob.isUnblockable || newMob.showHealthBar != oldMob.showHealthBar || newMob.collisionFilter.category != oldMob.collisionFilter.category || newMob.collisionFilter.mask != oldMob.collisionFilter.mask || newMob.isBoss != oldMob.isBoss || newMob.isFinalBoss != oldMob.isFinalBoss || newMob.isInvulnerable != oldMob.isInvulnerable || newMob.isZombie != oldMob.isZombie || newMob.isGrouper != oldMob.isGrouper || newMob.isMobBullet != oldMob.isMobBullet) propertyChange = true;
                 }
-                if (!found || moved) {
+                if (oldMob == null || moved) {
                     // mob position update
                     const data = new Uint8Array(new ArrayBuffer(27));
                     data[0] = 31;
@@ -3981,7 +3955,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dcLocal.send(dataView);
                 }
                 if (vertexChange) {
-                    // mob vertex uodate
+                    // mob vertex update
                     const data = new Uint8Array(new ArrayBuffer(3 + 16 * newMob.vertices.length));
                     data[0] = 32;
                     const dataView = new DataView(data.buffer);
@@ -4029,7 +4003,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             }
 
             for (const oldMob of oldMobs) {
-                if (mob.findIndex(a => { a.id == oldMob.id }) == -1) {
+                if (mob.findIndex(a => a.id == oldMob.id ) == -1) {
                     // delete mob
                     const data = new Uint8Array(new ArrayBuffer(3));
                     data[0] = 34;
