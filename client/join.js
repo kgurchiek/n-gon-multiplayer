@@ -1394,6 +1394,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                             case 21:
                                 mob[me].eventHorizon = mob[me].radius * 30;
                                 break;
+                            case 22:
+                                mob[me].eventHorizon = mob[me].radius * 30;
+                                break;
                             case 26:
                                 mob[me].warpIntensity = 0;
                                 mob[me].laserRange = 350;
@@ -1513,7 +1516,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                     }
                                     break;
                                 case 22:
-                                    mob[me].eventHorizon = radius * 30;
                                     eventHorizon = this.eventHorizon * (0.93 + 0.17 * Math.sin(simulation.cycle * 0.011));
                                     ctx.beginPath();
                                     ctx.arc(this.position.x, this.position.y, eventHorizon * 0.2, 0, 2 * Math.PI);
