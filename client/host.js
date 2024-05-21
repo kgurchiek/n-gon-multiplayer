@@ -2597,8 +2597,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     
     const oldLaserTargetingBoss = spawn.laserTargetingBoss;
     spawn.laserTargetingBoss = (x, y, radius = 80) => {
+        const me = mob.length + 1;
         oldLaserTargetingBoss(x, y, radius);
-        mob[mob.length - 1].mobType = 31;
+        mob[me].mobType = 31;
     }
     
     const oldLaserBombingBoss = spawn.laserBombingBoss;
