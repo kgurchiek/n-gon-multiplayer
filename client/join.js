@@ -1656,6 +1656,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                     }
                                     break;
                                 case 27:
+                                    const dist2 = this.distanceToPlayer2();
                                     if (this.seePlayer.yes && dist2 < 4000000) {
                                         const rangeWidth = 2000; //this is sqrt of 4000000 from above if()
                                         //targeting laser will slowly move from the mob to the player's position
