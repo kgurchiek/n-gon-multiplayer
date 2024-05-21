@@ -1360,7 +1360,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             }
             if (id == 29) {
                 // mob info request
-                console.log(1, data.getUint16(1))
                 const requestedMob = mob.find(a => a.id == data.getUint16(1));
                 if (requestedMob != null && requestedMob.mobType != null) {
                     const textEncoder = new TextEncoder();
