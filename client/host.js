@@ -1360,6 +1360,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             }
             if (id == 29) {
                 // mob info request
+                console.log(1, data.getUint16(1))
                 const requestedMob = mob.find(a => a.id == data.getUint16(1));
                 if (requestedMob != null && requestedMob.mobType != null) {
                     const textEncoder = new TextEncoder();
@@ -2825,7 +2826,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     const oldShieldingBoss = spawn.shieldingBoss;
     spawn.shieldingBoss = (x, y, radius = 200) => {
         oldShieldingBoss(x, y, radius);
-        mob[mob.length - 1].mobType = 69;
+        mob[mob.length - 2].mobType = 69;
     }
     
     const oldTimeSkipBoss = spawn.timeSkipBoss;
@@ -2890,7 +2891,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     
     const oldShield = spawn.shield;
     spawn.shield = (target, x, y, chance = Math.min(0.02 + simulation.difficulty * 0.005, 0.2) + tech.duplicationChance(), isExtraShield = false) => {
-        oldShield(target, x, y, chance, isExtraShield);
+        oldShield.call(spawn, target, x, y, chance, isExtraShield);
         mob[mob.length - 1].mobType = 80;
     }
     

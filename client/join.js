@@ -1361,6 +1361,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 }
                 if (id == 30) {
                     // mob info
+                    console.log(data.getUint16(1));
                     if (mob.find(a => a.id == data.getUint16(1)) == null) {
                         const me = mob.length;
                         mobs.spawn(data.getFloat64(4), data.getFloat64(12), data.getUint8(28), data.getFloat64(29), 'transparent');
