@@ -1365,7 +1365,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     const textEncoder = new TextEncoder();
                     const color = textEncoder.encode(requestedMob.fill);
                     const stroke = textEncoder.encode(requestedMob.stroke);
-                    const data = new Uint8Array(new ArrayBuffer(92 + color.length + stroke.length));
+                    const data = new Uint8Array(new ArrayBuffer(93 + color.length + stroke.length));
                     data[0] = 30;
                     data.set(color, 38);
                     data.set(stroke, 43 + color.length);
@@ -1394,6 +1394,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setFloat64(68 + color.length + stroke.length, requestedMob.seePlayer.recall);
                     dataView.setFloat64(76 + color.length + stroke.length, requestedMob.health);
                     dataView.setFloat64(84 + color.length + stroke.length, requestedMob.radius);
+                    dataView.setUint8(92 + color.length + stroke.length, requestedMob.seePlayer.yes ? 1 : 0);
                     dcLocal.send(dataView);
                 }
             }
@@ -2555,7 +2556,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     const oldMantisBoss = spawn.mantisBoss;
     spawn.mantisBoss = (x, y, radius = 35, isSpawnBossPowerUp = true) => {
         oldMantisBoss(x, y, radius, isSpawnBossPowerUp);
-        mob[mob.length - 1].mobType = 24;
+        mob[mob.length - 4].mobType = 24;
     }
     
     const oldBeamer = spawn.beamer;
@@ -3988,7 +3989,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                 }
                 if (propertyChange) {
                     // mob property update
-                    const data = new Uint8Array(new ArrayBuffer(52));
+                    const data = new Uint8Array(new ArrayBuffer(53));
                     data[0] = 36;
                     const dataView = new DataView(data.buffer);
                     dataView.setUint16(1, newMob.id);
@@ -4006,6 +4007,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setFloat64(28, newMob.seePlayer.recall);
                     dataView.setFloat64(36, newMob.health);
                     dataView.setFloat64(44, newMob.radius);
+                    dataView.setUint8(52, newMob.seePlayer.yes ? 1 : 0);
                     dcLocal.send(dataView);
                 }
             }

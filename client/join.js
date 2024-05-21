@@ -1387,6 +1387,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         mob[me].seePlayer.recall = data.getFloat64(68 + colorLength + strokeLength);
                         mob[me].health = data.getFloat64(76 + colorLength + strokeLength);
                         mob[me].radius = data.getFloat64(84 + colorLength + strokeLength);
+                        mob[me].seePlayer.yes = data.getUint8(92 + colorLength + strokeLength) == 1;
 
                         mob[me].replace = () => {}
                         
@@ -1396,6 +1397,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                 break;
                             case 22:
                                 mob[me].eventHorizon = mob[me].radius * 30;
+                                break;
+                            case 25:
+                                mob[me].laserRange = 370;
                                 break;
                             case 26:
                                 mob[me].warpIntensity = 0;
@@ -1550,6 +1554,38 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                         ctx.beginPath();
                                         ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
                                         ctx.fillStyle = "rgba(0,0,0,0.3)";
+                                        ctx.fill();
+                                    }
+                                    break;
+                                case 25:
+                                    if (this.seePlayer.yes) {
+                                        ctx.setLineDash([125 * Math.random(), 125 * Math.random()]);
+                                        // ctx.lineDashOffset = 6*(simulation.cycle % 215);
+                                        if (this.distanceToPlayer() < this.laserRange) {
+                                            // if (m.immuneCycle < m.cycle) {
+                                            //     m.damage(0.0003 * simulation.dmgScale);
+                                            //     if (m.energy > 0.1) m.energy -= 0.003
+                                            // }
+                                            ctx.beginPath();
+                                            ctx.moveTo(this.position.x, this.position.y);
+                                            ctx.lineTo(m.pos.x, m.pos.y);
+                                            ctx.lineTo(m.pos.x + (Math.random() - 0.5) * 3000, m.pos.y + (Math.random() - 0.5) * 3000);
+                                            ctx.lineWidth = 2;
+                                            ctx.strokeStyle = "rgb(255,0,170)";
+                                            ctx.stroke();
+                    
+                                            ctx.beginPath();
+                                            ctx.arc(m.pos.x, m.pos.y, 40, 0, 2 * Math.PI);
+                                            ctx.fillStyle = "rgba(255,0,170,0.15)";
+                                            ctx.fill();
+                                        }
+                                        ctx.beginPath();
+                                        ctx.arc(this.position.x, this.position.y, this.laserRange * 0.9, 0, 2 * Math.PI);
+                                        ctx.strokeStyle = "rgba(255,0,170,0.5)";
+                                        ctx.lineWidth = 1;
+                                        ctx.stroke();
+                                        ctx.setLineDash([]);
+                                        ctx.fillStyle = "rgba(255,0,170,0.03)";
                                         ctx.fill();
                                     }
                                     break;
@@ -1806,7 +1842,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                         ctx.beginPath();
                                         ctx.moveTo(this.position.x, this.position.y);
                                         ctx.lineTo(this.position.x, this.position.y);
-                                        ctx.lineWidth = radius * 2.1;
+                                        ctx.lineWidth = this.radius * 2.1;
                                         ctx.strokeStyle = this.fill; //"rgba(0,0,0,0.5)"; //'#000'
                                         ctx.stroke();
                                     }
@@ -2021,6 +2057,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         newMob.seePlayer.recall = data.getFloat64(28);
                         newMob.health = data.getFloat64(36);
                         newMob.radius = data.getFloat64(44);
+                        newMob.seePlayer.yes = data.getUint8(52) == 1;
                     }
                 }
             };
