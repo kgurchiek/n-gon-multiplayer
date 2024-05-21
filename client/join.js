@@ -1598,6 +1598,10 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                         }, 2000);
                                     }
                                     if (this.isAwake) {
+                                        const h = this.radius * 0.3;
+                                        const w = this.radius * 2;
+                                        const x = this.position.x - w / 2;
+                                        const y = this.position.y - w * 0.7;
                                         ctx.fillStyle = "rgba(100, 100, 100, 0.3)";
                                         ctx.fillRect(x, y, w, h);
                                         ctx.fillStyle = "rgba(150,0,255,0.7)";
@@ -2012,6 +2016,14 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     // delete mob
                     const index = mob.findIndex(a => a.id == data.getUint16(1));
                     if (index != -1) {
+                        if (mob[index].mobType == 26) {
+                            requestAnimationFrame(() => {
+                                requestAnimationFrame(() => {
+                                    ctx.setTransform(1, 0, 0, 1, 0, 0); //reset warp effect
+                                    ctx.setLineDash([]) //reset stroke dash effect
+                                })
+                            })
+                        }
                         // mob[index].removeConsBB();
                         // mob[index].alive = false;
                         Matter.Composite.remove(engine.world, mob[index]);
