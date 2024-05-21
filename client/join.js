@@ -1761,24 +1761,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                         this.wing(this.angle - Math.PI / 2 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.wingSize, 0.5, 0.0012);
                                     } else this.wingSize *= 0.96;
                                     break;
-                                case 33:
-                                    ctx.beginPath();
-                                    ctx.moveTo(this.vertices[1].x, this.vertices[1].y);
-                                    ctx.lineTo(best.x, best.y);
-                                    ctx.strokeStyle = "rgba(0,235,255,1)";
-                                    ctx.lineWidth = 3
-                                    ctx.stroke();
-                                    if (this.targetingCount / this.targetingTime > 0.33) {
-                                        ctx.strokeStyle = "rgba(0,235,255,0.45)";
-                                        ctx.lineWidth = 10
-                                        ctx.stroke();
-                                        if (this.targetingCount / this.targetingTime > 0.66) {
-                                            ctx.strokeStyle = "rgba(0,235,255,0.25)";
-                                            ctx.lineWidth = 30
-                                            ctx.stroke();
-                                        }
-                                    }
-                                    break;
                                 case 34:
                                     if (this.isFiring) {
                                         if (this.fireCycle > this.fireDelay) { //fire

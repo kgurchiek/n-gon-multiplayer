@@ -2611,8 +2611,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     
     const oldBlinkBoss = spawn.blinkBoss;
     spawn.blinkBoss = (x, y) => {
+        const me = mob.length + 1;
         oldBlinkBoss(x, y);
-        mob[mob.length - 1].mobType = 33;
+        mob[me].mobType = 33;
     }
     
     const oldPulsarBoss = spawn.pulsarBoss;
