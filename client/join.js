@@ -1408,6 +1408,15 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                             case 27:
                                 mob[me].laserPos = mob[me].position;
                                 break;
+                            case 28:
+                                mob[me].accelMag = 0.0006 + 0.0007 * Math.sqrt(simulation.accelScale);
+                                mob[me].flapRate = 0.3 + Math.floor(3 * Math.random()) / 10 + 100 * mob[me].accelMag;
+                                mob[me].flapRadius = 75 + mob[me].radius * 3;
+                                break;
+                            case 29:
+                                mob[me].flapRate = 0.06 + 0.03 * Math.random();
+                                mob[me].flapRadius = 40 + mob[me].radius * 3;
+                                break;
                             case 33:
                                 mob[me].delay = 55 + 35 * simulation.CDScale;
                                 mob[me].nextBlinkCycle = me.delay;
@@ -1688,49 +1697,53 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                     }
                                     break;
                                 case 28:
-                                    flapArc = 0.7 //don't go past 1.57 for normal flaps
-                                    ctx.fillStyle = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.2)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
-                                    this.wing(this.angle + Math.PI / 2 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
-                                    this.wing(this.angle - Math.PI / 2 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                    if (this.seePlayer.recall) {
+                                        let flapArc = 0.7 //don't go past 1.57 for normal flaps
+                                        ctx.fillStyle = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.2)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
+                                        this.wing(this.angle + Math.PI / 2 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                        this.wing(this.angle - Math.PI / 2 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                    }
                                     break;
                                 case 29:
-                                    flapArc = 0.8 //don't go past 1.57 for normal flaps
-                                    ctx.fillStyle = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.2)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
-                                    this.wing(this.angle + 2.1 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
-                                    this.wing(this.angle - 2.1 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
-                                    const seeRange = 550 + 35 * simulation.difficultyMode;
-                                    if (this.distanceToPlayer() < seeRange) {
-                                        best = {
-                                            x: null,
-                                            y: null,
-                                            dist2: Infinity,
-                                            who: null,
-                                            v1: null,
-                                            v2: null
-                                        };
-                                        const seeRangeRandom = seeRange - 200 - 150 * Math.random()
-                                        const look = { x: this.position.x + seeRangeRandom * Math.cos(this.angle), y: this.position.y + seeRangeRandom * Math.sin(this.angle) };
-                                        best = vertexCollision(this.position, look, m.isCloak ? [map, body] : [map, body, [playerBody, playerHead]]);
+                                    if (this.seePlayer.recall) {
+                                        let flapArc = 0.8 //don't go past 1.57 for normal flaps
+                                        ctx.fillStyle = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.2)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
+                                        this.wing(this.angle + 2.1 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                        this.wing(this.angle - 2.1 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.flapRadius);
+                                        const seeRange = 550 + 35 * simulation.difficultyMode;
+                                        if (this.distanceToPlayer() < seeRange) {
+                                            best = {
+                                                x: null,
+                                                y: null,
+                                                dist2: Infinity,
+                                                who: null,
+                                                v1: null,
+                                                v2: null
+                                            };
+                                            const seeRangeRandom = seeRange - 200 - 150 * Math.random()
+                                            const look = { x: this.position.x + seeRangeRandom * Math.cos(this.angle), y: this.position.y + seeRangeRandom * Math.sin(this.angle) };
+                                            best = vertexCollision(this.position, look, m.isCloak ? [map, body] : [map, body, [playerBody, playerHead]]);
 
-                                        // hitting player
-                                        if ((best.who === playerBody || best.who === playerHead) && m.immuneCycle < m.cycle) {
-                                            //draw damage
-                                            ctx.fillStyle = color;
+                                            // hitting player
+                                            if ((best.who === playerBody || best.who === playerHead) && m.immuneCycle < m.cycle) {
+                                                //draw damage
+                                                ctx.fillStyle = this.color;
+                                                ctx.beginPath();
+                                                ctx.arc(best.x, best.y, 5 + dmg * 1500, 0, 2 * Math.PI);
+                                                ctx.fill();
+                                            }
+                                            //draw beam
+                                            const vertex = 3
+                                            if (best.dist2 === Infinity) best = look;
                                             ctx.beginPath();
-                                            ctx.arc(best.x, best.y, 5 + dmg * 1500, 0, 2 * Math.PI);
-                                            ctx.fill();
+                                            ctx.moveTo(this.vertices[vertex].x, this.vertices[vertex].y);
+                                            ctx.lineTo(best.x, best.y);
+                                            ctx.strokeStyle = this.color;
+                                            ctx.lineWidth = 2;
+                                            ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
+                                            ctx.stroke();
+                                            ctx.setLineDash([]);
                                         }
-                                        //draw beam
-                                        const vertex = 3
-                                        if (best.dist2 === Infinity) best = look;
-                                        ctx.beginPath();
-                                        ctx.moveTo(this.vertices[vertex].x, this.vertices[vertex].y);
-                                        ctx.lineTo(best.x, best.y);
-                                        ctx.strokeStyle = color;
-                                        ctx.lineWidth = 2;
-                                        ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
-                                        ctx.stroke();
-                                        ctx.setLineDash([]);
                                     }
                                     break;
                                 case 33:
