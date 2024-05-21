@@ -1417,6 +1417,12 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                 mob[me].flapRate = 0.06 + 0.03 * Math.random();
                                 mob[me].flapRadius = 40 + mob[me].radius * 3;
                                 break;
+                            case 30:
+                                mob[me].flapRate = 0.2;
+                                mob[me].wingSize = 0;
+                                mob[me].wingGoal = 250 + simulation.difficulty;
+                                mob[me].seePlayerFreq = 13;
+                                break;
                             case 33:
                                 mob[me].delay = 55 + 35 * simulation.CDScale;
                                 mob[me].nextBlinkCycle = me.delay;
@@ -1745,6 +1751,15 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                                             ctx.setLineDash([]);
                                         }
                                     }
+                                    break;
+                                case 30:
+                                    if (this.seePlayer.recall) {
+                                        const flapArc = 0.7; //don't go past 1.57 for normal flaps
+                                        this.wingSize = 0.97 * this.wingSize + 0.03 * this.wingGoal;
+                                        ctx.fillStyle = this.fill = `hsla(${160 + 40 * Math.random()}, 100%, ${25 + 25 * Math.random() * Math.random()}%, 0.9)`; //"rgba(0,235,255,0.3)";   // ctx.fillStyle = `hsla(44, 79%, 31%,0.4)`; //"rgba(0,235,255,0.3)";
+                                        this.wing(this.angle + Math.PI / 2 + flapArc * Math.sin(simulation.cycle * this.flapRate), this.wingSize, 0.5, 0.0012);
+                                        this.wing(this.angle - Math.PI / 2 - flapArc * Math.sin(simulation.cycle * this.flapRate), this.wingSize, 0.5, 0.0012);
+                                    } else this.wingSize *= 0.96;
                                     break;
                                 case 33:
                                     ctx.beginPath();
