@@ -2618,8 +2618,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     
     const oldPulsarBoss = spawn.pulsarBoss;
     spawn.pulsarBoss = (x, y, radius = 90, isNonCollide = false) => {
+        const me = mob.length + 1;
         oldPulsarBoss(x, y, radius, isNonCollide);
-        mob[mob.length - 1].mobType = 34;
+        mob[me].mobType = 34;
     }
     
     const oldPulsar = spawn.pulsar;
