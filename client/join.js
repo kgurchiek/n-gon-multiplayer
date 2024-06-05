@@ -3998,8 +3998,7 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         const oldDifficulty = simulation.difficultyMode;
         oldStartGame();
         simulation.difficultyMode = oldDifficulty;
-        const difficulty = simulation.isCheating ? "testing" : level.difficultyText()
-        document.title = `n-gon: (${difficulty})`;
+        if (level.difficultyText) document.title = `n-gon: (${simulation.isCheating ? "testing" : level.difficultyText()})`;
         Math.random = Math.seededRandom;
 
         const oldThrowBlock = m.throwBlock;
