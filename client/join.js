@@ -1126,6 +1126,20 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     }
 }
 
+b.multiplayerNail = (pos, velocity, dmg) => {
+    const me = bullet.length;
+    bullet[me] = Bodies.rectangle(pos.x, pos.y, 25, 2, b.fireAttributes(Math.atan2(velocity.y, velocity.x)));
+    Matter.Body.setVelocity(bullet[me], velocity);
+    Composite.add(engine.world, bullet[me]); //add bullet to world
+    bullet[me].endCycle = simulation.cycle + 60 + 18 * Math.random();
+    bullet[me].dmg = dmg;
+    bullet[me].beforeDmg = function (who) { //beforeDmg is rewritten with ice crystal tech
+        this.ricochet(who)
+    };
+    bullet[me].ricochet = function (who) {};
+    bullet[me].do = function () {};
+}
+
 (async () => {
     await new Promise((resolve, reject) => {
         const config = {
@@ -2082,6 +2096,10 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                         newMob.radius = data.getFloat64(44);
                         newMob.seePlayer.yes = data.getUint8(52) == 1;
                     }
+                }
+                if (id == 37) {
+                    // nail
+                    b.multiplayerNail({ x: data.getFloat64(1), y: data.getFloat64(9) }, { x: data.getFloat64(17), y: data.getFloat64(25) }, data.getFloat32(33));
                 }
             };
             window.dcRemote.onerror = function(e) {
@@ -3326,7 +3344,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     const oldOrbitalBoss = spawn.orbitalBoss;
     spawn.orbitalBoss = () => {}
 
-    const oldExplosion = b.explosion;
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
         const textEncoder = new TextEncoder();
         const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
@@ -3338,11 +3355,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         dataView.setFloat64(9, where.y);
         dataView.setFloat64(17, radius);
         dcRemote.send(dataView);
-
-        // oldExplosion(where, radius, color);
     }
 
-    const oldPulse = b.pulse;
     b.pulse = (charge, angle = m.angle, where = m.pos) => {
         const data = new Uint8Array(new ArrayBuffer(33))
         data[0] = 17;
@@ -3352,8 +3366,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         dataView.setFloat64(17, where.x);
         dataView.setFloat64(25, where.y);
         dcRemote.send(dataView);
-
-        // oldPulse(charge, angle, where);
     }
 
     b.setGrenadeMode = () => {
@@ -3781,7 +3793,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             }
         }
 
-        const oldGrenade = b.grenade;
         b.grenade = (where, angle, size) => {
             const data = new Uint8Array(new ArrayBuffer(32));
             data[0] = 18;
@@ -3792,12 +3803,9 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
             dataView.setFloat64(17, angle);
             dataView.setFloat32(25, size);
             dcRemote.send(dataView);
-
-            // oldGrenade(where, angle, size, crouch);
         }
     }
 
-    const oldHarpoon = b.harpoon;
     b.harpoon = (where, target, angle = m.angle, harpoonSize = 1, isReturn = false, totalCycles = 35, isReturnAmmo = true, thrust = 0.1) => {
         const data = new Uint8Array(new ArrayBuffer(46));
         data[0] = 19;
@@ -3811,10 +3819,8 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         dataView.setUint16(29, harpoonSize);
         dataView.setFloat32(32, totalCycles);
         dataView.setFloat64(37, thrust);
-        dataView.setUint8(45, 2);
+        dataView.setUint8(45, 2); // TODO: player id
         dcRemote.send(dataView);
-
-        // oldHarpoon(where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust);
     }
 
     b.guns[4].fire = () => {
@@ -3940,7 +3946,6 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         }
     }
 
-    const oldLaser = b.laser;
     b.laser = (where = { x: m.pos.x + 20 * Math.cos(m.angle), y: m.pos.y + 20 * Math.sin(m.angle) }, whereEnd = { x: where.x + 3000 * Math.cos(m.angle), y: where.y + 3000 * Math.sin(m.angle) }, dmg = tech.laserDamage, reflections = tech.laserReflections, isThickBeam = false, push = 1) => {
         const data = new Uint8Array(new ArrayBuffer(52));
         data[0] = 23;
@@ -3955,8 +3960,17 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         dataView.setFloat64(43, push);
         dataView.setUint8(51, 2); // TODO: player id
         dcRemote.send(dataView);
+    }
 
-        // oldLaser(where, whereEnd, dmg, reflections, isThickBeam, push);
+    b.nail = (pos, velocity, dmg = 1) => {
+        const dataView = new DataView(new ArrayBuffer(37));
+        dataView.setUint8(0, 37);
+        dataView.setFloat64(1, pos.x);
+        dataView.setFloat64(9, pos.y);
+        dataView.setFloat64(17, velocity.x);
+        dataView.setFloat64(25, velocity.y);
+        dataView.setFloat32(33, dmg);
+        dcRemote.send(dataView);
     }
 
     let oldM = {

@@ -41,3 +41,4 @@
 | 34 | Delete Mob            | 2      | mobId (Uint16) |
 | 35 | Block Vertex Update   | 2+     | blockId (Uint16), vertices (list: x (Float64), y (Float64)) |
 | 36 | Mob Property Update   | 52     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
+| 37 | Nail                  | 36     | x (Float64), y (Float64), xVelocity (Float64), yVelocity (Float64), damage (Float32) |

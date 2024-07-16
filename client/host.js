@@ -1121,6 +1121,20 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
     }
 }
 
+b.multiplayerNail = (pos, velocity, dmg) => {
+    const me = bullet.length;
+    bullet[me] = Bodies.rectangle(pos.x, pos.y, 25, 2, b.fireAttributes(Math.atan2(velocity.y, velocity.x)));
+    Matter.Body.setVelocity(bullet[me], velocity);
+    Composite.add(engine.world, bullet[me]); //add bullet to world
+    bullet[me].endCycle = simulation.cycle + 60 + 18 * Math.random();
+    bullet[me].dmg = dmg;
+    bullet[me].beforeDmg = function (who) { //beforeDmg is rewritten with ice crystal tech
+        this.ricochet(who)
+    };
+    bullet[me].ricochet = function (who) {};
+    bullet[me].do = function () {};
+}
+
 (async () => {
     await new Promise(async (resolve, reject) => {
         const config = {
@@ -1397,6 +1411,11 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
                     dataView.setUint8(92 + color.length + stroke.length, requestedMob.seePlayer.yes ? 1 : 0);
                     dcLocal.send(dataView);
                 }
+            }
+            if (id == 37) {
+                // nail
+                b.multiplayerNail({ x: data.getFloat64(1), y: data.getFloat64(9) }, { x: data.getFloat64(17), y: data.getFloat64(25) }, data.getFloat32(33));
+                dcLocal.send(data);
             }
         };
         window.dcLocal.onerror = function(e) {
@@ -3551,6 +3570,20 @@ b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
         dcLocal.send(dataView);
 
         oldLaser(where, whereEnd, dmg, reflections, isThickBeam, push);
+    }
+
+    const oldNail = b.nail;
+    b.nail = (pos, velocity, dmg = 1) => {
+        const dataView = new DataView(new ArrayBuffer(37));
+        dataView.setUint8(0, 37);
+        dataView.setFloat64(1, pos.x);
+        dataView.setFloat64(9, pos.y);
+        dataView.setFloat64(17, velocity.x);
+        dataView.setFloat64(25, velocity.y);
+        dataView.setFloat32(33, dmg);
+        dcLocal.send(dataView);
+
+        oldNail(pos, velocity, dmg);
     }
 
     let oldM = {
