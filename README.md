@@ -43,3 +43,4 @@
 | 36 | Mob Property Update   | 52     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
 | 37 | Nail                  | 36     | x (Float64), y (Float64), xVelocity (Float64), yVelocity (Float64), damage (Float32) |
 | 38 | Shotgun               | 16+    | x (Float64), y (Float64), bullets (list: direction (Float64), speed (Float64)) |
+| 39 | Super Ball            | 40     | x (Float64), y (Float64), xVelocity (Float64), yVelocity (Float64), radius (Float64) |

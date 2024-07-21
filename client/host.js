@@ -1154,6 +1154,27 @@ b.multiplayerShotgun = (x, y, bullets) => {
     }
 }
 
+b.multiplayerSuperBall = (where, velocity, radius) => {
+    let gravity = 0.001
+    let dir = m.angle
+    const me = bullet.length;
+    bullet[me] = Bodies.polygon(where.x, where.y, 12, radius, b.fireAttributes(dir, false));
+    Composite.add(engine.world, bullet[me]); //add bullet to world
+    Matter.Body.setVelocity(bullet[me], velocity);
+    bullet[me].calcDensity = function () { return 0.0007 }
+    Matter.Body.setDensity(bullet[me], bullet[me].calcDensity());
+    bullet[me].endCycle = simulation.cycle + Math.floor(270 + 90 * Math.random());
+    bullet[me].minDmgSpeed = 0;
+    bullet[me].restitution = 1;
+    bullet[me].frictionAir = 0;
+    bullet[me].friction = 0;
+    bullet[me].frictionStatic = 0;
+    bullet[me].do = function () {
+        this.force.y += this.mass * gravity;
+    };
+    bullet[me].beforeDmg = function (who) {};
+}
+
 (async () => {
     await new Promise(async (resolve, reject) => {
         const config = {
@@ -1441,6 +1462,11 @@ b.multiplayerShotgun = (x, y, bullets) => {
                 const bullets = [];
                 for (let i = 17; i < data.byteLength; i += 16) bullets.push({ direction: data.getFloat64(i), speed: data.getFloat64(i + 8) });
                 b.multiplayerShotgun(data.getFloat64(1), data.getFloat64(9), bullets);
+                dcLocal.send(data);
+            }
+            if (id == 39) {
+                // super ball
+                b.multiplayerSuperBall({ x: data.getFloat64(1), y: data.getFloat64(9) }, { x: data.getFloat64(17), y: data.getFloat64(25) }, data.getFloat64(33));
                 dcLocal.send(data);
             }
         };
@@ -3874,6 +3900,20 @@ b.multiplayerShotgun = (x, y, bullets) => {
             }
             requestAnimationFrame(cycle);
         }
+    }
+
+    const oldSuperBall = b.superBall;
+    b.superBall = (where, velocity, radius) => {
+        const dataView = new DataView(new ArrayBuffer(41));
+        dataView.setUint8(0, 39);
+        dataView.setFloat64(1, where.x);
+        dataView.setFloat64(9, where.y);
+        dataView.setFloat64(17, velocity.x);
+        dataView.setFloat64(25, velocity.y);
+        dataView.setFloat64(33, radius);
+        dcLocal.send(dataView);
+
+        oldSuperBall(where, velocity, radius);
     }
 
     let oldM = {
