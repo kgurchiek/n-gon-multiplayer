@@ -1,1179 +1,53 @@
-let player2;
-
-b.multiplayerExplosion = (where, radius, color) => { // typically used for some bullets with .onEnd
-    radius *= 1; //tech.explosiveRadius
-
-    let dist, sub, knock;
-    let dmg = radius * 0.019
-    // if (tech.isExplosionHarm) radius *= 1.7 //    1/sqrt(2) radius -> area
-    // if (tech.isSmallExplosion) {
-    //     // color = "rgba(255,0,30,0.7)"
-    //     radius *= 0.66
-    //     dmg *= 1.66
-    // }
-
-    /*if (tech.isExplodeRadio) { //radiation explosion
-        radius *= 1.25; //alert range
-        if (tech.isSmartRadius) radius = Math.max(Math.min(radius, Vector.magnitude(Vector.sub(where, player.position)) - 25), 1)
-        color = "rgba(25,139,170,0.25)"
-        simulation.drawList.push({ //add dmg to draw queue
-            x: where.x,
-            y: where.y,
-            radius: radius,
-            color: color,
-            time: simulation.drawTime * 2
-        });
-
-        //player damage
-        if (Vector.magnitude(Vector.sub(where, player.position)) < radius) {
-            const DRAIN = (tech.isExplosionHarm ? 0.6 : 0.45) * (tech.isRadioactiveResistance ? 0.25 : 1)
-            if (m.immuneCycle < m.cycle) m.energy -= DRAIN
-            if (m.energy < 0) {
-                m.energy = 0
-                if (simulation.dmgScale) m.damage(tech.radioactiveDamage * 0.03 * (tech.isRadioactiveResistance ? 0.25 : 1));
-            }
-        }
-
-        //mob damage and knock back with alert
-        let damageScale = 1.5; // reduce dmg for each new target to limit total AOE damage
-        for (let i = 0, len = mob.length; i < len; ++i) {
-            if (mob[i].alive && !mob[i].isShielded) {
-                sub = Vector.sub(where, mob[i].position);
-                dist = Vector.magnitude(sub) - mob[i].radius;
-                if (dist < radius) {
-                    if (mob[i].shield) dmg *= 2.5 //balancing explosion dmg to shields
-                    if (Matter.Query.ray(map, mob[i].position, where).length > 0) dmg *= 0.5 //reduce damage if a wall is in the way
-                    mobs.statusDoT(mob[i], dmg * damageScale * 0.25, 240) //apply radiation damage status effect on direct hits
-                    if (tech.isStun) mobs.statusStun(mob[i], 30)
-                    mob[i].locatePlayer();
-                    damageScale *= 0.87 //reduced damage for each additional explosion target
-                }
-            }
-        }
-    } else {*/ //normal explosions
-        // if (tech.isSmartRadius) radius = Math.max(Math.min(radius, Vector.magnitude(Vector.sub(where, player.position)) - 25), 1)
-        simulation.drawList.push({ //add dmg to draw queue
-            x: where.x,
-            y: where.y,
-            radius: radius,
-            color: color,
-            time: simulation.drawTime
-        });
-        const alertRange = 100 + radius * 2; //alert range
-        simulation.drawList.push({ //add alert to draw queue
-            x: where.x,
-            y: where.y,
-            radius: alertRange,
-            color: "rgba(100,20,0,0.03)",
-            time: simulation.drawTime
-        });
-
-        //player damage and knock back
-        if (player2.immuneCycle < m.cycle) {
-            sub = Vector.sub(where, player.position);
-            dist = Vector.magnitude(sub);
-
-            if (dist < radius) {
-                if (simulation.dmgScale) {
-                    // const harm = /*tech.isExplosionHarm ? 0.067 :*/ 0.05
-                    /*if (tech.isImmuneExplosion && m.energy > 0.25) {
-                        // const mitigate = Math.min(1, Math.max(1 - m.energy * 0.5, 0))
-                        m.energy -= 0.25
-                        // m.damage(0.01 * harm); //remove 99% of the damage  1-0.99
-                        knock = Vector.mult(Vector.normalise(sub), -0.6 * player.mass * Math.max(0, Math.min(0.15 - 0.002 * player.speed, 0.15)));
-                        player.force.x = knock.x; // not +=  so crazy forces can't build up with MIRV
-                        player.force.y = knock.y - 0.3; //some extra vertical kick 
-                    } else {*/
-                        // if (simulation.dmgScale) m.damage(harm);
-                        knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * player.mass * 0.013);
-                        player.force.x += knock.x;
-                        player.force.y += knock.y;
-                    // }
-                }
-            } else if (dist < alertRange) {
-                knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * player.mass * 0.005);
-                player.force.x += knock.x;
-                player.force.y += knock.y;
-            }
-        }
-
-        //body knock backs
-        for (let i = body.length - 1; i > -1; i--) {
-            if (!body[i].isNotHoldable) {
-                sub = Vector.sub(where, body[i].position);
-                dist = Vector.magnitude(sub);
-                if (dist < radius) {
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * body[i].mass * 0.022);
-                    body[i].force.x += knock.x;
-                    body[i].force.y += knock.y;
-                    // if (tech.isBlockExplode) {
-                    //     if (body[i] === m.holdingTarget) m.drop()
-                    //     const size = 20 + 300 * Math.pow(body[i].mass, 0.25)
-                    //     const where = body[i].position
-                    //     const onLevel = level.onLevel //prevent explosions in the next level
-                    //     Matter.Composite.remove(engine.world, body[i]);
-                    //     body.splice(i, 1);
-                    //     setTimeout(() => {
-                    //         if (onLevel === level.onLevel) b.explosion(where, size); //makes bullet do explosive damage at end
-                    //     }, 250 + 300 * Math.random());
-                    // }
-                } else if (dist < alertRange) {
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * body[i].mass * 0.011);
-                    body[i].force.x += knock.x;
-                    body[i].force.y += knock.y;
-                }
-            }
-        }
-
-        //power up knock backs
-        for (let i = 0, len = powerUp.length; i < len; ++i) {
-            sub = Vector.sub(where, powerUp[i].position);
-            dist = Vector.magnitude(sub);
-            if (dist < radius) {
-                knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * powerUp[i].mass * 0.013);
-                powerUp[i].force.x += knock.x;
-                powerUp[i].force.y += knock.y;
-            } else if (dist < alertRange) {
-                knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * powerUp[i].mass * 0.007);
-                powerUp[i].force.x += knock.x;
-                powerUp[i].force.y += knock.y;
-            }
-        }
-
-        //mob damage and knock back with alert
-        let damageScale = 1.5; // reduce dmg for each new target to limit total AOE damage
-        for (let i = 0, len = mob.length; i < len; ++i) {
-            if (mob[i].alive && !mob[i].isShielded) {
-                sub = Vector.sub(where, mob[i].position);
-                dist = Vector.magnitude(sub) - mob[i].radius;
-                if (dist < radius) {
-                    if (mob[i].shield) dmg *= 2.5 //balancing explosion dmg to shields
-                    if (Matter.Query.ray(map, mob[i].position, where).length > 0) dmg *= 0.5 //reduce damage if a wall is in the way
-                    // mob[i].damage(dmg * damageScale * m.dmgScale);
-                    mob[i].locatePlayer();
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg * damageScale) * mob[i].mass * (mob[i].isBoss ? 0.003 : 0.01));
-                    /*if (tech.isStun) {
-                        mobs.statusStun(mob[i], 30)
-                    } else*/ if (!mob[i].isInvulnerable) {
-                        mob[i].force.x += knock.x;
-                        mob[i].force.y += knock.y;
-                    }
-                    radius *= 0.95 //reduced range for each additional explosion target
-                    damageScale *= 0.87 //reduced damage for each additional explosion target
-                } else if (!mob[i].seePlayer.recall && dist < alertRange) {
-                    mob[i].locatePlayer();
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg * damageScale) * mob[i].mass * (mob[i].isBoss ? 0 : 0.006));
-                    /*if (tech.isStun) {
-                        mobs.statusStun(mob[i], 30)
-                    } else*/ if (!mob[i].isInvulnerable) {
-                        mob[i].force.x += knock.x;
-                        mob[i].force.y += knock.y;
-                    }
-                }
-            }
-        }
-    //}
-}
-
-b.multiplayerPulse = (charge, angle, where) => {
-    let best;
-    let explosionRadius = 5.5 * charge
-    let range = 5000
-    const path = [{
-        x: where.x + 20 * Math.cos(angle),
-        y: where.y + 20 * Math.sin(angle)
+const protocol = {
+    game: {
+        syncRequest: 0,
+        sync: 1
     },
-    {
-        x: where.x + range * Math.cos(angle),
-        y: where.y + range * Math.sin(angle)
-    }
-    ];
-    //check for collisions
-    best = {
-        x: null,
-        y: null,
-        dist2: Infinity,
-        who: null,
-        v1: null,
-        v2: null
-    };
-    if (!best.who) {
-        best = vertexCollision(path[0], path[1], [mob, map, body]);
-        if (best.dist2 != Infinity) { //if hitting something
-            path[path.length - 1] = {
-                x: best.x,
-                y: best.y
-            };
-        }
-    }
-    if (best.who) {
-        b.explosion(path[1], explosionRadius, 'rgba(255,25,0,0.6)')
-        const off = explosionRadius * 1.2
-        b.explosion({
-            x: path[1].x + off * (Math.random() - 0.5),
-            y: path[1].y + off * (Math.random() - 0.5)
-        }, explosionRadius, 'rgba(255,25,0,0.6)')
-        b.explosion({
-            x: path[1].x + off * (Math.random() - 0.5),
-            y: path[1].y + off * (Math.random() - 0.5)
-        }, explosionRadius, 'rgba(255,25,0,0.6)')
-    }
-    //draw laser beam
-    ctx.beginPath();
-    ctx.moveTo(path[0].x, path[0].y);
-    ctx.lineTo(path[1].x, path[1].y);
-    if (charge > 50) {
-        ctx.strokeStyle = "rgba(255,0,0,0.10)"
-        ctx.lineWidth = 70
-        ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(255,0,0,0.25)"
-    ctx.lineWidth = 20
-    ctx.stroke();
-    ctx.strokeStyle = "#f00";
-    ctx.lineWidth = 4
-    ctx.stroke();
-
-    //draw little dots along the laser path
-    const sub = Vector.sub(path[1], path[0])
-    const mag = Vector.magnitude(sub)
-    for (let i = 0, len = Math.floor(mag * 0.0005 * charge); i < len; i++) {
-        const dist = Math.random()
-        simulation.drawList.push({
-            x: path[0].x + sub.x * dist + 10 * (Math.random() - 0.5),
-            y: path[0].y + sub.y * dist + 10 * (Math.random() - 0.5),
-            radius: 1.5 + 5 * Math.random(),
-            color: "rgba(255,0,0,0.5)",
-            time: Math.floor(9 + 25 * Math.random() * Math.random())
-        });
+    player: {
+        movement: 2,
+        rotation: 3,
+        setField: 4,
+        immuneCycleUpdate: 5,
+        healthUpdate: 6,
+        maxHealthUpdate: 7,
+        energyUpdate: 8,
+        maxEnergyUpdate: 9,
+        inputs: 10,
+        toggleCrouch: 11,
+        toggleCloak: 12,
+        holdBlock: 13,
+        throwChargeUpdate: 14,
+        togglePause: 15
+    },
+    block: {
+        infoRequest: 16,
+        info: 17,
+        positionUpdate: 18,
+        vertexUpdate: 19,
+        delete: 20
+    },
+    powerup: {
+        infoRequest: 21,
+        info: 22,
+        update: 23,
+        delete: 24
+    },
+    mob: {
+        infoRequest: 25,
+        info: 26,
+        positionUpdate: 27,
+        vertexUpdate: 28,
+        colorUpdate: 29,
+        propertyUpdate: 30,
+        delete: 31
+    },
+    bullet: {
+        explosion: 32,
+        pulse: 33
     }
 }
 
-b.multiplayerGrenade = (where, angle, size, crouch) => {
-    const me = bullet.length;
-    bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
-    Matter.Body.setDensity(bullet[me], 0.0003);
-    bullet[me].explodeRad = 300 * size; //+ 100 * tech.isBlockExplode;
-    bullet[me].onEnd = b.grenadeEnd
-    bullet[me].minDmgSpeed = 1;
-    bullet[me].beforeDmg = function () {
-        this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
-    };
-    speed = crouch ? 43 : 32
-    Matter.Body.setVelocity(bullet[me], {
-        x: m.Vx / 2 + speed * Math.cos(angle),
-        y: m.Vy / 2 + speed * Math.sin(angle)
-    });
-    bullet[me].endCycle = simulation.cycle + Math.floor(crouch ? 120 : 80); //* tech.bulletsLastLonger;
-    bullet[me].restitution = 0.4;
-    bullet[me].do = function () {
-        this.force.y += this.mass * 0.0025; //extra gravity for harder arcs
-    };
-    Composite.add(engine.world, bullet[me]); //add bullet to world
-}
-
-b.multiplayerGrapple = (where, angle, playerId) => {
-    const origin = playerId == 1 ? m : player2;
-    const me = bullet.length;
-    const returnRadius = 100
-    bullet[me] = Bodies.fromVertices(where.x, where.y, [
-        {
-            x: -40,
-            y: 2,
-            index: 0,
-            isInternal: false
-        }, {
-            x: -40,
-            y: -2,
-            index: 1,
-            isInternal: false
-        }, {
-            x: 37,
-            y: -2,
-            index: 2,
-            isInternal: false
-        }, {
-            x: 40,
-            y: -1,
-            index: 3,
-            isInternal: false
-        }, {
-            x: 37,
-            y: 3,
-            index: 4,
-            isInternal: false
-        }],
-        {
-            angle: angle,
-            friction: 1,
-            frictionAir: 0.4,
-            thrustMag: 0.13,
-            dmg: 8, //damage done in addition to the damage from momentum
-            classType: "bullet",
-            endCycle: simulation.cycle + 70,
-            isSlowPull: false,
-            drawStringControlMagnitude: 1000 + 1000 * Math.random(),
-            drawStringFlip: (Math.round(Math.random()) ? 1 : -1),
-            attached: false,
-            glowColor: /*tech.hookNails ? "rgba(200,0,0,0.07)" : tech.isHarmReduce ? "rgba(50,100,255,0.1)" :*/ "rgba(0,200,255,0.07)",
-            collisionFilter: {
-                category: cat.bullet,
-                mask: false /*tech.isShieldPierce*/ ? cat.body | cat.mob | cat.mobBullet : cat.body | cat.mob | cat.mobBullet | cat.mobShield,
-            },
-            minDmgSpeed: 4,
-            // lookFrequency: Math.floor(7 + Math.random() * 3),
-            density: 0.004, //0.001 is normal for blocks,  0.004 is normal for harpoon
-            drain: 0.001,
-            powerUpDamage: false, //tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle,
-            draw() {
-                // draw rope
-                const where = { x: origin.pos.x + 30 * Math.cos(origin.angle), y: origin.pos.y + 30 * Math.sin(origin.angle) }
-                const sub = Vector.sub(where, this.vertices[0])
-                ctx.strokeStyle = "#000" // "#0ce"
-                ctx.lineWidth = 0.5
-                ctx.beginPath();
-                ctx.moveTo(where.x, where.y);
-                if (this.attached) {
-                    const controlPoint = Vector.add(where, Vector.mult(sub, -0.5))
-                    ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, this.vertices[0].x, this.vertices[0].y)
-                } else {
-                    const long = Math.max(Vector.magnitude(sub), 60)
-                    const perpendicular = Vector.mult(Vector.normalise(Vector.perp(sub)), this.drawStringFlip * Math.min(0.7 * long, 10 + this.drawStringControlMagnitude / (10 + Vector.magnitude(sub))))
-                    const controlPoint = Vector.add(Vector.add(where, Vector.mult(sub, -0.5)), perpendicular)
-                    ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, this.vertices[0].x, this.vertices[0].y)
-                }
-                // ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                // ctx.stroke();
-                ctx.strokeStyle = this.glowColor // "#0ce"
-                ctx.lineWidth = 10
-                ctx.stroke();
-                ctx.strokeStyle = "#000" // "#0ce"
-                ctx.lineWidth = 0.5
-                ctx.stroke();
-
-                if (this.powerUpDamage) {
-                    ctx.beginPath();
-                    ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
-                    ctx.lineTo(this.vertices[1].x, this.vertices[1].y);
-                    ctx.lineTo(this.vertices[2].x, this.vertices[2].y);
-                    ctx.lineTo(this.vertices[3].x, this.vertices[3].y);
-                    ctx.lineTo(this.vertices[4].x, this.vertices[4].y);
-                    ctx.lineJoin = "miter"
-                    ctx.miterLimit = 30;
-                    ctx.lineWidth = 25;
-                    ctx.strokeStyle = "rgba(0,255,255,0.4)";
-                    ctx.stroke();
-                    ctx.lineWidth = 8;
-                    ctx.strokeStyle = "rgb(0,255,255)";
-                    ctx.stroke();
-                    ctx.lineJoin = "round"
-                    ctx.miterLimit = 5
-                    ctx.fillStyle = "#000"
-                    ctx.fill();
-                }
-                //draw hook
-                ctx.beginPath();
-                ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                const spike = Vector.add(this.vertices[3], Vector.mult(Vector.sub(this.vertices[3], this.vertices[2]), 2))
-                ctx.moveTo(this.vertices[2].x, this.vertices[2].y);
-                ctx.lineTo(spike.x, spike.y);
-                ctx.lineTo(this.vertices[1].x, this.vertices[1].y);
-                ctx.fillStyle = '#000'
-                ctx.fill();
-            },
-            beforeDmg(who) {
-                // if (tech.isShieldPierce && who.isShielded) { //disable shields
-                //     who.isShielded = false
-                //     requestAnimationFrame(() => {
-                //         who.isShielded = true
-                //     });
-                // }
-                if (origin.fieldCDcycle < m.cycle + 40) origin.fieldCDcycle = m.cycle + 40  //extra long cooldown on hitting mobs
-                // if (tech.hookNails) {
-                //     b.targetedNail(this.position, tech.hookNails)
-                //     const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
-                //     for (let i = 0; i < 4; i++) b.nail(this.position, { x: 10.5 * Math.cos(ANGLE), y: 10.5 * Math.sin(ANGLE) }, 1.2)
-                // }
-                // if (this.powerUpDamage) this.density = 2 * 0.004 //double damage after pick up power up for 8 seconds
-
-
-                // if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) {
-                //     Matter.Body.setDensity(this, 1.8 * 0.004); //+90% damage after pick up power up for 8 seconds
-                // } else if (tech.isHarpoonFullHealth && who.health === 1) {
-                //     Matter.Body.setDensity(this, 2.11 * 0.004); //+90% damage if mob has full health do
-                //     simulation.ephemera.push({
-                //         name: "grapple outline",
-                //         count: 3, //cycles before it self removes
-                //         vertices: this.vertices,
-                //         do() {
-                //             this.count--
-                //             if (this.count < 0) simulation.removeEphemera(this.name)
-
-                //             ctx.beginPath();
-                //             ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
-                //             for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
-                //             ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                //             ctx.lineJoin = "miter"
-                //             ctx.miterLimit = 20;
-                //             ctx.lineWidth = 40;
-                //             ctx.strokeStyle = "rgba(255,0,100,0.35)";
-                //             ctx.stroke();
-                //             ctx.lineWidth = 10;
-                //             ctx.strokeStyle = `#f07`;
-                //             ctx.stroke();
-                //             ctx.lineJoin = "round"
-                //             ctx.miterLimit = 5
-                //             ctx.fillStyle = "#000"
-                //             ctx.fill();
-                //         },
-                //     })
-                // }
-
-
-                this.retract()
-            },
-            caughtPowerUp: null,
-            dropCaughtPowerUp() {
-                if (this.caughtPowerUp) {
-                    this.caughtPowerUp.collisionFilter.category = cat.powerUp
-                    this.caughtPowerUp.collisionFilter.mask = cat.map | cat.powerUp
-                    this.caughtPowerUp = null
-                }
-            },
-            onEnd() {
-                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/)) {
-                    let index = null //find index
-                    for (let i = 0, len = powerUp.length; i < len; ++i) if (powerUp[i] === this.caughtPowerUp) index = i
-                    if (index !== null) powerUp.splice(index, 1);
-                    else this.dropCaughtPowerUp()
-                } else this.dropCaughtPowerUp()
-            },
-            retract() {
-                this.attached = false
-                this.do = this.returnToPlayer
-                this.endCycle = simulation.cycle + 60
-                Matter.Body.setDensity(this, 0.0005); //reduce density on return
-                if (this.angularSpeed < 0.5) this.torque += this.inertia * 0.001 * (Math.random() - 0.5) //(Math.round(Math.random()) ? 1 : -1)
-                this.collisionFilter.mask = 0//cat.map | cat.mob | cat.mobBullet | cat.mobShield // | cat.body
-                //recoil on pulling grapple back
-                const mag = this.pickUpTarget ? Math.max(this.pickUpTarget.mass, 0.5) : 0.5
-                const momentum = Vector.mult(Vector.sub(this.position, origin.pos), mag * (origin.crouch ? 0.0001 : 0.0002))
-            },
-            returnToPlayer() {
-                if (origin.fieldCDcycle < m.cycle + 5) origin.fieldCDcycle = m.cycle + 5
-                if (Vector.magnitude(Vector.sub(this.position, origin.pos)) < returnRadius) { //near player
-                    this.endCycle = 0;
-                    //recoil on catching grapple
-                    // const momentum = Vector.mult(Vector.sub(this.velocity, player.velocity), (origin.crouch ? 0.0001 : 0.0002))
-                    if (this.pickUpTarget) {
-                        // if (tech.isReel && this.blockDist > 150) {
-                        //     // console.log(0.0003 * Math.min(this.blockDist, 1000))
-                        //     origin.energy += 0.0009 * Math.min(this.blockDist, 800) //max 0.352 energy
-                        //     simulation.drawList.push({ //add dmg to draw queue
-                        //         x: origin.pos.x,
-                        //         y: origin.pos.y,
-                        //         radius: 10,
-                        //         color: origin.fieldMeterColor,
-                        //         time: simulation.drawTime
-                        //     });
-                        // }
-                        // m.holdingTarget = this.pickUpTarget
-                        // give block to player after it returns
-                        // m.isHolding = true;
-                        //conserve momentum when player mass changes
-                        // totalMomentum = Vector.add(Vector.mult(player.velocity, player.mass), Vector.mult(Vector.normalise(this.velocity), 15 * Math.min(20, this.pickUpTarget.mass)))
-                        // Matter.Body.setVelocity(player, Vector.mult(totalMomentum, 1 / (m.defaultMass + this.pickUpTarget.mass)));
-
-                        // m.definePlayerMass(m.defaultMass + this.pickUpTarget.mass * m.holdingMassScale)
-                        //make block collide with nothing
-                        // m.holdingTarget.collisionFilter.category = 0;
-                        // m.holdingTarget.collisionFilter.mask = 0;
-                        this.pickUpTarget = null
-                    }
-                } else {
-                    if (origin.energy > this.drain) origin.energy -= this.drain
-                    const sub = Vector.sub(this.position, origin.pos)
-                    const rangeScale = 1 + 0.000001 * Vector.magnitude(sub) * Vector.magnitude(sub) //return faster when far from player
-                    const returnForce = Vector.mult(Vector.normalise(sub), rangeScale * this.thrustMag * this.mass)
-                    this.force.x -= returnForce.x
-                    this.force.y -= returnForce.y
-                    this.grabPowerUp()
-                }
-                this.draw();
-            },
-            pickUpTarget: null,
-            grabPowerUp() { //grab power ups near the tip of the harpoon
-                if (this.caughtPowerUp) {
-                    Matter.Body.setPosition(this.caughtPowerUp, Vector.add(this.vertices[2], this.velocity))
-                    Matter.Body.setVelocity(this.caughtPowerUp, { x: 0, y: 0 })
-                } else {
-                    for (let i = 0, len = powerUp.length; i < len; ++i) {
-                        const radius = powerUp[i].circleRadius + 50
-                        if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius) {
-                            if (powerUp[i].name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/) {
-                                this.caughtPowerUp = powerUp[i]
-                                Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
-                                Matter.Body.setPosition(powerUp[i], this.vertices[2])
-                                powerUp[i].collisionFilter.category = 0
-                                powerUp[i].collisionFilter.mask = 0
-                                this.thrustMag *= 0.6
-                                this.endCycle += 0.5 //it pulls back slower, so this prevents it from ending early
-                                // this.retract()
-                                break //just pull 1 power up if possible
-                            }
-                        }
-                    }
-                }
-            },
-            do() {
-                if (origin.fieldCDcycle < m.cycle + 5) origin.fieldCDcycle = m.cycle + 5
-                if (origin.input.field) {
-                    this.grabPowerUp()
-                } else {
-                    this.retract()
-                }
-                //grappling hook
-                if (origin.input.field && Matter.Query.collides(this, map).length) {
-                    Matter.Body.setPosition(this, Vector.add(this.position, { x: -20 * Math.cos(this.angle), y: -20 * Math.sin(this.angle) }))
-                    if (Matter.Query.collides(this, map).length) {
-                        // if (tech.hookNails) {
-                        //     b.targetedNail(this.position, tech.hookNails)
-                        //     const ANGLE = 2 * Math.PI * Math.random() //make a few random ones
-                        //     for (let i = 0; i < 4; i++) b.nail(this.position, { x: 10.5 * Math.cos(ANGLE), y: 10.5 * Math.sin(ANGLE) }, 1.2)
-
-                        // }
-                        this.attached = true
-                        Matter.Body.setVelocity(this, { x: 0, y: 0 });
-                        Matter.Sleeping.set(this, true)
-                        this.endCycle = simulation.cycle + 5
-                        // this.dropCaughtPowerUp()
-                        this.do = () => {
-                            if (origin.fieldCDcycle < m.cycle + 5) origin.fieldCDcycle = m.cycle + 5
-                            this.grabPowerUp()
-
-                            //between player nose and the grapple
-                            const sub = Vector.sub(this.vertices[0], { x: origin.pos.x + 30 * Math.cos(origin.angle), y: origin.pos.y + 30 * Math.sin(origin.angle) })
-                            let dist = Vector.magnitude(sub)
-                            if (origin.input.field) {
-                                this.endCycle = simulation.cycle + 10
-                                if (input.down) { //down
-                                    this.isSlowPull = true
-                                    dist = 0
-                                } else if (input.up) {
-                                    this.isSlowPull = false
-                                }
-                                if (origin.energy < this.drain) this.isSlowPull = true
-
-                                // pulling friction that allowed a slight swinging, but has high linear pull at short dist
-                                const drag = 1 - 30 / Math.min(Math.max(100, dist), 700) - 0.1 * (player.speed > 66)
-                                // console.log(player.speed)
-                                const pullScale = 0.0004
-                                const pull = Vector.mult(Vector.normalise(sub), pullScale * Math.min(Math.max(15, dist), this.isSlowPull ? 70 : 200))
-                                if (dist > 500) {
-                                    origin.energy -= this.drain
-                                }
-                            } else {
-                                Matter.Sleeping.set(this, false)
-                                this.retract()
-                            }
-                            this.draw();
-                        }
-                    }
-                }
-                this.force.x += this.thrustMag * this.mass * Math.cos(this.angle);
-                this.force.y += this.thrustMag * this.mass * Math.sin(this.angle);
-                this.draw()
-            },
-        });
-    Composite.add(engine.world, bullet[me]); //add bullet to world
-},
-
-b.multiplayerHarpoon = (where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust, playerId) => {
-    const origin = playerId == 1 ? m : player2;
-    const me = bullet.length;
-    const returnRadius = 100 * Math.sqrt(harpoonSize)
-    bullet[me] = Bodies.fromVertices(where.x, where.y, [
-        {
-            x: -40 * harpoonSize,
-            y: 2 * harpoonSize,
-            index: 0,
-            isInternal: false
-        }, {
-            x: -40 * harpoonSize,
-            y: -2 * harpoonSize,
-            index: 1,
-            isInternal: false
-        }, {
-            x: 50 * harpoonSize,
-            y: -3 * harpoonSize,
-            index: 3,
-            isInternal: false
-        }, {
-            x: 30 * harpoonSize,
-            y: 2 * harpoonSize,
-            index: 4,
-            isInternal: false
-        }], {
-            cycle: 0,
-            angle: angle,
-            friction: 1,
-            frictionAir: 0.4,
-            // thrustMag: 0.1,
-            drain: /*tech.isRailEnergy ? 0 :*/ 0.006,
-            turnRate: isReturn ? 0.1 : 0.03, //0.015
-            drawStringControlMagnitude: 3000 + 5000 * Math.random(),
-            drawStringFlip: (Math.round(Math.random()) ? 1 : -1),
-            dmg: 6, //damage done in addition to the damage from momentum
-            classType: "bullet",
-            endCycle: simulation.cycle + totalCycles * 2.5 + 40,
-            collisionFilter: {
-                category: cat.bullet,
-                mask: /*tech.isShieldPierce ? cat.map | cat.body | cat.mob | cat.mobBullet :*/ cat.map | cat.body | cat.mob | cat.mobBullet | cat.mobShield,
-            },
-            minDmgSpeed: 4,
-            lookFrequency: Math.floor(7 + Math.random() * 3),
-            density: 0.004, //tech.harpoonDensity, //0.001 is normal for blocks,  0.004 is normal for harpoon,  0.004*6 when buffed
-            beforeDmg(who) {
-                // if (tech.isShieldPierce && who.isShielded) { //disable shields
-                //     who.isShielded = false
-                //     requestAnimationFrame(() => {
-                //         who.isShielded = true
-                //     });
-                // }
-                // if (tech.fragments) {
-                //     b.targetedNail(this.vertices[2], tech.fragments * Math.floor(2 + Math.random()))
-                //     if (!isReturn) this.endCycle = 0;
-                // }
-                if (!who.isBadTarget) {
-                    if (isReturn) {
-                        this.do = this.returnToPlayer
-                    } else {
-                        this.frictionAir = 0.01
-                        this.do = () => {
-                            this.force.y += this.mass * 0.003; //gravity
-                            this.draw();
-                        }
-                    }
-                }
-                // if (tech.isFoamBall) {
-                //     for (let i = 0, len = Math.min(30, 2 + 2 * Math.sqrt(this.mass)); i < len; i++) {
-                //         const radius = 5 + 8 * Math.random()
-                //         const velocity = { x: Math.max(0.5, 2 - radius * 0.1), y: 0 }
-                //         b.foam(this.position, Vector.rotate(velocity, 6.28 * Math.random()), radius)
-                //     }
-                // }
-                // if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) {
-                //     Matter.Body.setDensity(this, 1.8 * tech.harpoonDensity); //+90% damage after pick up power up for 8 seconds
-                // } else if (tech.isHarpoonFullHealth && who.health === 1) {
-                //     Matter.Body.setDensity(this, 2.11 * tech.harpoonDensity); //+90% damage if mob has full health do
-                //     simulation.ephemera.push({
-                //         name: "harpoon outline",
-                //         count: 2, //cycles before it self removes
-                //         vertices: this.vertices,
-                //         do() {
-                //             this.count--
-                //             if (this.count < 0) simulation.removeEphemera(this.name)
-
-                //             ctx.beginPath();
-                //             ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
-                //             for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
-                //             ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                //             ctx.lineJoin = "miter"
-                //             ctx.miterLimit = 20;
-                //             ctx.lineWidth = 40;
-                //             ctx.strokeStyle = "rgba(255,0,100,0.35)";
-                //             ctx.stroke();
-                //             ctx.lineWidth = 10;
-                //             ctx.strokeStyle = `#f07`;
-                //             ctx.stroke();
-                //             ctx.lineJoin = "round"
-                //             ctx.miterLimit = 5
-                //             ctx.fillStyle = "#000"
-                //             ctx.fill();
-                //         },
-                //     })
-                // }
-            },
-            caughtPowerUp: null,
-            dropCaughtPowerUp() {
-                if (this.caughtPowerUp) {
-                    this.caughtPowerUp.collisionFilter.category = cat.powerUp
-                    this.caughtPowerUp.collisionFilter.mask = cat.map | cat.powerUp
-                    this.caughtPowerUp = null
-                }
-            },
-            onEnd() {
-                if (this.caughtPowerUp && !simulation.isChoosing && (this.caughtPowerUp.name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/)) {
-                    let index = null //find index
-                    for (let i = 0, len = powerUp.length; i < len; ++i) {
-                        if (powerUp[i] === this.caughtPowerUp) index = i
-                    }
-                    if (index !== null) {
-                        Matter.Composite.remove(engine.world, this.caughtPowerUp);
-                        powerUp.splice(index, 1);
-                        // if (tech.isHarpoonPowerUp) tech.harpoonPowerUpCycle = simulation.cycle
-                    } else {
-                        this.dropCaughtPowerUp()
-                    }
-                } else {
-                    this.dropCaughtPowerUp()
-                }
-            },
-            drawDamageAura() {
-                ctx.beginPath();
-                ctx.moveTo(this.vertices[0].x, this.vertices[0].y);
-                for (let j = 1, len = this.vertices.length; j < len; j += 1) ctx.lineTo(this.vertices[j].x, this.vertices[j].y);
-                ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                ctx.lineJoin = "miter"
-                ctx.miterLimit = 20;
-                ctx.lineWidth = 15;
-                ctx.strokeStyle = "rgba(255,0,100,0.25)";
-                ctx.stroke();
-                ctx.lineWidth = 4;
-                ctx.strokeStyle = `#f07`;
-                ctx.stroke();
-                ctx.lineJoin = "round"
-                ctx.miterLimit = 5
-                ctx.fillStyle = "#000"
-                ctx.fill();
-            },
-            drawString() {
-                const where = { x: origin.pos.x + 30 * Math.cos(origin.angle), y: origin.pos.y + 30 * Math.sin(origin.angle) }
-                const sub = Vector.sub(where, this.vertices[0])
-                const perpendicular = Vector.mult(Vector.normalise(Vector.perp(sub)), this.drawStringFlip * Math.min(80, 10 + this.drawStringControlMagnitude / (10 + Vector.magnitude(sub))))
-                const controlPoint = Vector.add(Vector.add(where, Vector.mult(sub, -0.5)), perpendicular)
-                ctx.strokeStyle = "#000" // "#0ce"
-                ctx.lineWidth = 0.5
-                ctx.beginPath();
-                ctx.moveTo(where.x, where.y);
-                ctx.quadraticCurveTo(controlPoint.x, controlPoint.y, this.vertices[0].x, this.vertices[0].y)
-                // ctx.lineTo(this.vertices[0].x, this.vertices[0].y);
-                ctx.stroke();
-            },
-            draw() { },
-            returnToPlayer() {
-                if (Vector.magnitude(Vector.sub(this.position, origin.pos)) < returnRadius) { //near player
-                    this.endCycle = 0;
-                    // if (m.energy < 0.05) {
-                    //     m.fireCDcycle = m.cycle + 80 * b.fireCDscale; //fire cooldown is much longer when out of energy
-                    // } else if (m.cycle + 20 * b.fireCDscale < m.fireCDcycle) {
-                    // if (m.energy > 0.05) m.fireCDcycle = m.cycle + 20 * b.fireCDscale //lower cd to 25 if it is above 25
-                    // }
-                    //recoil on catching
-                    // const momentum = Vector.mult(Vector.sub(this.velocity, origin.velocity), (origin.crouch ? 0.0001 : 0.0002))
-                    // refund ammo
-                    if (isReturnAmmo) {
-                        b.guns[9].ammo++;
-                        simulation.updateGunHUD();
-                        // for (i = 0, len = b.guns.length; i < len; i++) { //find which gun 
-                        //     if (b.guns[i].name === "harpoon") {
-                        //         break;
-                        //     }
-                        // }
-                    }
-                } else {
-                    const sub = Vector.sub(this.position, origin.pos)
-                    const rangeScale = 1 + 0.000001 * Vector.magnitude(sub) * Vector.magnitude(sub) //return faster when far from player
-                    const returnForce = Vector.mult(Vector.normalise(sub), rangeScale * thrust * this.mass)
-                    if (origin.energy > this.drain) origin.energy -= this.drain
-                    if (origin.energy < 0.05) {
-                        this.force.x -= returnForce.x * 0.15
-                        this.force.y -= returnForce.y * 0.15
-                    } else { //if (m.cycle + 20 * b.fireCDscale < m.fireCDcycle)
-                        this.force.x -= returnForce.x
-                        this.force.y -= returnForce.y
-                    }
-                    this.grabPowerUp()
-                }
-                this.draw();
-            },
-            grabPowerUp() { //grab power ups near the tip of the harpoon
-                if (this.caughtPowerUp) {
-                    Matter.Body.setPosition(this.caughtPowerUp, Vector.add(this.vertices[2], this.velocity))
-                    Matter.Body.setVelocity(this.caughtPowerUp, { x: 0, y: 0 })
-                } else { //&& simulation.cycle % 2 
-                    for (let i = 0, len = powerUp.length; i < len; ++i) {
-                        const radius = powerUp[i].circleRadius + 50
-                        if (Vector.magnitudeSquared(Vector.sub(this.vertices[2], powerUp[i].position)) < radius * radius && !powerUp[i].isGrabbed) {
-                            if (powerUp[i].name !== "heal" || origin.health !== origin.maxHealth /*|| tech.isOverHeal*/) {
-                                powerUp[i].isGrabbed = true
-                                this.caughtPowerUp = powerUp[i]
-                                Matter.Body.setVelocity(powerUp[i], { x: 0, y: 0 })
-                                Matter.Body.setPosition(powerUp[i], this.vertices[2])
-                                powerUp[i].collisionFilter.category = 0
-                                powerUp[i].collisionFilter.mask = 0
-                                thrust *= 0.6
-                                this.endCycle += 0.5 //it pulls back slower, so this prevents it from ending early
-                                break //just pull 1 power up if possible
-                            }
-                        }
-                    }
-                }
-            },
-            do() {
-                this.cycle++
-                if (isReturn || target) {
-                    if (isReturn) {
-                        if (this.cycle > totalCycles) { //return to player  //|| !input.fire
-                            this.do = this.returnToPlayer
-                            if (this.angularSpeed < 0.5) this.torque += this.inertia * 0.001 * (Math.random() - 0.5) //(Math.round(Math.random()) ? 1 : -1)
-                            Matter.Sleeping.set(this, false)
-                            this.endCycle = simulation.cycle + 240
-                            // const momentum = Vector.mult(Vector.sub(this.velocity, origin.velocity), (origin.crouch ? 0.00015 : 0.0003)) //recoil on jerking line
-                            requestAnimationFrame(() => { //delay this for 1 cycle to get the proper hit graphics
-                                this.collisionFilter.category = 0
-                                this.collisionFilter.mask = 0
-                            });
-                        } else {
-                            this.grabPowerUp()
-                        }
-                    }
-                    if (target) { //rotate towards the target
-                        const face = {
-                            x: Math.cos(this.angle),
-                            y: Math.sin(this.angle)
-                        };
-                        const vectorGoal = Vector.normalise(Vector.sub(this.position, target.position));
-                        if (Vector.cross(vectorGoal, face) > 0) {
-                            Matter.Body.rotate(this, this.turnRate);
-                        } else {
-                            Matter.Body.rotate(this, -this.turnRate);
-                        }
-                    }
-                    this.force.x += thrust * this.mass * Math.cos(this.angle);
-                    this.force.y += thrust * this.mass * Math.sin(this.angle);
-                }
-                this.draw()
-            },
-        }
-    );
-    if (!isReturn && !target) {
-        Matter.Body.setVelocity(bullet[me], {
-            x: origin.Vx / 2 + 600 * thrust * Math.cos(bullet[me].angle),
-            y: origin.Vy / 2 + 600 * thrust * Math.sin(bullet[me].angle)
-        });
-        bullet[me].frictionAir = 0.002
-        bullet[me].do = function () {
-            if (this.speed < 20) this.force.y += 0.0005 * this.mass;
-            this.draw();
-        }
-    }
-    /*if (tech.isHarpoonPowerUp && simulation.cycle - 480 < tech.harpoonPowerUpCycle) { //8 seconds
-        if (isReturn) {
-            bullet[me].draw = function () {
-                this.drawDamageAura()
-                this.drawString()
-            }
-        } else {
-            bullet[me].draw = function () {
-                this.drawDamageAura()
-            }
-        }
-    } else*/ if (isReturn) {
-        bullet[me].draw = function () {
-            this.drawString()
-        }
-    }
-    Composite.add(engine.world, bullet[me]); //add bullet to world
-}
-
-b.multiplayerMissile = (where, angle, speed, size) => {
-    // if (tech.isMissileBig) {
-    //     size *= 1.55
-    //     if (tech.isMissileBiggest) size *= 1.55
-    // }
-    const me = bullet.length;
-    bullet[me] = Bodies.rectangle(where.x, where.y, 30 * size, 4 * size, {
-        angle: angle,
-        friction: 0.5,
-        frictionAir: 0.045,
-        dmg: 0, //damage done in addition to the damage from momentum
-        classType: "bullet",
-        endCycle: simulation.cycle + Math.floor((230 + 40 * Math.random()) /** tech.bulletsLastLonger + 120 * tech.isMissileBiggest + 60 * tech.isMissileBig*/),
-        collisionFilter: {
-            category: cat.bullet,
-            mask: cat.map | cat.body | cat.mob | cat.mobBullet | cat.mobShield
-        },
-        minDmgSpeed: 10,
-        lookFrequency: Math.floor(10 + Math.random() * 3),
-        explodeRad: (/*tech.isMissileBig ? 230 :*/ 180) + 60 * Math.random(),
-        density: 0.02, //0.001 is normal
-        beforeDmg() {
-            Matter.Body.setDensity(this, 0.0001); //reduce density to normal
-            this.tryToLockOn();
-            this.endCycle = 0; //bullet ends cycle after doing damage  // also triggers explosion
-        },
-        onEnd() {
-            b.explosion(this.position, this.explodeRad * size); //makes bullet do explosive damage at end
-            // if (tech.fragments) b.targetedNail(this.position, tech.fragments * Math.floor(2 + 1.5 * Math.random()))
-        },
-        lockedOn: null,
-        tryToLockOn() {
-            let closeDist = Infinity;
-            const futurePos = Vector.add(this.position, Vector.mult(this.velocity, 30)) //look for closest target to where the missile will be in 30 cycles
-            this.lockedOn = null;
-            // const futurePos = this.lockedOn ? :Vector.add(this.position, Vector.mult(this.velocity, 50))
-            for (let i = 0, len = mob.length; i < len; ++i) {
-                if (
-                    mob[i].alive && !mob[i].isBadTarget &&
-                    Matter.Query.ray(map, this.position, mob[i].position).length === 0 &&
-                    !mob[i].isInvulnerable
-                ) {
-                    const futureDist = Vector.magnitude(Vector.sub(futurePos, mob[i].position));
-                    if (futureDist < closeDist) {
-                        closeDist = futureDist;
-                        this.lockedOn = mob[i];
-                        // this.frictionAir = 0.04; //extra friction once a target it locked
-                    }
-                    if (Vector.magnitude(Vector.sub(this.position, mob[i].position) < this.explodeRad)) {
-                        this.endCycle = 0; //bullet ends cycle after doing damage  //also triggers explosion
-                        // mob[i].lockedOn.damage(m.dmgScale * 2 * size); //does extra damage to target
-                    }
-                }
-            }
-            //explode when bullet is close enough to target
-            if (this.lockedOn && Vector.magnitude(Vector.sub(this.position, this.lockedOn.position)) < this.explodeRad) {
-                this.endCycle = 0; //bullet ends cycle after doing damage  //also triggers explosion
-                // this.lockedOn.damage(m.dmgScale * 4 * size); //does extra damage to target
-            }
-        },
-        do() {
-            if (!(m.cycle % this.lookFrequency)) this.tryToLockOn();
-            if (this.lockedOn) { //rotate missile towards the target
-                const face = {
-                    x: Math.cos(this.angle),
-                    y: Math.sin(this.angle)
-                };
-                const target = Vector.normalise(Vector.sub(this.position, this.lockedOn.position));
-                const dot = Vector.dot(target, face)
-                const aim = Math.min(0.08, (1 + dot) * 1)
-                if (Vector.cross(target, face) > 0) {
-                    Matter.Body.rotate(this, aim);
-                } else {
-                    Matter.Body.rotate(this, -aim);
-                }
-                this.frictionAir = Math.min(0.1, Math.max(0.04, 1 + dot)) //0.08; //extra friction if turning
-            }
-            //accelerate in direction bullet is facing
-            const dir = this.angle;
-            this.force.x += thrust * Math.cos(dir);
-            this.force.y += thrust * Math.sin(dir);
-
-            ctx.beginPath(); //draw rocket
-            ctx.arc(this.position.x - Math.cos(this.angle) * (25 * size - 3) + (Math.random() - 0.5) * 4,
-                this.position.y - Math.sin(this.angle) * (25 * size - 3) + (Math.random() - 0.5) * 4,
-                11 * size, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(255,155,0,0.5)";
-            ctx.fill();
-        },
-    });
-    const thrust = 0.0066 * bullet[me].mass; //* (tech.isMissileBig ? (tech.isMissileBiggest ? 0.3 : 0.7) : 1);
-    Matter.Body.setVelocity(bullet[me], {
-        x: player2.Vx / 2 + speed * Math.cos(angle),
-        y: player2.Vy / 2 + speed * Math.sin(angle)
-    });
-    Composite.add(engine.world, bullet[me]); //add bullet to world
-}
-
-b.multiplayerLasers = [];
-b.multiplayerLaser = (where, whereEnd, dmg, reflections, isThickBeam, push) => {
-    const reflectivity = 1 - 1 / (reflections * 3)
-    let damage = m.dmgScale * dmg
-
-    let best = {
-        x: 1,
-        y: 1,
-        dist2: Infinity,
-        who: null,
-        v1: 1,
-        v2: 1
-    };
-    const path = [{
-        x: where.x,
-        y: where.y
-    }, {
-        x: whereEnd.x,
-        y: whereEnd.y
-    }];
-
-    const checkForCollisions = function () {
-        best = vertexCollision(path[path.length - 2], path[path.length - 1], [mob, map, body]);
-    };
-    const laserHitMob = function () {
-        if (best.who.alive) {
-            best.who.locatePlayer();
-            if (best.who.damageReduction) {
-                if ( //iridescence
-                    tech.laserCrit && !best.who.shield &&
-                    Vector.dot(Vector.normalise(Vector.sub(best.who.position, path[path.length - 1])), Vector.normalise(Vector.sub(path[path.length - 1], path[path.length - 2]))) > 0.999 - 0.5 / best.who.radius
-                ) {
-                    damage *= 1 + tech.laserCrit
-                    simulation.drawList.push({ //add dmg to draw queue
-                        x: path[path.length - 1].x,
-                        y: path[path.length - 1].y,
-                        radius: Math.sqrt(2500 * damage * best.who.damageReduction) + 5,
-                        color: `hsla(${60 + 283 * Math.random()},100%,70%,0.5)`, // random hue, but not red
-                        time: 16
-                    });
-                } else {
-                    simulation.drawList.push({ //add dmg to draw queue
-                        x: path[path.length - 1].x,
-                        y: path[path.length - 1].y,
-                        radius: Math.sqrt(2000 * damage * best.who.damageReduction) + 2,
-                        color: tech.laserColorAlpha,
-                        time: simulation.drawTime
-                    });
-                }
-                best.who.damage(damage);
-            }
-            if (tech.isLaserPush) { //push mobs away
-                const index = path.length - 1
-                Matter.Body.setVelocity(best.who, { x: best.who.velocity.x * 0.97, y: best.who.velocity.y * 0.97 });
-                const force = Vector.mult(Vector.normalise(Vector.sub(path[index], path[Math.max(0, index - 1)])), 0.003 * push * Math.min(6, best.who.mass))
-                Matter.Body.applyForce(best.who, path[index], force)
-            }
-        } else if (tech.isLaserPush && best.who.classType === "body") {
-            const index = path.length - 1
-            Matter.Body.setVelocity(best.who, { x: best.who.velocity.x * 0.97, y: best.who.velocity.y * 0.97 });
-            const force = Vector.mult(Vector.normalise(Vector.sub(path[index], path[Math.max(0, index - 1)])), 0.003 * push * Math.min(6, best.who.mass))
-            Matter.Body.applyForce(best.who, path[index], force)
-        }
-    };
-    const reflection = function () { // https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
-        const n = Vector.perp(Vector.normalise(Vector.sub(best.v1, best.v2)));
-        const d = Vector.sub(path[path.length - 1], path[path.length - 2]);
-        const nn = Vector.mult(n, 2 * Vector.dot(d, n));
-        const r = Vector.normalise(Vector.sub(d, nn));
-        path[path.length] = Vector.add(Vector.mult(r, 3000), path[path.length - 1]);
-    };
-
-    checkForCollisions();
-    let lastBestOdd
-    let lastBestEven = best.who //used in hack below
-    if (best.dist2 !== Infinity) { //if hitting something
-        path[path.length - 1] = { x: best.x, y: best.y };
-        laserHitMob();
-        for (let i = 0; i < reflections; i++) {
-            reflection();
-            checkForCollisions();
-            if (best.dist2 !== Infinity) { //if hitting something
-                lastReflection = best
-                path[path.length - 1] = { x: best.x, y: best.y };
-                damage *= reflectivity
-                laserHitMob();
-                //I'm not clear on how this works, but it gets rid of a bug where the laser reflects inside a block, often vertically.
-                //I think it checks to see if the laser is reflecting off a different part of the same block, if it is "inside" a block
-                if (i % 2) {
-                    if (lastBestOdd === best.who) break
-                } else {
-                    lastBestOdd = best.who
-                    if (lastBestEven === best.who) break
-                }
-            } else {
-                break
-            }
-        }
-    }
-    if (isThickBeam) {
-        for (let i = 1, len = path.length; i < len; ++i) {
-            ctx.moveTo(path[i - 1].x, path[i - 1].y);
-            ctx.lineTo(path[i].x, path[i].y);
-        }
-    } else if (tech.isLaserLens && b.guns[11].lensDamage !== 1) {
-        ctx.strokeStyle = tech.laserColor;
-        ctx.lineWidth = 2
-        ctx.lineDashOffset = 900 * Math.random()
-        ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
-        for (let i = 1, len = path.length; i < len; ++i) {
-            ctx.beginPath();
-            ctx.moveTo(path[i - 1].x, path[i - 1].y);
-            ctx.lineTo(path[i].x, path[i].y);
-            ctx.stroke();
-            ctx.globalAlpha *= reflectivity; //reflections are less intense
-        }
-        ctx.setLineDash([]);
-        // ctx.globalAlpha = 1;
-
-        //glow
-        ctx.lineWidth = 9 + 2 * b.guns[11].lensDamageOn
-        ctx.globalAlpha = 0.13
-        ctx.beginPath();
-        for (let i = 1, len = path.length; i < len; ++i) {
-            ctx.moveTo(path[i - 1].x, path[i - 1].y);
-            ctx.lineTo(path[i].x, path[i].y);
-        }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-    } else {
-        ctx.strokeStyle = "#f00"; //tech.laserColor;
-        ctx.lineWidth = 2;
-        // ctx.lineDashOffset = 900 * Math.random()
-        // ctx.setLineDash([50 + 120 * Math.random(), 50 * Math.random()]);
-        for (let i = 1, len = path.length; i < len; ++i) {
-            ctx.beginPath();
-            ctx.moveTo(path[i - 1].x, path[i - 1].y);
-            ctx.lineTo(path[i].x, path[i].y);
-            ctx.stroke();
-            ctx.globalAlpha *= reflectivity; //reflections are less intense
-        }
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-    }
-}
-
-b.multiplayerNail = (pos, velocity, dmg) => {
-    const me = bullet.length;
-    bullet[me] = Bodies.rectangle(pos.x, pos.y, 25, 2, b.fireAttributes(Math.atan2(velocity.y, velocity.x)));
-    Matter.Body.setVelocity(bullet[me], velocity);
-    Composite.add(engine.world, bullet[me]); //add bullet to world
-    bullet[me].endCycle = simulation.cycle + 60 + 18 * Math.random();
-    bullet[me].dmg = dmg;
-    bullet[me].beforeDmg = function (who) { //beforeDmg is rewritten with ice crystal tech
-        this.ricochet(who)
-    };
-    bullet[me].ricochet = function (who) {};
-    bullet[me].do = function () {};
-}
-
-b.multiplayerShotgun = (x, y, bullets) => {
-    for (const shot of bullets) {
-        const me = bullet.length;
-        bullet[me] = Bodies.rectangle(x, y, 22, 22, b.fireAttributes(shot.direction));
-        Composite.add(engine.world, bullet[me]); //add bullet to world
-        Matter.Body.setVelocity(bullet[me], {
-            x: shot.speed * Math.cos(shot.direction),
-            y: shot.speed * Math.sin(shot.direction)
-        });
-        bullet[me].endCycle = simulation.cycle + 40;
-        bullet[me].minDmgSpeed = 15;
-        bullet[me].frictionAir = 0.034;
-        bullet[me].do = function () {
-            const scale = 1 - 0.034;
-            Matter.Body.scale(this, scale, scale);
-        };
-    }
-}
-
-b.multiplayerSuperBall = (where, velocity, radius) => {
-    let gravity = 0.001
-    let dir = m.angle
-    const me = bullet.length;
-    bullet[me] = Bodies.polygon(where.x, where.y, 12, radius, b.fireAttributes(dir, false));
-    Composite.add(engine.world, bullet[me]); //add bullet to world
-    Matter.Body.setVelocity(bullet[me], velocity);
-    bullet[me].calcDensity = function () { return 0.0007 }
-    Matter.Body.setDensity(bullet[me], bullet[me].calcDensity());
-    bullet[me].endCycle = simulation.cycle + Math.floor(270 + 90 * Math.random());
-    bullet[me].minDmgSpeed = 0;
-    bullet[me].restitution = 1;
-    bullet[me].frictionAir = 0;
-    bullet[me].friction = 0;
-    bullet[me].frictionStatic = 0;
-    bullet[me].do = function () {
-        this.force.y += this.mass * gravity;
-    };
-    bullet[me].beforeDmg = function (who) {};
-}
+let player2;
 
 (async () => {
     await new Promise(async (resolve, reject) => {
@@ -1223,251 +97,203 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             // console.log('dcLocal', 'onmessage', message.data);
             const data = typeof message.data.arrayBuffer == 'function' ? new DataView(await message.data.arrayBuffer()) : new DataView(message.data);
             const id = new Uint8Array(data.buffer)[0];
-            if (id == 0) {
-                // rotation
-                player2.mouseInGame.x = data.getFloat64(1);
-                player2.mouseInGame.y = data.getFloat64(9);
-            }
-            if (id == 1) {
-                // movement
-                player2.mouseInGame.x = data.getFloat64(1);
-                player2.mouseInGame.y = data.getFloat64(9);
-                player2.onGround = new Uint8Array(data.buffer)[17] == 1;
-                player2.pos.x = data.getFloat64(18);
-                player2.pos.y = data.getFloat64(26);
-                player2.Vx = data.getFloat64(34);
-                player2.Vy = data.getFloat64(42);
-                player2.walk_cycle = data.getFloat32(50);
-                player2.yOff = data.getFloat32(54);
-                Matter.Body.setPosition(player2.hitbox, { x: player2.pos.x, y: player2.pos.y + player2.yOff - 24.714076782448295});
-                Matter.Body.setVelocity(player2.hitbox, { x: player2.Vx, y: player2.Vy });
-            }
-            if (id == 2) {
-                // set field
-                player2.fieldMode = new Uint8Array(data.buffer)[1];
-                player2.fieldMeterColor = fieldData[player2.fieldMode].fieldMeterColor;
-                player2.fieldRange = fieldData[player2.fieldMode].fieldRange;
-                player2.fieldPosition = { x: player2.pos.x, y: player2.pos.y };
-                player2.fieldAngle = player2.angle;
-                player2.fieldArc = 0.2;
-            }
-            if (id == 3) {
-                // immune cycle update
-                player2.immuneCycle = data.getFloat32(1);
-            }
-            if (id == 4) {
-                // health update
-                player2.health = data.getFloat32(1);
-            }
-            if (id == 5) {
-                // max health update
-                player2.maxHealth = data.getFloat32(1);
-            }
-            if (id == 6) {
-                // energy update
-                player2.energy = data.getFloat32(1);
-            }
-            if (id == 7) {
-                // max energy update
-                player2.maxEnergy = data.getFloat32(1);
-            }
-            if (id == 8) {
-                // inputs
-                player2.input.up = new Uint8Array(data.buffer)[1] == 1;
-                player2.input.down = new Uint8Array(data.buffer)[2] == 1;
-                player2.input.left = new Uint8Array(data.buffer)[3] == 1;
-                player2.input.right = new Uint8Array(data.buffer)[4] == 1;
-                player2.input.field = new Uint8Array(data.buffer)[5] == 1;
-                player2.input.fire = new Uint8Array(data.buffer)[6] == 1;
-                if (!player2.input.fire) b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 2);
-            }
-            if (id == 9) {
-                // toggle crouch
-                player2.crouch = new Uint8Array(data.buffer)[1] == 1;
-            }
-            if (id == 10) {
-                // toggle cloak
-                player2.isCloak = new Uint8Array(data.buffer)[1] == 1;
-            }
-            if (id == 11) {
-                // sync request
-                const textEncoder = new TextEncoder();
-                const data = new Uint8Array(new ArrayBuffer(3 + textEncoder.encode(Math.initialSeed).length));
-                data[0] = 12;
-                data[1] = simulation.difficultyMode;
-                data[2] = textEncoder.encode(Math.initialSeed).length;
-                data.set(textEncoder.encode(Math.initialSeed), 3);
-                dcLocal.send(new DataView(data.buffer));
-            }
-            if (id == 13) {
-                // block info request
-                let block;
-                for (let i = 0; i < body.length; i++) if (body[i].id == data.getUint16(1)) block = body[i];
-                if (block != null) {
-                    const data = new Uint8Array(new ArrayBuffer(20 + 16 * block.vertices.length));
-                    data[0] = 14;
-                    const dataView = new DataView(data.buffer);
-                    dataView.setUint16(1, block.id);
-                    dataView.setFloat64(3, block.position.x);
-                    dataView.setFloat64(11, block.position.y);
-                    dataView.setUint8(19, 16 * block.vertices.length);
-                    let index = 20;
-                    for (const vertex of block.vertices) {
-                        dataView.setFloat64(index, vertex.x);
-                        dataView.setFloat64(index + 8, vertex.y);
-                        index += 16;
-                    }
-                    dcLocal.send(dataView);
-                }
-            }
-            if (id == 15) {
-                // block update
-                let found = false;
-                for (let i = 0; i < body.length && !found; i++) {
-                    if (body[i].id == data.getUint16(1)) {
-                        found = true;
-                        Matter.Body.setPosition(body[i], { x: data.getFloat64(3), y: data.getFloat64(11) });
-                        Matter.Body.setAngle(body[i], data.getFloat64(19));
-                        Matter.Body.setVelocity(body[i], { x: data.getFloat64(27), y: data.getFloat64(35) });
-                    }
-                }
-            }
-            if (id == 16) {
-                // explosion
-                b.multiplayerExplosion({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), new TextDecoder().decode(data.buffer.slice(26, new Uint8Array(data.buffer)[25] + 26)));
-                dcLocal.send(data);
-            }
-            if (id == 17) {
-                // pulse
-                b.multiplayerPulse(data.getFloat64(1), data.getFloat64(9), { x: data.getFloat64(17), y: data.getFloat64(25) });
-                dcLocal.send(data);
-            }
-            if (id == 18) {
-                // grenade
-                b.multiplayerGrenade({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat32(25), new Uint8Array(data.buffer)[31] == 1);
-                dcLocal.send(data);
-            }
-            if (id == 19) {
-                // harpoon
-                b.multiplayerHarpoon({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getUint32(17), data.getFloat64(21), data.getUint16(29), new Uint8Array(data.buffer)[31] == 1, data.getFloat32(32), new Uint8Array(data.buffer)[36] == 1, data.getFloat64(37), 2);
-                dcLocal.send(data);
-            }
-            if (id == 20) {
-                // missile
-                const me = bullet.length;
-                b.multiplayerMissile({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), data.getFloat64(25), data.getUint16(33));
-                bullet[me].force.x += data.getFloat64(55);
-                bullet[me].force.y += data.getFloat64(63);
-                // console.log({ extraForce: { x: data.getFloat64(55), y: data.getFloat64(63) }});
-                // console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle});
-                // simulation.ephemera.push({do: () => {simulation.ephemera.length -= 1; console.log({ x: bullet[me].position.x, y: bullet[me].position.y, forceX: bullet[me].force.x, forceY: bullet[me].force.y, mass: bullet[me].mass, angle: bullet[me].angle})}})
-                const dataView = new DataView(data.buffer);
-                dataView.setFloat32(35, bullet[me].endCycle - m.cycle);
-                dataView.setFloat64(39, bullet[me].lookFrequency);
-                dataView.setFloat64(47, bullet[me].explodeRad);
-                dcLocal.send(dataView);
-            }
-            if (id == 21) {
-                // hold block
-                player2.isHolding = data.getUint8(1) == 1;
-                if (!player2.isHolding && player2.holdingTarget) {
-                    player2.holdingTarget.collisionFilter.category = cat.body;
-                    player2.holdingTarget.collisionFilter.mask = cat.player | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
-                }
-                player2.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
-                if (player2.holdingTarget == null) player2.isHolding = false;
-                if (player2.isHolding) {
-                    player2.holdingTarget.collisionFilter.category = 0;
-                    player2.holdingTarget.collisionFilter.mask = 0;
-                }
-            }
-            if (id == 22) {
-                // throw charge update
-                player2.throwCharge = data.getFloat32(1);
-            }
-            if (id == 23) {
-                // laser
-                b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 2);
-                b.multiplayerLasers.push({ id: 2, created: new Date(), where: { x: data.getFloat64(1), y: data.getFloat64(9) }, whereEnd: { x: data.getFloat64(17), y: data.getFloat64(25) }, dmg: data.getFloat64(33), reflections: data.getUint8(41), isThickBeam: data.getUint8(42) == 1, push: data.getFloat64(43) });
-                const dataView = new DataView(data.buffer);
-                dataView.setUint8(51, 2);
-                dcLocal.send(data);
-            }
-            if (id == 25) {
-                // powerup info request
-                const powerup = powerUp.find(a => a.id == data.getUint16(1));
-                if (powerUp != null) {
-                    const powerupName = new TextEncoder().encode(powerup.name);
-                    const data = new Uint8Array(new ArrayBuffer(44 + powerupName.length));
-                    data[0] = 26;
-                    data.set(powerupName, 28)
-                    const dataView = new DataView(data.buffer);
-                    dataView.setUint16(1, powerup.id);
-                    dataView.setFloat64(3, powerup.position.x);
-                    dataView.setFloat64(11, powerup.position.y);
-                    dataView.setFloat64(19, powerup.size);
-                    dataView.setUint8(27, powerupName.length);
-                    dataView.setBigUint64(28 + powerupName.length, BigInt(powerup.collisionFilter.category));
-                    dataView.setBigUint64(36 + powerupName.length, BigInt(powerup.collisionFilter.mask));
-                    dcLocal.send(dataView);
-                }
-            }
-            if (id == 29) {
-                // mob info request
-                const requestedMob = mob.find(a => a.id == data.getUint16(1));
-                if (requestedMob != null && requestedMob.mobType != null) {
+            switch (id) {
+                case protocol.game.syncRequest: {
                     const textEncoder = new TextEncoder();
-                    const color = textEncoder.encode(requestedMob.fill);
-                    const stroke = textEncoder.encode(requestedMob.stroke);
-                    const data = new Uint8Array(new ArrayBuffer(93 + color.length + stroke.length));
-                    data[0] = 30;
-                    data.set(color, 38);
-                    data.set(stroke, 43 + color.length);
+                    const data = new Uint8Array(new ArrayBuffer(3 + textEncoder.encode(Math.initialSeed).length));
+                    data.set(textEncoder.encode(Math.initialSeed), 3);
                     const dataView = new DataView(data.buffer);
-                    dataView.setUint16(1, requestedMob.id);
-                    dataView.setUint8(3, requestedMob.mobType);
-                    dataView.setFloat64(4, requestedMob.position.x);
-                    dataView.setFloat64(12, requestedMob.position.y);
-                    dataView.setFloat64(20, requestedMob.angle);
-                    dataView.setUint8(28, requestedMob.vertices.length);
-                    dataView.setFloat64(29, requestedMob.radius);
-                    dataView.setUint8(37, color.length);
-                    dataView.setFloat32(38 + color.length, requestedMob.alpha || 1);
-                    dataView.setUint8(42 + color.length, stroke.length);
-                    dataView.setUint8(43 + color.length + stroke.length, requestedMob.isShielded ? 1 : 0);
-                    dataView.setUint8(44 + color.length + stroke.length, requestedMob.isUnblockable ? 1 : 0);
-                    dataView.setUint8(45 + color.length + stroke.length, requestedMob.showHealthBar ? 1 : 0);
-                    dataView.setBigUint64(46 + color.length + stroke.length, BigInt(requestedMob.collisionFilter.category));
-                    dataView.setBigUint64(54 + color.length + stroke.length, BigInt(requestedMob.collisionFilter.mask));
-                    dataView.setUint8(62 + color.length + stroke.length, requestedMob.isBoss ? 1 : 0);
-                    dataView.setUint8(63 + color.length + stroke.length, requestedMob.isFinalBoss ? 1 : 0);
-                    dataView.setUint8(64 + color.length + stroke.length, requestedMob.isInvulnerable ? 1 : 0);
-                    dataView.setUint8(65 + color.length + stroke.length, requestedMob.isZombie ? 1 : 0);
-                    dataView.setUint8(66 + color.length + stroke.length, requestedMob.isGrouper ? 1 : 0);
-                    dataView.setUint8(67 + color.length + stroke.length, requestedMob.isMobBullet ? 1 : 0);
-                    dataView.setFloat64(68 + color.length + stroke.length, requestedMob.seePlayer.recall);
-                    dataView.setFloat64(76 + color.length + stroke.length, requestedMob.health);
-                    dataView.setFloat64(84 + color.length + stroke.length, requestedMob.radius);
-                    dataView.setUint8(92 + color.length + stroke.length, requestedMob.seePlayer.yes ? 1 : 0);
+                    dataView.setUint8(0, protocol.game.sync);
+                    dataView.setUint8(1, simulation.difficultyMode);
+                    dataView.setUint8(2, textEncoder.encode(Math.initialSeed).length);
                     dcLocal.send(dataView);
+                    break;
                 }
-            }
-            if (id == 37) {
-                // nail
-                b.multiplayerNail({ x: data.getFloat64(1), y: data.getFloat64(9) }, { x: data.getFloat64(17), y: data.getFloat64(25) }, data.getFloat32(33));
-                dcLocal.send(data);
-            }
-            if (id == 38) {
-                // shotgun
-                const bullets = [];
-                for (let i = 17; i < data.byteLength; i += 16) bullets.push({ direction: data.getFloat64(i), speed: data.getFloat64(i + 8) });
-                b.multiplayerShotgun(data.getFloat64(1), data.getFloat64(9), bullets);
-                dcLocal.send(data);
-            }
-            if (id == 39) {
-                // super ball
-                b.multiplayerSuperBall({ x: data.getFloat64(1), y: data.getFloat64(9) }, { x: data.getFloat64(17), y: data.getFloat64(25) }, data.getFloat64(33));
-                dcLocal.send(data);
+                case protocol.player.movement: {
+                    player2.mouseInGame.x = data.getFloat64(1);
+                    player2.mouseInGame.y = data.getFloat64(9);
+                    player2.onGround = new Uint8Array(data.buffer)[17] == 1;
+                    player2.pos.x = data.getFloat64(18);
+                    player2.pos.y = data.getFloat64(26);
+                    player2.Vx = data.getFloat64(34);
+                    player2.Vy = data.getFloat64(42);
+                    player2.walk_cycle = data.getFloat32(50);
+                    player2.yOff = data.getFloat32(54);
+                    Matter.Body.setPosition(player2.hitbox, { x: player2.pos.x, y: player2.pos.y + player2.yOff - 24.714076782448295});
+                    Matter.Body.setVelocity(player2.hitbox, { x: player2.Vx, y: player2.Vy });
+                    break;
+                }
+                case protocol.player.rotation: {
+                    // rotation
+                    player2.mouseInGame.x = data.getFloat64(1);
+                    player2.mouseInGame.y = data.getFloat64(9);
+                    break;
+                }
+                case protocol.player.setField: {
+                    player2.fieldMode = new Uint8Array(data.buffer)[1];
+                    player2.fieldMeterColor = fieldData[player2.fieldMode].fieldMeterColor;
+                    player2.fieldRange = fieldData[player2.fieldMode].fieldRange;
+                    player2.fieldPosition = { x: player2.pos.x, y: player2.pos.y };
+                    player2.fieldAngle = player2.angle;
+                    player2.fieldArc = 0.2;
+                    break;
+                }
+                case protocol.player.immuneCycleUpdate: {
+                    player2.immuneCycle = data.getFloat32(1);
+                    break;
+                }
+                case protocol.player.healthUpdate: {
+                    player2.health = data.getFloat32(1);
+                    break;
+                }
+                case protocol.player.maxHealthUpdate: {
+                    player2.maxHealth = data.getFloat32(1);
+                    break;
+                }
+                case protocol.player.energyUpdate: {
+                    player2.energy = data.getFloat32(1);
+                    break;
+                }
+                case protocol.player.maxEnergyUpdate: {
+                    player2.maxEnergy = data.getFloat32(1);
+                    break;
+                }
+                case protocol.player.inputs: {
+                    player2.input.up = new Uint8Array(data.buffer)[1] == 1;
+                    player2.input.down = new Uint8Array(data.buffer)[2] == 1;
+                    player2.input.left = new Uint8Array(data.buffer)[3] == 1;
+                    player2.input.right = new Uint8Array(data.buffer)[4] == 1;
+                    player2.input.field = new Uint8Array(data.buffer)[5] == 1;
+                    player2.input.fire = new Uint8Array(data.buffer)[6] == 1;
+                    // if (!player2.input.fire) b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 2);
+                    break;
+                }
+                case protocol.player.toggleCrouch: {
+                    player2.crouch = new Uint8Array(data.buffer)[1] == 1;
+                    break;
+                }
+                case protocol.player.toggleCloak: {
+                    player2.isCloak = new Uint8Array(data.buffer)[1] == 1;
+                    break;
+                }
+                case protocol.player.holdBlock: {
+                    player2.isHolding = data.getUint8(1) == 1;
+                    if (!player2.isHolding && player2.holdingTarget) {
+                        player2.holdingTarget.collisionFilter.category = cat.body;
+                        player2.holdingTarget.collisionFilter.mask = cat.player | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
+                    }
+                    player2.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
+                    if (player2.holdingTarget == null) player2.isHolding = false;
+                    if (player2.isHolding) {
+                        player2.holdingTarget.collisionFilter.category = 0;
+                        player2.holdingTarget.collisionFilter.mask = 0;
+                    }
+                    break;
+                }
+                case protocol.player.throwChargeUpdate: {
+                    player2.throwCharge = data.getFloat32(1);
+                    break;
+                }
+                case protocol.player.togglePause: {
+                    player2.paused = new Uint8Array(data.buffer)[1] == 1;
+                    break;
+                }
+                case protocol.block.infoRequest: {
+                    let block = body.find(a => a.id == data.getUint16(1));
+                    if (block != null) {
+                        const dataView = new DataView(new ArrayBuffer(20 + 16 * block.vertices.length));
+                        dataView.setUint8(0, protocol.block.info);
+                        dataView.setUint16(1, block.id);
+                        dataView.setFloat64(3, block.position.x);
+                        dataView.setFloat64(11, block.position.y);
+                        dataView.setUint8(19, 16 * block.vertices.length);
+                        let index = 20;
+                        for (const vertex of block.vertices) {
+                            dataView.setFloat64(index, vertex.x);
+                            dataView.setFloat64(index + 8, vertex.y);
+                            index += 16;
+                        }
+                        dcLocal.send(dataView);
+                    }
+                    break;
+                }
+                case protocol.block.positionUpdate: {
+                    let found = false;
+                    for (let i = 0; i < body.length && !found; i++) {
+                        if (body[i].id == data.getUint16(1)) {
+                            found = true;
+                            Matter.Body.setPosition(body[i], { x: data.getFloat64(3), y: data.getFloat64(11) });
+                            Matter.Body.setAngle(body[i], data.getFloat64(19));
+                            Matter.Body.setVelocity(body[i], { x: data.getFloat64(27), y: data.getFloat64(35) });
+                        }
+                    }
+                    break;
+                }
+                case protocol.powerup.infoRequest: {
+                    const powerup = powerUp.find(a => a.id == data.getUint16(1));
+                    if (powerup != null) {
+                        const powerupName = new TextEncoder().encode(powerup.name);
+                        const data = new Uint8Array(new ArrayBuffer(44 + powerupName.length));
+                        data.set(powerupName, 28)
+                        const dataView = new DataView(data.buffer);
+                        dataView.setUint8(0, protocol.powerup.info);
+                        dataView.setUint16(1, powerup.id);
+                        dataView.setFloat64(3, powerup.position.x);
+                        dataView.setFloat64(11, powerup.position.y);
+                        dataView.setFloat64(19, powerup.size);
+                        dataView.setUint8(27, powerupName.length);
+                        dataView.setBigUint64(28 + powerupName.length, BigInt(powerup.collisionFilter.category));
+                        dataView.setBigUint64(36 + powerupName.length, BigInt(powerup.collisionFilter.mask));
+                        dcLocal.send(dataView);
+                    }
+                    break;
+                }
+                case protocol.powerup.delete: {
+                    const index = powerUp.findIndex(a => a.id == data.getUint16(1));
+                    Matter.Composite.remove(engine.world, powerUp[index]);
+                    powerUp = powerUp.slice(0, index).concat(powerUp.slice(index + 1));
+                    break;
+                }
+                case protocol.mob.infoRequest: {
+                    const requestedMob = mob.find(a => a.id == data.getUint16(1));
+                    if (requestedMob != null && requestedMob.mobType != null) {
+                        const textEncoder = new TextEncoder();
+                        const color = textEncoder.encode(requestedMob.fill);
+                        const stroke = textEncoder.encode(requestedMob.stroke);
+                        const data = new Uint8Array(new ArrayBuffer(93 + color.length + stroke.length));
+                        data.set(color, 38);
+                        data.set(stroke, 43 + color.length);
+                        const dataView = new DataView(data.buffer);
+                        dataView.setUint8(0, protocol.mob.info);
+                        dataView.setUint16(1, requestedMob.id);
+                        dataView.setUint8(3, requestedMob.mobType);
+                        dataView.setFloat64(4, requestedMob.position.x);
+                        dataView.setFloat64(12, requestedMob.position.y);
+                        dataView.setFloat64(20, requestedMob.angle);
+                        dataView.setUint8(28, requestedMob.vertices.length);
+                        dataView.setFloat64(29, requestedMob.radius);
+                        dataView.setUint8(37, color.length);
+                        dataView.setFloat32(38 + color.length, requestedMob.alpha || 1);
+                        dataView.setUint8(42 + color.length, stroke.length);
+                        dataView.setUint8(43 + color.length + stroke.length, requestedMob.isShielded ? 1 : 0);
+                        dataView.setUint8(44 + color.length + stroke.length, requestedMob.isUnblockable ? 1 : 0);
+                        dataView.setUint8(45 + color.length + stroke.length, requestedMob.showHealthBar ? 1 : 0);
+                        dataView.setBigUint64(46 + color.length + stroke.length, BigInt(requestedMob.collisionFilter.category));
+                        dataView.setBigUint64(54 + color.length + stroke.length, BigInt(requestedMob.collisionFilter.mask));
+                        dataView.setUint8(62 + color.length + stroke.length, requestedMob.isBoss ? 1 : 0);
+                        dataView.setUint8(63 + color.length + stroke.length, requestedMob.isFinalBoss ? 1 : 0);
+                        dataView.setUint8(64 + color.length + stroke.length, requestedMob.isInvulnerable ? 1 : 0);
+                        dataView.setUint8(65 + color.length + stroke.length, requestedMob.isZombie ? 1 : 0);
+                        dataView.setUint8(66 + color.length + stroke.length, requestedMob.isGrouper ? 1 : 0);
+                        dataView.setUint8(67 + color.length + stroke.length, requestedMob.isMobBullet ? 1 : 0);
+                        dataView.setFloat64(68 + color.length + stroke.length, requestedMob.seePlayer.recall);
+                        dataView.setFloat64(76 + color.length + stroke.length, requestedMob.health);
+                        dataView.setFloat64(84 + color.length + stroke.length, requestedMob.radius);
+                        dataView.setUint8(92 + color.length + stroke.length, requestedMob.seePlayer.yes ? 1 : 0);
+                        dcLocal.send(dataView);
+                    }
+                    break;
+                }
             }
         };
         window.dcLocal.onerror = function(e) {
@@ -2166,8 +992,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                         player.velocity.x += powerUp[i].velocity.x / player.mass * 4 * powerUp[i].mass,
                         player.velocity.y += powerUp[i].velocity.y / player.mass * 4 * powerUp[i].mass
                         // powerUp[i].effect();
-                        Matter.Composite.remove(engine.world, powerUp[i]);
-                        powerUp.splice(i, 1);
+                        // Matter.Composite.remove(engine.world, powerUp[i]);
+                        // powerUp.splice(i, 1);
                         return; //because the array order is messed up after splice
                     }
                 }
@@ -2212,6 +1038,7 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
         maxHealth: 1,
         mouseInGame: { x: 0, y: 0 },
         onGround: false,
+        paused: false,
         pos: { x: 0, y: 0 },
         radius: 30,
         stepSize: 0,
@@ -2627,7 +1454,7 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
     const oldMantisBoss = spawn.mantisBoss;
     spawn.mantisBoss = (x, y, radius = 35, isSpawnBossPowerUp = true) => {
         oldMantisBoss(x, y, radius, isSpawnBossPowerUp);
-        mob[mob.length - 4].mobType = 24;
+        mob[mob.length - 1].mobType = 24;
     }
     
     const oldBeamer = spawn.beamer;
@@ -2668,30 +1495,26 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
     
     const oldLaserTargetingBoss = spawn.laserTargetingBoss;
     spawn.laserTargetingBoss = (x, y, radius = 80) => {
-        const me = mob.length + 1;
         oldLaserTargetingBoss(x, y, radius);
-        mob[me].mobType = 31;
+        mob[mob.length - 1].mobType = 31;
     }
     
     const oldLaserBombingBoss = spawn.laserBombingBoss;
     spawn.laserBombingBoss = (x, y, radius = 80) => {
-        const me = mob.length + 1;
         oldLaserBombingBoss(x, y, radius);
-        mob[me].mobType = 32;
+        mob[mob.length - 1].mobType = 32;
     }
     
     const oldBlinkBoss = spawn.blinkBoss;
     spawn.blinkBoss = (x, y) => {
-        const me = mob.length + 1;
         oldBlinkBoss(x, y);
-        mob[me].mobType = 33;
+        mob[mob.length - 1].mobType = 33;
     }
     
     const oldPulsarBoss = spawn.pulsarBoss;
     spawn.pulsarBoss = (x, y, radius = 90, isNonCollide = false) => {
-        const me = mob.length + 1;
         oldPulsarBoss(x, y, radius, isNonCollide);
-        mob[me].mobType = 34;
+        mob[mob.length - 1].mobType = 34;
     }
     
     const oldPulsar = spawn.pulsar;
@@ -2901,7 +1724,7 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
     const oldShieldingBoss = spawn.shieldingBoss;
     spawn.shieldingBoss = (x, y, radius = 200) => {
         oldShieldingBoss(x, y, radius);
-        mob[mob.length - 2].mobType = 69;
+        mob[mob.length - 1].mobType = 69;
     }
     
     const oldTimeSkipBoss = spawn.timeSkipBoss;
@@ -2992,13 +1815,13 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
     b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
         const textEncoder = new TextEncoder();
         const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
-        data[0] = 16;
-        data[25] = textEncoder.encode(color).length;
         data.set(textEncoder.encode(color), 26);
         const dataView = new DataView(data.buffer);
+        dataView.setUint8(0, protocol.bullet.explosion);
         dataView.setFloat64(1, where.x);
         dataView.setFloat64(9, where.y);
         dataView.setFloat64(17, radius);
+        dataView.setUint8(25, textEncoder.encode(color).length);
         dcLocal.send(dataView);
 
         oldExplosion(where, radius, color);
@@ -3006,9 +1829,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
 
     const oldPulse = b.pulse;
     b.pulse = (charge, angle = m.angle, where = m.pos) => {
-        const data = new Uint8Array(new ArrayBuffer(33))
-        data[0] = 17;
-        const dataView = new DataView(data.buffer);
+        const dataView = new DataView(new ArrayBuffer(33));
+        dataView.setUint8(0, protocol.bullet.pulse);
         dataView.setFloat64(1, charge);
         dataView.setFloat64(9, angle);
         dataView.setFloat64(17, where.x);
@@ -3016,904 +1838,6 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
         dcLocal.send(dataView);
 
         oldPulse(charge, angle, where);
-    }
-
-    b.setGrenadeMode = () => {
-        grenadeDefault = function (where = {
-            x: m.pos.x + 30 * Math.cos(m.angle),
-            y: m.pos.y + 30 * Math.sin(m.angle)
-        }, angle = m.angle, size = 1) {
-            const me = bullet.length;
-            bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
-            Matter.Body.setDensity(bullet[me], 0.0003);
-            bullet[me].explodeRad = 300 * size + 100 * tech.isBlockExplode;
-            bullet[me].onEnd = b.grenadeEnd
-            bullet[me].minDmgSpeed = 1;
-            bullet[me].beforeDmg = function () {
-                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
-            };
-            speed = m.crouch ? 43 : 32
-            Matter.Body.setVelocity(bullet[me], {
-                x: m.Vx / 2 + speed * Math.cos(angle),
-                y: m.Vy / 2 + speed * Math.sin(angle)
-            });
-            bullet[me].endCycle = simulation.cycle + Math.floor(m.crouch ? 120 : 80) * tech.bulletsLastLonger;
-            bullet[me].restitution = 0.4;
-            bullet[me].do = function () {
-                this.force.y += this.mass * 0.0025; //extra gravity for harder arcs
-            };
-            Composite.add(engine.world, bullet[me]); //add bullet to world
-        }
-        grenadeRPG = function (where = {
-            x: m.pos.x + 30 * Math.cos(m.angle),
-            y: m.pos.y + 30 * Math.sin(m.angle)
-        }, angle = m.angle, size = 1) {
-            const me = bullet.length;
-            bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
-            Matter.Body.setDensity(bullet[me], 0.0003);
-            bullet[me].explodeRad = 300 * size + 100 * tech.isBlockExplode;
-            bullet[me].onEnd = b.grenadeEnd
-            bullet[me].minDmgSpeed = 1;
-            bullet[me].beforeDmg = function () {
-                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
-            };
-            speed = m.crouch ? 46 : 32
-            Matter.Body.setVelocity(bullet[me], {
-                x: m.Vx / 2 + speed * Math.cos(angle),
-                y: m.Vy / 2 + speed * Math.sin(angle)
-            });
-            Composite.add(engine.world, bullet[me]); //add bullet to world
-
-            bullet[me].endCycle = simulation.cycle + 70 * tech.bulletsLastLonger;
-            bullet[me].frictionAir = 0.07;
-            const MAG = 0.015
-            bullet[me].thrust = {
-                x: bullet[me].mass * MAG * Math.cos(angle),
-                y: bullet[me].mass * MAG * Math.sin(angle)
-            }
-            bullet[me].do = function () {
-                this.force.x += this.thrust.x;
-                this.force.y += this.thrust.y;
-                if (Matter.Query.collides(this, map).length || Matter.Query.collides(this, body).length) {
-                    this.endCycle = 0; //explode if touching map or blocks
-                }
-            };
-        }
-        grenadeRPGVacuum = function (where = {
-            x: m.pos.x + 30 * Math.cos(m.angle),
-            y: m.pos.y + 30 * Math.sin(m.angle)
-        }, angle = m.angle, size = 1) {
-            const me = bullet.length;
-            bullet[me] = Bodies.circle(where.x, where.y, 15, b.fireAttributes(angle, false));
-            Matter.Body.setDensity(bullet[me], 0.0003);
-            bullet[me].explodeRad = 350 * size + Math.floor(Math.random() * 50) + tech.isBlockExplode * 100
-            bullet[me].onEnd = b.grenadeEnd
-            bullet[me].minDmgSpeed = 1;
-            bullet[me].beforeDmg = function () {
-                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
-            };
-            speed = m.crouch ? 46 : 32
-            Matter.Body.setVelocity(bullet[me], {
-                x: m.Vx / 2 + speed * Math.cos(angle),
-                y: m.Vy / 2 + speed * Math.sin(angle)
-            });
-            Composite.add(engine.world, bullet[me]); //add bullet to world
-            bullet[me].endCycle = simulation.cycle + 70 * tech.bulletsLastLonger;
-            bullet[me].frictionAir = 0.07;
-            bullet[me].suckCycles = 40
-            const MAG = 0.015
-            bullet[me].thrust = {
-                x: bullet[me].mass * MAG * Math.cos(angle),
-                y: bullet[me].mass * MAG * Math.sin(angle)
-            }
-            bullet[me].suck = function () {
-                const suck = (who, radius = this.explodeRad * 3.2) => {
-                    for (i = 0, len = who.length; i < len; i++) {
-                        const sub = Vector.sub(this.position, who[i].position);
-                        const dist = Vector.magnitude(sub);
-                        if (dist < radius && dist > 150 && !who.isInvulnerable && who[i] !== this) {
-                            knock = Vector.mult(Vector.normalise(sub), mag * who[i].mass / Math.sqrt(dist));
-                            who[i].force.x += knock.x;
-                            who[i].force.y += knock.y;
-                        }
-                    }
-                }
-                let mag = 0.1
-                if (simulation.cycle > this.endCycle - 5) {
-                    mag = -0.22
-                    suck(mob, this.explodeRad * 3)
-                    suck(body, this.explodeRad * 2)
-                    suck(powerUp, this.explodeRad * 1.5)
-                    suck(bullet, this.explodeRad * 1.5)
-                    suck([player], this.explodeRad * 1.3)
-                } else {
-                    mag = 0.11
-                    suck(mob, this.explodeRad * 3)
-                    suck(body, this.explodeRad * 2)
-                    suck(powerUp, this.explodeRad * 1.5)
-                    suck(bullet, this.explodeRad * 1.5)
-                    suck([player], this.explodeRad * 1.3)
-                }
-
-                Matter.Body.setVelocity(this, {
-                    x: 0,
-                    y: 0
-                }); //keep bomb in place
-                //draw suck
-                const radius = 2.75 * this.explodeRad * (this.endCycle - simulation.cycle) / this.suckCycles
-                ctx.fillStyle = "rgba(0,0,0,0.1)";
-                ctx.beginPath();
-                ctx.arc(this.position.x, this.position.y, radius, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-            bullet[me].do = function () {
-                if (simulation.cycle > this.endCycle - this.suckCycles) { //suck
-                    this.do = this.suck
-                } else if (Matter.Query.collides(this, map).length || Matter.Query.collides(this, body).length) {
-                    Matter.Body.setPosition(this, Vector.sub(this.position, this.velocity)) //undo last movement
-                    this.do = this.suck
-                } else {
-                    this.force.x += this.thrust.x;
-                    this.force.y += this.thrust.y;
-                }
-            };
-        }
-        grenadeVacuum = function (where = {
-            x: m.pos.x + 30 * Math.cos(m.angle),
-            y: m.pos.y + 30 * Math.sin(m.angle)
-        }, angle = m.angle, size = 1) {
-            const me = bullet.length;
-            bullet[me] = Bodies.circle(where.x, where.y, 20, b.fireAttributes(angle, false));
-            Matter.Body.setDensity(bullet[me], 0.0002);
-            bullet[me].explodeRad = 350 * size + Math.floor(Math.random() * 50) + tech.isBlockExplode * 100
-            bullet[me].onEnd = b.grenadeEnd
-            bullet[me].beforeDmg = function () {
-                this.endCycle = 0; //bullet ends cycle after doing damage  //this also triggers explosion
-            };
-            bullet[me].restitution = 0.4;
-            bullet[me].do = function () {
-                this.force.y += this.mass * 0.0025; //extra gravity for harder arcs
-
-                const suckCycles = 40
-                if (simulation.cycle > this.endCycle - suckCycles) { //suck
-                    const that = this
-
-                    function suck(who, radius = that.explodeRad * 3.2) {
-                        for (i = 0, len = who.length; i < len; i++) {
-                            const sub = Vector.sub(that.position, who[i].position);
-                            const dist = Vector.magnitude(sub);
-                            if (dist < radius && dist > 150 && !who.isInvulnerable) {
-                                knock = Vector.mult(Vector.normalise(sub), mag * who[i].mass / Math.sqrt(dist));
-                                who[i].force.x += knock.x;
-                                who[i].force.y += knock.y;
-                            }
-                        }
-                    }
-                    let mag = 0.1
-                    if (simulation.cycle > this.endCycle - 5) {
-                        mag = -0.22
-                        suck(mob, this.explodeRad * 3)
-                        suck(body, this.explodeRad * 2)
-                        suck(powerUp, this.explodeRad * 1.5)
-                        suck(bullet, this.explodeRad * 1.5)
-                        suck([player], this.explodeRad * 1.3)
-                    } else {
-                        mag = 0.11
-                        suck(mob, this.explodeRad * 3)
-                        suck(body, this.explodeRad * 2)
-                        suck(powerUp, this.explodeRad * 1.5)
-                        suck(bullet, this.explodeRad * 1.5)
-                        suck([player], this.explodeRad * 1.3)
-                    }
-                    //keep bomb in place
-                    Matter.Body.setVelocity(this, {
-                        x: 0,
-                        y: 0
-                    });
-                    //draw suck
-                    const radius = 2.75 * this.explodeRad * (this.endCycle - simulation.cycle) / suckCycles
-                    ctx.fillStyle = "rgba(0,0,0,0.1)";
-                    ctx.beginPath();
-                    ctx.arc(this.position.x, this.position.y, radius, 0, 2 * Math.PI);
-                    ctx.fill();
-                }
-            };
-            speed = 35
-            // speed = m.crouch ? 43 : 32
-
-            bullet[me].endCycle = simulation.cycle + 70 * tech.bulletsLastLonger;
-            if (m.crouch) {
-                speed += 9
-                bullet[me].endCycle += 20;
-            }
-            Matter.Body.setVelocity(bullet[me], {
-                x: m.Vx / 2 + speed * Math.cos(angle),
-                y: m.Vy / 2 + speed * Math.sin(angle)
-            });
-            Composite.add(engine.world, bullet[me]); //add bullet to world
-        }
-
-        grenadeNeutron = function (where = { x: m.pos.x + 30 * Math.cos(m.angle), y: m.pos.y + 30 * Math.sin(m.angle) }, angle = m.angle, size = 1) {
-            const me = bullet.length;
-            bullet[me] = Bodies.polygon(where.x, where.y, 10, 4, b.fireAttributes(angle, false));
-            b.fireProps((m.crouch ? 45 : 25) / Math.pow(0.92, tech.missileCount), m.crouch ? 35 : 20, angle, me); //cd , speed
-            Matter.Body.setDensity(bullet[me], 0.000001);
-            bullet[me].endCycle = 500 + simulation.cycle;
-            bullet[me].frictionAir = 0;
-            bullet[me].friction = 1;
-            bullet[me].frictionStatic = 1;
-            bullet[me].restitution = 0;
-            bullet[me].minDmgSpeed = 0;
-            bullet[me].damageRadius = 100;
-            bullet[me].maxDamageRadius = 450 * size + 130 * tech.isNeutronSlow //+ 150 * Math.random()
-            bullet[me].radiusDecay = (0.81 + 0.15 * tech.isNeutronSlow) / tech.bulletsLastLonger
-            bullet[me].stuckTo = null;
-            bullet[me].stuckToRelativePosition = null;
-            if (tech.isRPG) {
-                const SCALE = 2
-                Matter.Body.scale(bullet[me], SCALE, SCALE);
-                speed = m.crouch ? 25 : 15
-                // speed = m.crouch ? 43 : 32
-                Matter.Body.setVelocity(bullet[me], { x: m.Vx / 2 + speed * Math.cos(angle), y: m.Vy / 2 + speed * Math.sin(angle) });
-                const MAG = 0.005
-                bullet[me].thrust = { x: bullet[me].mass * MAG * Math.cos(angle), y: bullet[me].mass * MAG * Math.sin(angle) }
-            }
-
-            bullet[me].beforeDmg = function () { };
-            bullet[me].stuck = function () { };
-            bullet[me].do = function () {
-                const onCollide = () => {
-                    this.collisionFilter.mask = 0; //non collide with everything
-                    Matter.Body.setVelocity(this, { x: 0, y: 0 });
-                    if (tech.isRPG) this.thrust = { x: 0, y: 0 }
-                    this.do = this.radiationMode;
-                }
-                const mobCollisions = Matter.Query.collides(this, mob)
-                if (mobCollisions.length) {
-                    onCollide()
-                    this.stuckTo = mobCollisions[0].bodyA
-                    mobs.statusDoT(this.stuckTo, 0.6, 360) //apply radiation damage status effect on direct hits
-                    if (this.stuckTo.isVerticesChange) {
-                        this.stuckToRelativePosition = { x: 0, y: 0 }
-                    } else {
-                        //find the relative position for when the mob is at angle zero by undoing the mobs rotation
-                        this.stuckToRelativePosition = Vector.rotate(Vector.sub(this.position, this.stuckTo.position), -this.stuckTo.angle)
-                    }
-                    this.stuck = function () {
-                        if (this.stuckTo && this.stuckTo.alive) {
-                            const rotate = Vector.rotate(this.stuckToRelativePosition, this.stuckTo.angle) //add in the mob's new angle to the relative position vector
-                            Matter.Body.setPosition(this, Vector.add(Vector.add(rotate, this.stuckTo.velocity), this.stuckTo.position))
-                            Matter.Body.setVelocity(this, this.stuckTo.velocity); //so that it will move properly if it gets unstuck
-                        } else {
-                            this.collisionFilter.mask = cat.map | cat.body | cat.player | cat.mob; //non collide with everything but map
-                            this.stuck = function () {
-                                this.force.y += this.mass * 0.001;
-                            }
-                        }
-                    }
-                } else {
-                    const bodyCollisions = Matter.Query.collides(this, body)
-                    if (bodyCollisions.length) {
-                        if (!bodyCollisions[0].bodyA.isNotHoldable) {
-                            onCollide()
-                            this.stuckTo = bodyCollisions[0].bodyA
-                            //find the relative position for when the mob is at angle zero by undoing the mobs rotation
-                            this.stuckToRelativePosition = Vector.rotate(Vector.sub(this.position, this.stuckTo.position), -this.stuckTo.angle)
-                        } else {
-                            this.do = this.radiationMode;
-                        }
-                        this.stuck = function () {
-                            if (this.stuckTo) {
-                                const rotate = Vector.rotate(this.stuckToRelativePosition, this.stuckTo.angle) //add in the mob's new angle to the relative position vector
-                                Matter.Body.setPosition(this, Vector.add(Vector.add(rotate, this.stuckTo.velocity), this.stuckTo.position))
-                                // Matter.Body.setVelocity(this, this.stuckTo.velocity); //so that it will move properly if it gets unstuck
-                            } else {
-                                this.force.y += this.mass * 0.001;
-                            }
-                        }
-                    } else {
-                        if (Matter.Query.collides(this, map).length) {
-                            onCollide()
-                        } else if (tech.isRPG) { //if colliding with nothing
-                            this.force.x += this.thrust.x;
-                            this.force.y += this.thrust.y;
-                        } else {
-                            this.force.y += this.mass * 0.001;
-                        }
-                    }
-                }
-            }
-            bullet[me].radiationMode = function () { //the do code after the bullet is stuck on something,  projects a damaging radiation field
-                this.stuck(); //runs different code based on what the bullet is stuck to
-                this.damageRadius = this.damageRadius * 0.85 + 0.15 * this.maxDamageRadius //smooth radius towards max
-                this.maxDamageRadius -= this.radiusDecay
-                if (this.damageRadius < 15) {
-                    this.endCycle = 0;
-                } else {
-                    //aoe damage to player
-                    if (Vector.magnitude(Vector.sub(player.position, this.position)) < this.damageRadius) {
-                        const DRAIN = (tech.isRadioactiveResistance ? 0.0025 * 0.25 : 0.0025)
-                        if (m.energy > DRAIN) {
-                            if (m.immuneCycle < m.cycle) m.energy -= DRAIN
-                        } else {
-                            m.energy = 0;
-                            if (simulation.dmgScale) m.damage((tech.isRadioactiveResistance ? 0.00016 * 0.25 : 0.00016) * tech.radioactiveDamage) //0.00015
-                        }
-                    }
-                    //aoe damage to mobs
-                    let dmg = m.dmgScale * 0.15 * tech.radioactiveDamage
-                    for (let i = 0, len = mob.length; i < len; i++) {
-                        if (Vector.magnitude(Vector.sub(mob[i].position, this.position)) < this.damageRadius + mob[i].radius) {
-                            if (Matter.Query.ray(map, mob[i].position, this.position).length > 0) dmg *= 0.2 //reduce damage if a wall is in the way
-                            mob[i].damage(mob[i].shield ? dmg * 3 : dmg);
-                            mob[i].locatePlayer();
-                            if (tech.isNeutronSlow && mob[i].speed > 4) {
-                                Matter.Body.setVelocity(mob[i], { x: mob[i].velocity.x * 0.97, y: mob[i].velocity.y * 0.97 });
-                            }
-                        }
-                    }
-                    ctx.beginPath();
-                    ctx.arc(this.position.x, this.position.y, this.damageRadius, 0, 2 * Math.PI);
-                    ctx.globalCompositeOperation = "lighter"
-                    ctx.fillStyle = `rgba(25,139,170,${0.2 + 0.06 * Math.random()})`;
-                    ctx.fill();
-                    ctx.globalCompositeOperation = "source-over"
-                    if (tech.isNeutronSlow) {
-                        let slow = (who, radius = this.explodeRad * 3.2) => {
-                            for (i = 0, len = who.length; i < len; i++) {
-                                const sub = Vector.sub(this.position, who[i].position);
-                                const dist = Vector.magnitude(sub);
-                                if (dist < radius) {
-                                    Matter.Body.setVelocity(who[i], { x: who[i].velocity.x * 0.975, y: who[i].velocity.y * 0.975 });
-                                }
-                            }
-                        }
-                        slow(body, this.damageRadius)
-                        slow([player], this.damageRadius)
-                    }
-                }
-            }
-        }
-
-        if (tech.isNeutronBomb) {
-            b.grenade = grenadeNeutron
-            if (tech.isRPG) {
-                b.guns[5].do = function () { }
-            } else {
-                b.guns[5].do = function () {
-                    if (!input.field && m.crouch) {
-                        const cycles = 80
-                        const speed = m.crouch ? 35 : 20 //m.crouch ? 43 : 32
-                        const g = m.crouch ? 0.137 : 0.135
-                        const v = {
-                            x: speed * Math.cos(m.angle),
-                            y: speed * Math.sin(m.angle)
-                        }
-                        ctx.strokeStyle = "rgba(68, 68, 68, 0.2)" //color.map
-                        ctx.lineWidth = 2
-                        ctx.beginPath()
-                        for (let i = 1, len = 19; i < len + 1; i++) {
-                            const time = cycles * i / len
-                            ctx.lineTo(m.pos.x + time * v.x, m.pos.y + time * v.y + g * time * time)
-                        }
-                        ctx.stroke()
-                    }
-                }
-            }
-        } else if (tech.isRPG) {
-            b.guns[5].do = function () { }
-            if (tech.isVacuumBomb) {
-                b.grenade = grenadeRPGVacuum
-            } else {
-                b.grenade = grenadeRPG
-            }
-        } else if (tech.isVacuumBomb) {
-            b.grenade = grenadeVacuum
-            b.guns[5].do = function () {
-                if (!input.field && m.crouch) {
-                    const cycles = Math.floor(m.crouch ? 50 : 30) //30
-                    const speed = m.crouch ? 44 : 35
-                    const v = { x: speed * Math.cos(m.angle), y: speed * Math.sin(m.angle) }
-                    ctx.strokeStyle = "rgba(68, 68, 68, 0.2)" //color.map
-                    ctx.lineWidth = 2
-                    ctx.beginPath()
-                    for (let i = 1.6, len = 19; i < len + 1; i++) {
-                        const time = cycles * i / len
-                        ctx.lineTo(m.pos.x + time * v.x, m.pos.y + time * v.y + 0.34 * time * time)
-                    }
-                    ctx.stroke()
-                }
-            }
-        } else {
-            b.grenade = grenadeDefault
-            b.guns[5].do = function () {
-                if (!input.field && m.crouch) {
-                    const cycles = Math.floor(m.crouch ? 120 : 80) //30
-                    const speed = m.crouch ? 43 : 32
-                    const v = { x: speed * Math.cos(m.angle), y: speed * Math.sin(m.angle) } //m.Vy / 2 + removed to make the path less jerky
-                    ctx.strokeStyle = "rgba(68, 68, 68, 0.2)" //color.map
-                    ctx.lineWidth = 2
-                    ctx.beginPath()
-                    for (let i = 0.5, len = 19; i < len + 1; i++) {
-                        const time = cycles * i / len
-                        ctx.lineTo(m.pos.x + time * v.x, m.pos.y + time * v.y + 0.34 * time * time)
-                    }
-                    ctx.stroke()
-                }
-            }
-        }
-
-        const oldGrenade = b.grenade;
-        b.grenade = (where, angle, size) => {
-            const data = new Uint8Array(new ArrayBuffer(32));
-            data[0] = 18;
-            data[31] = m.crouch ? 1 : 0;
-            const dataView = new DataView(data.buffer);
-            dataView.setFloat64(1, where.x);
-            dataView.setFloat64(9, where.y);
-            dataView.setFloat64(17, angle);
-            dataView.setFloat32(25, size);
-            dcLocal.send(dataView);
-
-            oldGrenade(where, angle, size);
-        }
-    }
-
-    const oldHarpoon = b.harpoon;
-    b.harpoon = (where, target, angle = m.angle, harpoonSize = 1, isReturn = false, totalCycles = 35, isReturnAmmo = true, thrust = 0.1) => {
-        const data = new Uint8Array(new ArrayBuffer(46));
-        data[0] = 19;
-        data[31] = isReturn ? 1 : 0;
-        data[36] = isReturnAmmo ? 1 : 0;
-        const dataView = new DataView(data.buffer);
-        dataView.setFloat64(1, where.x);
-        dataView.setFloat64(9, where.y);
-        dataView.setUint32(17, target);
-        dataView.setFloat64(21, angle);
-        dataView.setUint16(29, harpoonSize);
-        dataView.setFloat32(32, totalCycles);
-        dataView.setFloat64(37, thrust);
-        dataView.setUint8(45, 1); // TODO: player id
-        dcLocal.send(dataView);
-
-        oldHarpoon(where, target, angle, harpoonSize, isReturn, totalCycles, isReturnAmmo, thrust);
-    }
-
-    b.guns[4].fire = () => {
-        const countReduction = Math.pow(0.86, tech.missileCount)
-        m.fireCDcycle = m.cycle + tech.missileFireCD * b.fireCDscale / countReduction; // cool down
-        const direction = {
-            x: Math.cos(m.angle),
-            y: Math.sin(m.angle)
-        }
-        
-        if (tech.missileCount > 1) {
-            const push = Vector.mult(Vector.perp(direction), 0.2 * countReduction / Math.sqrt(tech.missileCount))
-            const sqrtCountReduction = Math.sqrt(countReduction)
-            
-            const launchDelay = 4
-            let count = 0
-            const fireMissile = () => {
-                if (m.crouch) {
-                    const me = bullet.length;
-                    b.missile({
-                        x: m.pos.x + 30 * direction.x,
-                        y: m.pos.y + 30 * direction.y
-                    }, m.angle, 20, sqrtCountReduction)
-                    const extraForce = { x: 0.5 * push.x * (Math.random() - 0.5), y: 0.004 + 0.5 * push.y * (Math.random() - 0.5) }
-                    bullet[bullet.length - 1].force.x += extraForce.x;
-                    bullet[bullet.length - 1].force.y += extraForce.y;
-
-                    const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 20;
-                    const dataView = new DataView(data.buffer);
-                    dataView.setFloat64(1, m.pos.x + 30 * direction.x);
-                    dataView.setFloat64(9, m.pos.y + 30 * direction.y);
-                    dataView.setFloat64(17, m.angle);
-                    dataView.setFloat64(25, 20);
-                    dataView.setUint16(33, sqrtCountReduction);
-                    dataView.setFloat32(35, bullet[me].endCycle - m.cycle);
-                    dataView.setFloat64(39, bullet[me].lookFrequency);
-                    dataView.setFloat64(47, bullet[me].explodeRad);
-                    dataView.setFloat64(55, extraForce.x);
-                    dataView.setFloat64(63, extraForce.y);
-                    dcLocal.send(dataView);
-                } else {
-                    const me = bullet.length;
-                    b.missile({
-                        x: m.pos.x + 30 * direction.x,
-                        y: m.pos.y + 30 * direction.y
-                    }, m.angle, -15, sqrtCountReduction)
-                    const extraForce = { x: push.x * (Math.random() - 0.5), y: 0.005 + push.y * (Math.random() - 0.5) }
-                    bullet[bullet.length - 1].force.x += extraForce.x;
-                    bullet[bullet.length - 1].force.y += extraForce.y;
-
-                    const data = new Uint8Array(new ArrayBuffer(71));
-                    data[0] = 20;
-                    const dataView = new DataView(data.buffer);
-                    dataView.setFloat64(1, m.pos.x + 30 * direction.x);
-                    dataView.setFloat64(9, m.pos.y + 30 * direction.y);
-                    dataView.setFloat64(17, m.angle);
-                    dataView.setFloat64(25, -15);
-                    dataView.setUint16(33, sqrtCountReduction);
-                    dataView.setFloat32(35, bullet[me].endCycle - m.cycle);
-                    dataView.setFloat64(39, bullet[me].lookFrequency);
-                    dataView.setFloat64(47, bullet[me].explodeRad);
-                    dataView.setFloat64(55, extraForce.x);
-                    dataView.setFloat64(63, extraForce.y);
-                    dcLocal.send(dataView);
-                }
-            }
-            const cycle = () => {
-                if ((simulation.paused || m.isBodiesAsleep) && m.alive) {
-                    requestAnimationFrame(cycle)
-                } else {
-                    count++
-                    if (!(count % launchDelay)) {
-                        fireMissile()
-                    }
-                    if (count < tech.missileCount * launchDelay && m.alive) requestAnimationFrame(cycle);
-                }
-            }
-            requestAnimationFrame(cycle);
-        } else {
-            if (m.crouch) {
-                const me = bullet.length;
-                b.missile({
-                    x: m.pos.x + 40 * direction.x,
-                    y: m.pos.y + 40 * direction.y
-                }, m.angle, 25);
-
-                const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 20;
-                const dataView = new DataView(data.buffer);
-                dataView.setFloat64(1, m.pos.x + 40 * direction.x);
-                dataView.setFloat64(9, m.pos.y + 40 * direction.y);
-                dataView.setFloat64(17, m.angle);
-                dataView.setFloat64(25, 25);
-                dataView.setUint16(33, 1);
-                dataView.setFloat32(35, bullet[me].endCycle - m.cycle);
-                dataView.setFloat64(39, bullet[me].lookFrequency);
-                dataView.setFloat64(47, bullet[me].explodeRad);
-                dataView.setFloat64(55, 0);
-                dataView.setFloat64(63, 0);
-                dcLocal.send(dataView);
-            } else {
-                const me = bullet.length;
-                b.missile({
-                    x: m.pos.x + 40 * direction.x,
-                    y: m.pos.y + 40 * direction.y
-                }, m.angle, -12);
-                extraForce = 0.04 * (Math.random() - 0.2);
-                bullet[bullet.length - 1].force.y += extraForce;
-
-                const data = new Uint8Array(new ArrayBuffer(71));
-                data[0] = 20;
-                const dataView = new DataView(data.buffer);
-                dataView.setFloat64(1, m.pos.x + 40 * direction.x);
-                dataView.setFloat64(9, m.pos.y + 40 * direction.y);
-                dataView.setFloat64(17, m.angle);
-                dataView.setFloat64(25, -12);
-                dataView.setUint16(33, 1);
-                dataView.setFloat32(35, bullet[me].endCycle - m.cycle);
-                dataView.setFloat64(39, bullet[me].lookFrequency);
-                dataView.setFloat64(47, bullet[me].explodeRad);
-                dataView.setFloat64(55, 0);
-                dataView.setFloat64(63, extraForce);
-                dcLocal.send(dataView);
-            }
-        }
-    }
-
-    const oldLaser = b.laser;
-    b.laser = (where = { x: m.pos.x + 20 * Math.cos(m.angle), y: m.pos.y + 20 * Math.sin(m.angle) }, whereEnd = { x: where.x + 3000 * Math.cos(m.angle), y: where.y + 3000 * Math.sin(m.angle) }, dmg = tech.laserDamage, reflections = tech.laserReflections, isThickBeam = false, push = 1) => {
-        const data = new Uint8Array(new ArrayBuffer(52));
-        data[0] = 23;
-        const dataView = new DataView(data.buffer);
-        dataView.setFloat64(1, where.x);
-        dataView.setFloat64(9, where.y);
-        dataView.setFloat64(17, whereEnd.x);
-        dataView.setFloat64(25, whereEnd.y);
-        dataView.setFloat64(33, dmg);
-        dataView.setUint8(41, reflections);
-        dataView.setUint8(42, isThickBeam ? 1 : 0);
-        dataView.setFloat64(43, push);
-        dataView.setUint8(51, 1); // TODO: player id
-        dcLocal.send(dataView);
-
-        oldLaser(where, whereEnd, dmg, reflections, isThickBeam, push);
-    }
-
-    const oldNail = b.nail;
-    b.nail = (pos, velocity, dmg = 1) => {
-        const dataView = new DataView(new ArrayBuffer(37));
-        dataView.setUint8(0, 37);
-        dataView.setFloat64(1, pos.x);
-        dataView.setFloat64(9, pos.y);
-        dataView.setFloat64(17, velocity.x);
-        dataView.setFloat64(25, velocity.y);
-        dataView.setFloat32(33, dmg);
-        dcLocal.send(dataView);
-
-        oldNail(pos, velocity, dmg);
-    }
-
-    b.guns[1].fire = () => {
-        let knock, spread
-        const coolDown = function () {
-            if (m.crouch) {
-                spread = 0.65
-                m.fireCDcycle = m.cycle + Math.floor((73 + 36 * tech.shotgunExtraShots) * b.fireCDscale) // cool down
-                if (tech.isShotgunImmune && m.immuneCycle < m.cycle + Math.floor(60 * b.fireCDscale)) m.immuneCycle = m.cycle + Math.floor(60 * b.fireCDscale); //player is immune to damage for 30 cycles
-                knock = 0.01
-            } else {
-                m.fireCDcycle = m.cycle + Math.floor((56 + 28 * tech.shotgunExtraShots) * b.fireCDscale) // cool down
-                if (tech.isShotgunImmune && m.immuneCycle < m.cycle + Math.floor(47 * b.fireCDscale)) m.immuneCycle = m.cycle + Math.floor(47 * b.fireCDscale); //player is immune to damage for 30 cycles
-                spread = 1.3
-                knock = 0.1
-            }
-
-            if (tech.isShotgunReversed) {
-                player.force.x += 1.5 * knock * Math.cos(m.angle)
-                player.force.y += 1.5 * knock * Math.sin(m.angle) - 3 * player.mass * simulation.g
-            } else if (tech.isShotgunRecoil) {
-                m.fireCDcycle -= 0.66 * (56 * b.fireCDscale)
-                player.force.x -= 2 * knock * Math.cos(m.angle)
-                player.force.y -= 2 * knock * Math.sin(m.angle)
-            } else {
-                player.force.x -= knock * Math.cos(m.angle)
-                player.force.y -= knock * Math.sin(m.angle) * 0.5 //reduce knock back in vertical direction to stop super jumps
-            }
-        }
-        const spray = (num) => {
-            const dataView = new DataView(new ArrayBuffer(17 + 16 * num));
-            dataView.setUint8(0, 38);
-            dataView.setFloat64(1, m.pos.x);
-            dataView.setFloat64(9, m.pos.y);
-            const side = 22
-            for (let i = 0; i < num; i++) {
-                const me = bullet.length;
-                const dir = m.angle + (Math.random() - 0.5) * spread
-                dataView.setFloat64(17 + i * 16, m.angle + (Math.random() - 0.5) * spread); // direction
-                bullet[me] = Bodies.rectangle(m.pos.x, m.pos.y, side, side, b.fireAttributes(dir));
-                Composite.add(engine.world, bullet[me]); //add bullet to world
-                const SPEED = 52 + Math.random() * 8
-                dataView.setFloat64(25 + i * 16, 52 + Math.random() * 8); // speed
-                Matter.Body.setVelocity(bullet[me], {
-                    x: SPEED * Math.cos(dir),
-                    y: SPEED * Math.sin(dir)
-                });
-                bullet[me].endCycle = simulation.cycle + 40 * tech.bulletsLastLonger
-                bullet[me].minDmgSpeed = 15
-                if (tech.isShotgunReversed) Matter.Body.setDensity(bullet[me], 0.0015)
-                // bullet[me].restitution = 0.4
-                bullet[me].frictionAir = 0.034;
-                bullet[me].do = function () {
-                    const scale = 1 - 0.034 / tech.bulletsLastLonger
-                    Matter.Body.scale(this, scale, scale);
-                };
-            }
-            dcLocal.send(dataView);
-        }
-        const chooseBulletType = function () {
-            if (tech.isRivets) {
-                const me = bullet.length;
-                // const dir = m.angle + 0.02 * (Math.random() - 0.5)
-                bullet[me] = Bodies.rectangle(m.pos.x + 35 * Math.cos(m.angle), m.pos.y + 35 * Math.sin(m.angle), 56 * tech.bulletSize, 25 * tech.bulletSize, b.fireAttributes(m.angle));
-
-                Matter.Body.setDensity(bullet[me], 0.005 * (tech.isShotgunReversed ? 1.5 : 1));
-                Composite.add(engine.world, bullet[me]); //add bullet to world
-                const SPEED = (m.crouch ? 50 : 43)
-                Matter.Body.setVelocity(bullet[me], {
-                    x: SPEED * Math.cos(m.angle),
-                    y: SPEED * Math.sin(m.angle)
-                });
-                if (tech.isIncendiary) {
-                    bullet[me].endCycle = simulation.cycle + 60
-                    bullet[me].onEnd = function () {
-                        b.explosion(this.position, 400 + (Math.random() - 0.5) * 60); //makes bullet do explosive damage at end
-                    }
-                    bullet[me].beforeDmg = function () {
-                        this.endCycle = 0; //bullet ends cycle after hitting a mob and triggers explosion
-                    };
-                } else {
-                    bullet[me].endCycle = simulation.cycle + 180
-                }
-                bullet[me].minDmgSpeed = 7
-                // bullet[me].restitution = 0.4
-                bullet[me].frictionAir = 0.004;
-                bullet[me].turnMag = 0.04 * Math.pow(tech.bulletSize, 3.75)
-                bullet[me].do = function () {
-                    this.force.y += this.mass * 0.002
-                    if (this.speed > 6) { //rotates bullet to face current velocity?
-                        const facing = {
-                            x: Math.cos(this.angle),
-                            y: Math.sin(this.angle)
-                        }
-                        if (Vector.cross(Vector.normalise(this.velocity), facing) < 0) {
-                            this.torque += this.turnMag
-                        } else {
-                            this.torque -= this.turnMag
-                        }
-                    }
-                    if (tech.isIncendiary && Matter.Query.collides(this, map).length) {
-                        this.endCycle = 0; //bullet ends cycle after hitting a mob and triggers explosion
-                    }
-                };
-                bullet[me].beforeDmg = function (who) {
-                    if (this.speed > 4) {
-                        if (tech.fragments) {
-                            b.targetedNail(this.position, 6 * tech.fragments * tech.bulletSize)
-                            this.endCycle = 0 //triggers despawn
-                        }
-                        if (tech.isIncendiary) this.endCycle = 0; //bullet ends cycle after hitting a mob and triggers explosion
-                        if (tech.isCritKill) b.crit(who, this)
-                    }
-                }
-                spray(12); //fires normal shotgun bullets
-            } else if (tech.isIncendiary) {
-                spread *= 0.15
-                const END = Math.floor(m.crouch ? 8 : 5);
-                const totalBullets = 9
-                const angleStep = (m.crouch ? 0.3 : 0.8) / totalBullets
-                let dir = m.angle - angleStep * totalBullets / 2;
-                for (let i = 0; i < totalBullets; i++) { //5 -> 7
-                    dir += angleStep
-                    const me = bullet.length;
-                    bullet[me] = Bodies.rectangle(m.pos.x + 50 * Math.cos(m.angle), m.pos.y + 50 * Math.sin(m.angle), 17, 4, b.fireAttributes(dir));
-                    const end = END + Math.random() * 4
-                    bullet[me].endCycle = 2 * end * tech.bulletsLastLonger + simulation.cycle
-                    const speed = 25 * end / END
-                    const dirOff = dir + (Math.random() - 0.5) * spread
-                    Matter.Body.setVelocity(bullet[me], {
-                        x: speed * Math.cos(dirOff),
-                        y: speed * Math.sin(dirOff)
-                    });
-                    bullet[me].onEnd = function () {
-                        b.explosion(this.position, 180 * (tech.isShotgunReversed ? 1.4 : 1) + (Math.random() - 0.5) * 30); //makes bullet do explosive damage at end
-                    }
-                    bullet[me].beforeDmg = function () {
-                        this.endCycle = 0; //bullet ends cycle after hitting a mob and triggers explosion
-                    };
-                    bullet[me].do = function () {
-                        if (Matter.Query.collides(this, map).length) this.endCycle = 0; //bullet ends cycle after hitting a mob and triggers explosion
-                    }
-                    Composite.add(engine.world, bullet[me]); //add bullet to world
-                }
-            } else if (tech.isNailShot) {
-                spread *= 0.65
-                const dmg = 2 * (tech.isShotgunReversed ? 1.5 : 1)
-                if (m.crouch) {
-                    for (let i = 0; i < 17; i++) {
-                        speed = 38 + 15 * Math.random()
-                        const dir = m.angle + (Math.random() - 0.5) * spread
-                        const pos = {
-                            x: m.pos.x + 35 * Math.cos(m.angle) + 15 * (Math.random() - 0.5),
-                            y: m.pos.y + 35 * Math.sin(m.angle) + 15 * (Math.random() - 0.5)
-                        }
-                        b.nail(pos, {
-                            x: speed * Math.cos(dir),
-                            y: speed * Math.sin(dir)
-                        }, dmg)
-                    }
-                } else {
-                    for (let i = 0; i < 17; i++) {
-                        speed = 38 + 15 * Math.random()
-                        const dir = m.angle + (Math.random() - 0.5) * spread
-                        const pos = {
-                            x: m.pos.x + 35 * Math.cos(m.angle) + 15 * (Math.random() - 0.5),
-                            y: m.pos.y + 35 * Math.sin(m.angle) + 15 * (Math.random() - 0.5)
-                        }
-                        b.nail(pos, {
-                            x: speed * Math.cos(dir),
-                            y: speed * Math.sin(dir)
-                        }, dmg)
-                    }
-                }
-            } else if (tech.isSporeFlea) {
-                const where = {
-                    x: m.pos.x + 35 * Math.cos(m.angle),
-                    y: m.pos.y + 35 * Math.sin(m.angle)
-                }
-                const number = 2 * (tech.isShotgunReversed ? 1.5 : 1)
-                for (let i = 0; i < number; i++) {
-                    const angle = m.angle + 0.2 * (Math.random() - 0.5)
-                    const speed = (m.crouch ? 35 * (1 + 0.05 * Math.random()) : 30 * (1 + 0.15 * Math.random()))
-                    b.flea(where, {
-                        x: speed * Math.cos(angle),
-                        y: speed * Math.sin(angle)
-                    })
-                    bullet[bullet.length - 1].setDamage()
-                }
-                spray(10); //fires normal shotgun bullets
-            } else if (tech.isSporeWorm) {
-                const where = {
-                    x: m.pos.x + 35 * Math.cos(m.angle),
-                    y: m.pos.y + 35 * Math.sin(m.angle)
-                }
-                const spread = (m.crouch ? 0.02 : 0.07)
-                const number = 3 * (tech.isShotgunReversed ? 1.5 : 1)
-                let angle = m.angle - (number - 1) * spread * 0.5
-                for (let i = 0; i < number; i++) {
-                    b.worm(where)
-                    const SPEED = (30 + 10 * m.crouch) * (1 + 0.2 * Math.random())
-                    Matter.Body.setVelocity(bullet[bullet.length - 1], {
-                        x: player.velocity.x * 0.5 + SPEED * Math.cos(angle),
-                        y: player.velocity.y * 0.5 + SPEED * Math.sin(angle)
-                    });
-                    angle += spread
-                }
-                spray(7); //fires normal shotgun bullets
-            } else if (tech.isIceShot) {
-                const spread = (m.crouch ? 0.7 : 1.2)
-                for (let i = 0, len = 10 * (tech.isShotgunReversed ? 1.5 : 1); i < len; i++) {
-                    b.iceIX(23 + 10 * Math.random(), m.angle + spread * (Math.random() - 0.5))
-                }
-                spray(10); //fires normal shotgun bullets
-            } else if (tech.isFoamShot) {
-                const spread = (m.crouch ? 0.15 : 0.4)
-                const where = {
-                    x: m.pos.x + 25 * Math.cos(m.angle),
-                    y: m.pos.y + 25 * Math.sin(m.angle)
-                }
-                const number = 16 * (tech.isShotgunReversed ? 1.5 : 1)
-                for (let i = 0; i < number; i++) {
-                    const SPEED = 13 + 4 * Math.random();
-                    const angle = m.angle + spread * (Math.random() - 0.5)
-                    b.foam(where, {
-                        x: SPEED * Math.cos(angle),
-                        y: SPEED * Math.sin(angle)
-                    }, 8 + 7 * Math.random())
-                }
-            } else if (tech.isNeedles) {
-                const number = 9 * (tech.isShotgunReversed ? 1.5 : 1)
-                const spread = (m.crouch ? 0.03 : 0.05)
-                let angle = m.angle - (number - 1) * spread * 0.5
-                for (let i = 0; i < number; i++) {
-                    b.needle(angle)
-                    angle += spread
-                }
-            } else {
-                spray(16); //fires normal shotgun bullets
-            }
-        }
-
-
-        coolDown();
-        b.muzzleFlash(35);
-        chooseBulletType();
-
-        if (tech.shotgunExtraShots) {
-            const delay = 7
-            let count = tech.shotgunExtraShots * delay
-
-            function cycle() {
-                count--
-                if (!(count % delay)) {
-                    coolDown();
-                    b.muzzleFlash(35);
-                    chooseBulletType();
-                }
-                if (count > 0) {
-                    requestAnimationFrame(cycle);
-                }
-            }
-            requestAnimationFrame(cycle);
-        }
-    }
-
-    const oldSuperBall = b.superBall;
-    b.superBall = (where, velocity, radius) => {
-        const dataView = new DataView(new ArrayBuffer(41));
-        dataView.setUint8(0, 39);
-        dataView.setFloat64(1, where.x);
-        dataView.setFloat64(9, where.y);
-        dataView.setFloat64(17, velocity.x);
-        dataView.setFloat64(25, velocity.y);
-        dataView.setFloat64(33, radius);
-        dcLocal.send(dataView);
-
-        oldSuperBall(where, velocity, radius);
     }
 
     let oldM = {
@@ -3935,7 +1859,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
         Vx: 0,
         Vy: 0,
         walk_cycle: 0,
-        yOff: 70
+        yOff: 70,
+        paused: false
     }
     const oldBlocks = [];
     const oldPowerups = [];
@@ -3998,9 +1923,13 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             ctx.stroke();
             ctx.restore();
             powerUps.boost.draw();
-            if (!player2.isHolding && player2.input.field) fieldData[player2.fieldMode].do();
-            if (!player2.isHolding && player2.input.field) player2.grabPowerUp();
-            if (!player2.isHolding && (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10)) fieldData[player2.fieldMode].drawField();
+            if (!player2.paused) {
+                if (!player2.isHolding && player2.input.field) {
+                    fieldData[player2.fieldMode].do();
+                    player2.grabPowerUp();
+                }
+                if (!player2.isHolding && (player2.input.field || player2.fieldMode == 1 || player2.fieldMode == 2 || player2.fieldMode == 3 || player2.fieldMode == 8 || player2.fieldMode == 9 || player2.fieldMode == 10)) fieldData[player2.fieldMode].drawField();
+            }
             if (player2.holdingTarget) {
                 ctx.beginPath(); //draw on each valid body
                 let vertices = player2.holdingTarget.vertices;
@@ -4061,18 +1990,16 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             player2.drawHealthbar();
             player2.drawRegenEnergy();
 
-            for (const multiplayerLaser of b.multiplayerLasers) if (new Date().getTime() - multiplayerLaser.created.getTime() < 100) b.multiplayerLaser(multiplayerLaser.where, multiplayerLaser.whereEnd, multiplayerLaser.dmg, multiplayerLaser.reflections, multiplayerLaser.isThickBeam, multiplayerLaser.push);
+            // for (const multiplayerLaser of b.multiplayerLasers) if (new Date().getTime() - multiplayerLaser.created.getTime() < 100) b.multiplayerLaser(multiplayerLaser.where, multiplayerLaser.whereEnd, multiplayerLaser.dmg, multiplayerLaser.reflections, multiplayerLaser.isThickBeam, multiplayerLaser.push);
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             // player broadcast
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
-                // movement
-                const data = new Uint8Array(new ArrayBuffer(58));
-                data[0] = 1;
-                data[17] = m.onGround ? 1 : 0;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(58));
+                dataView.setUint8(0, protocol.player.movement);
                 dataView.setFloat64(1, simulation.mouseInGame.x);
                 dataView.setFloat64(9, simulation.mouseInGame.y);
+                dataView.setUint8(17, m.onGround ? 1 : 0);
                 dataView.setFloat64(18, m.pos.x);
                 dataView.setFloat64(26, m.pos.y);
                 dataView.setFloat64(34, m.Vx);
@@ -4081,108 +2008,95 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                 dataView.setFloat32(54, m.yOff);
                 dcLocal.send(dataView);
             } else if (simulation.mouseInGame.x != oldM.mouseInGame.x || simulation.mouseInGame.y != oldM.mouseInGame.y) {
-                // rotation
-                const data = new Uint8Array(new ArrayBuffer(17));
-                data[0] = 0;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(17));
+                dataView.setUint8(0, protocol.player.rotation);
                 dataView.setFloat64(1, simulation.mouseInGame.x);
                 dataView.setFloat64(9, simulation.mouseInGame.y);
                 dcLocal.send(dataView);
             }
             if (m.fieldMode != oldM.fieldMode) {
-                // set field
-                const data = new Uint8Array(new ArrayBuffer(2));
-                data[0] = 2;
-                data[1] = m.fieldMode;
-                dcLocal.send(new DataView(data.buffer));
+                const dataView = new DataView(new ArrayBuffer(2));
+                dataView.setUint8(0, protocol.player.setField);
+                dataView.setUint8(1, m.fieldMode);
+                dcLocal.send(dataView);
             }
             if (m.immuneCycle != oldM.immuneCycle) {
-                // immune cycle update
-                const data = new Uint8Array(new ArrayBuffer(5));
-                data[0] = 3;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(5));
+                dataView.setUint8(0, protocol.player.immuneCycleUpdate);
                 dataView.setFloat32(1, m.immuneCycle);
                 dcLocal.send(dataView);
             }
             if (m.health != oldM.health) {
-                // health update
-                const data = new Uint8Array(new ArrayBuffer(6));
-                data[0] = 4;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(6));
+                dataView.setUint8(0, protocol.player.healthUpdate);
                 dataView.setFloat32(1, m.health);
                 dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.maxHealth != oldM.maxHealth) {
-                // max health update
-                const data = new Uint8Array(new ArrayBuffer(6));
-                data[0] = 5;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(ArrayBuffer(6));
+                dataView.setUint8(0, protocol.player.maxHealthUpdate);
                 dataView.setFloat32(1, m.maxHealth);
                 dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.energy != oldM.energy) {
-                // energy update
-                const data = new Uint8Array(new ArrayBuffer(6));
-                data[0] = 6;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(6));
+                dataView.setUint8(0, protocol.player.energyUpdate);
                 dataView.setFloat32(1, m.energy);
                 dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.maxEnergy != oldM.maxEnergy) {
-                // max energy update
-                const data = new Uint8Array(new ArrayBuffer(6))
-                data[0] = 7;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(6));
+                dataView.setUint8(0, protocol.player.maxEnergyUpdate);
                 dataView.setFloat32(1, m.maxEnergy);
                 dataView.setUint8(5, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (input.up != oldM.input.up || input.down != oldM.input.down || input.left != oldM.input.left || input.right != oldM.input.right || input.field != oldM.input.field || input.fire != oldM.input.fire) {
-                // inputs
-                const data = new Uint8Array(new ArrayBuffer(7));
-                data[0] = 8;
-                data[1] = input.up ? 1 : 0;
-                data[2] = input.down ? 1 : 0;
-                data[3] = input.left ? 1 : 0;
-                data[4] = input.right ? 1 : 0;
-                data[5] = input.field ? 1 : 0;
-                data[6] = input.fire ? 1 : 0;
-                dcLocal.send(new DataView(data.buffer));
+                const dataView = new DataView(new ArrayBuffer(7));
+                dataView.setUint8(0, protocol.player.inputs);
+                dataView.setUint8(1, input.up ? 1 : 0);
+                dataView.setUint8(2, input.down ? 1 : 0);
+                dataView.setUint8(3, input.left ? 1 : 0);
+                dataView.setUint8(4, input.right ? 1 : 0);
+                dataView.setUint8(5, input.field ? 1 : 0);
+                dataView.setUint8(6, input.fire ? 1 : 0);
+                dcLocal.send(dataView);
             }
             if (m.crouch != oldM.crouch) {
-                // toggle crouch
-                const data = new Uint8Array(new ArrayBuffer(2));
-                data[0] = 9;
-                data[1] = m.crouch ? 1 : 0;
-                dcLocal.send(new DataView(data.buffer));
+                const dataView = new DataView(new ArrayBuffer(2));
+                dataView.setUint8(0, protocol.player.toggleCrouch);
+                dataView.setUint8(1, m.crouch ? 1 : 0);
+                dcLocal.send(dataView);
             }
             if (m.isCloak != oldM.isCloak) {
                 // toggle cloak
-                const data = new Uint8Array(new ArrayBuffer(2));
-                data[0] = 10;
-                data[1] = m.isCloak ? 1 : 0;
-                dcLocal.send(new DataView(data.buffer));
+                const dataView = new DataView(new ArrayBuffer(2));
+                dataView.setUint8(0, protocol.player.toggleCloak);
+                dataView.setUint8(1, m.isCloak ? 1 : 0);
+                dcLocal.send(dataView);
             }
             if (m.isHolding != oldM.isHolding || m.holdingTarget?.id != oldM.holdingTarget?.id) {
-                // hold block
-                const data = new Uint8Array(new ArrayBuffer(5));
-                data[0] = 21;
-                data[1] = m.isHolding ? 1 : 0;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(5));
+                dataView.setUint8(0, protocol.player.holdBlock);
+                dataView.setUint8(1, m.isHolding ? 1 : 0);
                 dataView.setUint16(2, m.holdingTarget?.id || -1);
                 dataView.setUint8(4, 1); // TODO: player id
                 dcLocal.send(dataView);
             }
             if (m.throwCharge != oldM.throwCharge) {
-                // throw charge update
-                const data = new Uint8Array(new ArrayBuffer(7));
-                data[0] = 22;
-                const dataView = new DataView(data.buffer);
+                const dataView = new DataView(new ArrayBuffer(7));
+                dataView.setUint8(0, protocol.player.throwChargeUpdate);
                 dataView.setFloat32(1, m.throwCharge);
                 dataView.setUint8(5, 1); // TODO: player id
+                dcLocal.send(dataView);
+            }
+            if (simulation.paused != oldM.paused) {
+                const dataView = new DataView(new ArrayBuffer(2));
+                dataView.setUint8(0, protocol.player.togglePause);
+                dataView.setUint8(1, simulation.paused ? 1 : 0);
                 dcLocal.send(dataView);
             }
             
@@ -4205,7 +2119,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                 Vx: m.Vx,
                 Vy: m.Vy,
                 walk_cycle: m.walk_cycle,
-                yOff: m.yOff
+                yOff: m.yOff,
+                paused: simulation.paused
             }
 
             // block update
@@ -4220,10 +2135,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                     else for (let i = 0; i < block.vertices.length; i++) if (block.vertices[i].x != oldBlock.vertices[i].x || block.vertices[i].y != oldBlock.vertices[i].y) verticesChanged = true;
                 }
                 if (oldBlock == null || positionChanged) {
-                    // block position update
-                    const data = new Uint8Array(new ArrayBuffer(43));
-                    data[0] = 15;
-                    const dataView = new DataView(data.buffer);
+                    const dataView = new DataView(new ArrayBuffer(43));
+                    dataView.setUint8(0, protocol.block.positionUpdate)
                     dataView.setUint16(1, block.id);
                     dataView.setFloat64(3, block.position.x);
                     dataView.setFloat64(11, block.position.y);
@@ -4233,10 +2146,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                     dcLocal.send(dataView);
                 }
                 if (verticesChanged) {
-                    // block vertex update
-                    const data = new Uint8Array(new ArrayBuffer(3 + 16 * block.vertices.length));
-                    data[0] = 35;
-                    const dataView = new DataView(data.buffer);
+                    const dataView = new DataView(new ArrayBuffer(3 + 16 * block.vertices.length));
+                    dataView.setUint8(0, protocol.block.vertexUpdate);
                     dataView.setUint16(1, block.id);
                     let index = 3;
                     for (const vertex of block.vertices) {
@@ -4249,17 +2160,15 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             }
 
             for (const oldBlock of oldBlocks) {
-                if (body.findIndex(block => block.id == oldBlock.id) == -1) {
-                    // delete block
-                    const data = new Uint8Array(new ArrayBuffer(3));
-                    data[0] = 24;
-                    const dataView = new DataView(data.buffer);
+                if (!body.find(block => block.id == oldBlock.id)) {
+                    const dataView = new DataView(new ArrayBuffer(3));
+                    dataView.setUint8(0, protocol.block.delete);
                     dataView.setUint16(1, oldBlock.id);
                     dcLocal.send(dataView);
                 }
             }
             
-            oldBlocks.length = 0;
+            oldBlocks.splice(0);
             for (const block of body) {
                 vertices = [];
                 for (const vertex of block.vertices) vertices.push({ x: vertex.x, y: vertex.y });
@@ -4271,10 +2180,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             for (const powerup of powerUp) {
                 const oldPowerup = oldPowerups.find(a => a.id == powerup.id);
                 if (oldPowerup == null || powerup.position.x != oldPowerup.position.x || powerup.position.y != oldPowerup.position.y || powerup.size != oldPowerup.size || powerup.collisionFilter.category != oldPowerup.collisionFilter.category || powerup.collisionFilter.mask != oldPowerup.collisionFilter.mask) {
-                    // powerup update
-                    const data = new Uint8Array(new ArrayBuffer(43));
-                    data[0] = 27;
-                    const dataView = new DataView(data.buffer);
+                    const dataView = new DataView(new ArrayBuffer(43));
+                    dataView.setUint8(0, protocol.powerup.update);
                     dataView.setUint16(1, powerup.id);
                     dataView.setFloat64(3, powerup.position.x);
                     dataView.setFloat64(11, powerup.position.y);
@@ -4286,18 +2193,16 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             }
 
             for (const oldPowerup of oldPowerups) {
-                if (powerUp.findIndex(a => a.id == oldPowerup.id) == -1) {
-                    // delete powerup
-                    const data = new Uint8Array(new ArrayBuffer(3));
-                    data[0] = 28;
-                    const dataView = new DataView(data.buffer);
+                if (!powerUp.find(a => a.id == oldPowerup.id)) {
+                    const dataView = new DataView(new ArrayBuffer(3));
+                    dataView.setUint8(0, protocol.powerup.delete);
                     dataView.setUint16(1, oldPowerup.id);
                     dcLocal.send(dataView);
                 }
             }
 
-            oldPowerups.length = 0;
-            for (const powerup of powerUp) oldPowerups.push({ id: powerup.id, position: { x: powerup.position.x, y: powerup.position.y }, size: powerup.size, collisionFilter: { category: powerup.collisionFilter.category, mask: powerup.collisionFilter.mask } });
+            oldPowerups.splice(0);
+            for (const powerup of powerUp) oldPowerups.push({ id: powerup.id, position: { x: powerup.position.x, y: powerup.position.y }, size: powerup.size, collisionFilter: { category: powerup.collisionFilter.category, mask: powerup.collisionFilter.mask }});
 
 
             // mob update
@@ -4315,10 +2220,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                     if (newMob.isShielded != oldMob.isShielded || newMob.isUnblockable != oldMob.isUnblockable || newMob.showHealthBar != oldMob.showHealthBar || newMob.collisionFilter.category != oldMob.collisionFilter.category || newMob.collisionFilter.mask != oldMob.collisionFilter.mask || newMob.isBoss != oldMob.isBoss || newMob.isFinalBoss != oldMob.isFinalBoss || newMob.isInvulnerable != oldMob.isInvulnerable || newMob.isZombie != oldMob.isZombie || newMob.isGrouper != oldMob.isGrouper || newMob.isMobBullet != oldMob.isMobBullet || newMob.seePlayer.recall != oldMob.seePlayer.recall || newMob.health != oldMob.health || newMob.radius != oldMob.radius) propertyChange = true;
                 }
                 if (oldMob == null || moved) {
-                    // mob position update
-                    const data = new Uint8Array(new ArrayBuffer(27));
-                    data[0] = 31;
-                    const dataView = new DataView(data.buffer);
+                    const dataView = new DataView(new ArrayBuffer(27));
+                    dataView.setUint8(0, protocol.mob.positionUpdate);
                     dataView.setUint16(1, newMob.id);
                     dataView.setFloat64(3, newMob.position.x);
                     dataView.setFloat64(11, newMob.position.y);
@@ -4326,10 +2229,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                     dcLocal.send(dataView);
                 }
                 if (vertexChange) {
-                    // mob vertex update
-                    const data = new Uint8Array(new ArrayBuffer(3 + 16 * newMob.vertices.length));
-                    data[0] = 32;
-                    const dataView = new DataView(data.buffer);
+                    const dataView = new DataView(new ArrayBuffer(3 + 16 * newMob.vertices.length));
+                    dataView.setUint8(0, protocol.mob.vertexUpdate);
                     dataView.setUint16(1, newMob.id);
                     let index = 3;
                     for (const vertex of newMob.vertices) {
@@ -4344,10 +2245,10 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                     const color = new TextEncoder().encode(newMob.fill);
                     const stroke = new TextEncoder().encode(newMob.stroke);
                     const data = new Uint8Array(new ArrayBuffer(9 + color.length + stroke.length));
-                    data[0] = 33;
                     data.set(color, 4);
                     data.set(stroke, 9 + color.length);
                     const dataView = new DataView(data.buffer);
+                    dataView.setUint8(0, protocol.mob.colorUpdate);
                     dataView.setUint16(1, newMob.id);
                     dataView.setUint8(3, color.length);
                     dataView.setFloat32(4 + color.length, newMob.alpha || 1);
@@ -4355,10 +2256,8 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
                     dcLocal.send(dataView);   
                 }
                 if (propertyChange) {
-                    // mob property update
-                    const data = new Uint8Array(new ArrayBuffer(53));
-                    data[0] = 36;
-                    const dataView = new DataView(data.buffer);
+                    const dataView = new DataView(new ArrayBuffer(53));
+                    dataView.setUint8(0, protocol.mob.propertyUpdate);
                     dataView.setUint16(1, newMob.id);
                     dataView.setUint8(3, newMob.isShielded ? 1 : 0);
                     dataView.setUint8(4, newMob.isUnblockable ? 1 : 0);
@@ -4380,17 +2279,15 @@ b.multiplayerSuperBall = (where, velocity, radius) => {
             }
 
             for (const oldMob of oldMobs) {
-                if (mob.findIndex(a => a.id == oldMob.id ) == -1) {
-                    // delete mob
-                    const data = new Uint8Array(new ArrayBuffer(3));
-                    data[0] = 34;
-                    const dataView = new DataView(data.buffer);
+                if (!mob.find(a => a.id == oldMob.id)) {
+                    const dataView = new DataView(new ArrayBuffer(3));
+                    dataView.setUint8(0, protocol.mob.delete);
                     dataView.setUint16(1, oldMob.id);
                     dcLocal.send(dataView);
                 }
             }
 
-            oldMobs.length = 0;
+            oldMobs.splice(0);
             for (const newMob of mob) {
                 vertices = [];
                 for (const vertex of newMob.vertices) vertices.push({ x: vertex.x, y: vertex.y });
