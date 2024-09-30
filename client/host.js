@@ -68,7 +68,7 @@ class Player {
         this.flipLegs = -1;
         this.foot = { x: 0, y: 0 };
         this.FxAir = 0.016;
-        this.health = 1;
+        this.health = 0.25;
         this.height = 42;
         this.hip = { x: 12, y: 24 };
         this.holdingTarget = null;
@@ -450,8 +450,79 @@ class Player {
             this.drawRegenEnergy();
         }})
     }
+
+    sync() {
+        const textEncoder = new TextEncoder();
+        const data = new Uint8Array(new ArrayBuffer(4 + textEncoder.encode(Math.initialSeed).length + (players.length + 1) * 95));
+        data.set(textEncoder.encode(Math.initialSeed), 4);
+        const dataView = new DataView(data.buffer);
+        dataView.setUint8(0, protocol.game.sync);
+        dataView.setUint8(1, this.id);
+        dataView.setUint8(2, simulation.difficultyMode);
+        dataView.setUint8(3, textEncoder.encode(Math.initialSeed).length);
+        let index = 4 + textEncoder.encode(Math.initialSeed).length;
+        let host = {
+            id: 0,
+            crouch: m.crouch,
+            energy: m.energy,
+            fieldMode: m.fieldMode,
+            health: m.health,
+            holdingTarget: m.holdingTarget,
+            immuneCycle: m.immuneCycle,
+            input: { up: input.up, down: input.down, left: input.left, right: input.right, field: input.field, fire: input.fire },
+            isCloak: m.isCloak,
+            isHolding: m.isHolding,
+            maxEnergy: m.maxEnergy,
+            maxHealth: m.maxHealth,
+            mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
+            onGround: m.onGround,
+            pos: { x: m.pos.y, y: m.pos.y },
+            throwCharge: m.throwCharge,
+            Vx: m.Vx,
+            Vy: m.Vy,
+            walk_cycle: m.walk_cycle,
+            yOff: m.yOff,
+            paused: simulation.paused
+        }
+        for (const player of [host].concat(players)) {
+            dataView.setUint8(index, player.id);
+            dataView.setFloat64(index + 1, player.pos.x);
+            dataView.setFloat64(index + 9, player.pos.y);
+            dataView.setFloat64(index + 17, player.mouseInGame.x);
+            dataView.setFloat64(index + 25, player.mouseInGame.y);
+            dataView.setUint8(index + 33, player.onGround ? 1 : 0);
+            dataView.setFloat64(index + 34, player.Vx);
+            dataView.setFloat64(index + 42, player.Vy);
+            dataView.setFloat32(index + 50, player.walk_cycle);
+            dataView.setFloat32(index + 54, player.yOff);
+            dataView.setUint8(index + 58, player.fieldMode);
+            dataView.setFloat32(index + 59, player.immuneCycle);
+            dataView.setFloat32(index + 63, player.health);
+            dataView.setFloat32(index + 67, player.maxHealth);
+            dataView.setFloat32(index + 71, player.energy);
+            dataView.setFloat32(index + 75, player.maxEnergy);
+            dataView.setUint8(index + 79, player.input.up ? 1 : 0);
+            dataView.setUint8(index + 80, player.input.down ? 1 : 0);
+            dataView.setUint8(index + 81, player.input.left ? 1 : 0);
+            dataView.setUint8(index + 82, player.input.right ? 1 : 0);
+            dataView.setUint8(index + 83, player.input.field ? 1 : 0);
+            dataView.setUint8(index + 84, player.input.fire ? 1 : 0);
+            dataView.setUint8(index + 85, player.crouch ? 1 : 0);
+            dataView.setUint8(index + 86, player.isCloak ? 1 : 0);
+            dataView.setUint8(index + 87, player.isHolding ? 1 : 0);
+            dataView.setUint16(index + 88, player.holdingTarget ? player.holdingTarget.id : -1);
+            dataView.setFloat32(index + 90, player.throwCharge);
+            dataView.setUint8(index + 94, player.paused ? 1 : 0);
+            index += 95;
+        }
+        this.connection.send(dataView);
+    }
 }
 let players = [];
+
+function broadcast(data, id) {
+    for (const player of players) if (player.connection.readyState == 'open' && (!id || id != player.id)) player.connection.send(data);
+}
 
 b.multiplayerGrapple = (where, angle, playerId) => {
     const origin = players.find(a => a.id === playerId);
@@ -1234,12 +1305,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
     };
     peerLocal.onicegatheringstatechange = function(e) {
         // console.log('peerLocal', 'onicegatheringstatechange', peerLocal.iceGatheringState);
-        if (peerLocal.iceGatheringState == 'complete') {
-            players.push(player);
-            if (!simulation.onTitlePage) player.spawn();
-            ws.close();
-            resolve();
-        }
+        if (peerLocal.iceGatheringState == 'complete') ws.close();
     };
     peerLocal.onicecandidate = function(e){
         // console.log('peerLocal', 'onicecandidate', e.candidate);
@@ -1253,112 +1319,132 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
     const connection = peerLocal.createDataChannel('rtcdc');
     let nextId = 1;
     for  (const player of players) if (player.id >= nextId) nextId = player.id + 1;
-    let player = new Player(nextId, connection);
+    let newPlayer = new Player(nextId, connection);
     connection.onopen = function(e) {
         // console.log('dcLocal', 'onopen', e);
     };
     connection.onmessage = async (message) => {
         // console.log('dcLocal', 'onmessage', message.data);
         const data = typeof message.data.arrayBuffer == 'function' ? new DataView(await message.data.arrayBuffer()) : new DataView(message.data);
-        const id = new Uint8Array(data.buffer)[0];
+        const id = data.getUint8(0);
         switch (id) {
             case protocol.game.syncRequest: {
-                // TODO: send player data in sync
-                const textEncoder = new TextEncoder();
-                const data = new Uint8Array(new ArrayBuffer(3 + textEncoder.encode(Math.initialSeed).length));
-                data.set(textEncoder.encode(Math.initialSeed), 3);
-                const dataView = new DataView(data.buffer);
-                dataView.setUint8(0, protocol.game.sync);
-                dataView.setUint8(1, simulation.difficultyMode);
-                dataView.setUint8(2, textEncoder.encode(Math.initialSeed).length);
-                player.connection.send(dataView);
+                newPlayer.sync();
                 break;
             }
             case protocol.player.movement: {
-                player.mouseInGame.x = data.getFloat64(1);
-                player.mouseInGame.y = data.getFloat64(9);
-                player.onGround = new Uint8Array(data.buffer)[17] == 1;
-                player.pos.x = data.getFloat64(18);
-                player.pos.y = data.getFloat64(26);
-                player.Vx = data.getFloat64(34);
-                player.Vy = data.getFloat64(42);
-                player.walk_cycle = data.getFloat32(50);
-                player.yOff = data.getFloat32(54);
-                Matter.Body.setPosition(player.hitbox, { x: player.pos.x, y: player.pos.y + player.yOff - 24.714076782448295});
-                Matter.Body.setVelocity(player.hitbox, { x: player.Vx, y: player.Vy });
+                newPlayer.mouseInGame.x = data.getFloat64(2);
+                newPlayer.mouseInGame.y = data.getFloat64(10);
+                newPlayer.onGround = data.getUint8(18) == 1;
+                newPlayer.pos.x = data.getFloat64(19);
+                newPlayer.pos.y = data.getFloat64(27);
+                newPlayer.Vx = data.getFloat64(35);
+                newPlayer.Vy = data.getFloat64(43);
+                newPlayer.walk_cycle = data.getFloat32(51);
+                newPlayer.yOff = data.getFloat32(55);
+                Matter.Body.setPosition(newPlayer.hitbox, { x: newPlayer.pos.x, y: newPlayer.pos.y + newPlayer.yOff - 24.714076782448295});
+                Matter.Body.setVelocity(newPlayer.hitbox, { x: newPlayer.Vx, y: newPlayer.Vy });
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.rotation: {
-                player.mouseInGame.x = data.getFloat64(1);
-                player.mouseInGame.y = data.getFloat64(9);
+                newPlayer.mouseInGame.x = data.getFloat64(2);
+                newPlayer.mouseInGame.y = data.getFloat64(10);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.setField: {
-                player.fieldMode = new Uint8Array(data.buffer)[1];
-                player.fieldMeterColor = fieldData[player.fieldMode].fieldMeterColor;
-                player.fieldRange = fieldData[player.fieldMode].fieldRange;
-                player.fieldPosition = { x: player.pos.x, y: player.pos.y };
-                player.fieldAngle = player.angle;
-                player.fieldArc = 0.2;
+                newPlayer.fieldMode = data.getUint8(2);
+                newPlayer.fieldMeterColor = fieldData[newPlayer.fieldMode].fieldMeterColor;
+                newPlayer.fieldRange = fieldData[newPlayer.fieldMode].fieldRange;
+                newPlayer.fieldPosition = { x: newPlayer.pos.x, y: newPlayer.pos.y };
+                newPlayer.fieldAngle = newPlayer.angle;
+                newPlayer.fieldArc = 0.2;
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.immuneCycleUpdate: {
-                player.immuneCycle = data.getFloat32(1);
+                newPlayer.immuneCycle = data.getFloat32(2);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.healthUpdate: {
-                player.health = data.getFloat32(1);
+                player.health = data.getFloat32(2);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.maxHealthUpdate: {
-                player.maxHealth = data.getFloat32(1);
+                newPlayer.maxHealth = data.getFloat32(2);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.energyUpdate: {
-                player.energy = data.getFloat32(1);
+                newPlayer.energy = data.getFloat32(2);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.maxEnergyUpdate: {
-                player.maxEnergy = data.getFloat32(1);
+                newPlayer.maxEnergy = data.getFloat32(2);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.inputs: {
-                player.input.up = new Uint8Array(data.buffer)[1] == 1;
-                player.input.down = new Uint8Array(data.buffer)[2] == 1;
-                player.input.left = new Uint8Array(data.buffer)[3] == 1;
-                player.input.right = new Uint8Array(data.buffer)[4] == 1;
-                player.input.field = new Uint8Array(data.buffer)[5] == 1;
-                player.input.fire = new Uint8Array(data.buffer)[6] == 1;
+                newPlayer.input.up = data.getUint8(2) == 1;
+                newPlayer.input.down = data.getUint8(3) == 1;
+                newPlayer.input.left = data.getUint8(4) == 1;
+                newPlayer.input.right = data.getUint8(5) == 1;
+                newPlayer.input.field = data.getUint8(6) == 1;
+                newPlayer.input.fire = data.getUint8(7) == 1;
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.toggleCrouch: {
-                player.crouch = new Uint8Array(data.buffer)[1] == 1;
+                newPlayer.crouch = data.getUint8(2) == 1;
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.toggleCloak: {
-                player.isCloak = new Uint8Array(data.buffer)[1] == 1;
+                newPlayer.isCloak = data.getUint8(2) == 1;
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.holdBlock: {
-                player.isHolding = data.getUint8(1) == 1;
-                if (!player.isHolding && player.holdingTarget) {
-                    player.holdingTarget.collisionFilter.category = cat.body;
-                    player.holdingTarget.collisionFilter.mask = cat.player | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
+                newPlayer.isHolding = data.getUint8(2) == 1;
+                if (!newPlayer.isHolding && newPlayer.holdingTarget) {
+                    newPlayer.holdingTarget.collisionFilter.category = cat.body;
+                    newPlayer.holdingTarget.collisionFilter.mask = cat.newPlayer | cat.map | cat.body | cat.bullet | cat.mob | cat.mobBullet;
                 }
-                player.holdingTarget = data.getUint16(2) == -1 ? null : body.find(block => block.id == data.getUint16(2));
-                if (player.holdingTarget == null) player.isHolding = false;
-                if (player.isHolding) {
-                    player.holdingTarget.collisionFilter.category = 0;
-                    player.holdingTarget.collisionFilter.mask = 0;
+                newPlayer.holdingTarget = data.getUint16(3) == -1 ? null : body.find(block => block.id == data.getUint16(3));
+                if (newPlayer.holdingTarget == null) newPlayer.isHolding = false;
+                if (newPlayer.isHolding) {
+                    newPlayer.holdingTarget.collisionFilter.category = 0;
+                    newPlayer.holdingTarget.collisionFilter.mask = 0;
                 }
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.throwChargeUpdate: {
-                player.throwCharge = data.getFloat32(1);
+                newPlayer.throwCharge = data.getFloat32(2);
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.player.togglePause: {
-                player.paused = new Uint8Array(data.buffer)[1] == 1;
+                newPlayer.paused = data.getUint8(2) == 1;
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.block.infoRequest: {
@@ -1376,7 +1462,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                         dataView.setFloat64(index + 8, vertex.y);
                         index += 16;
                     }
-                    player.connection.send(dataView);
+                    newPlayer.connection.send(dataView);
                 }
                 break;
             }
@@ -1407,14 +1493,16 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setUint8(27, powerupName.length);
                     dataView.setBigUint64(28 + powerupName.length, BigInt(powerup.collisionFilter.category));
                     dataView.setBigUint64(36 + powerupName.length, BigInt(powerup.collisionFilter.mask));
-                    player.connection.send(dataView);
+                    newPlayer.connection.send(dataView);
                 }
                 break;
             }
             case protocol.powerup.delete: {
                 const index = powerUp.findIndex(a => a.id == data.getUint16(1));
-                Matter.Composite.remove(engine.world, powerUp[index]);
-                powerUp = powerUp.slice(0, index).concat(powerUp.slice(index + 1));
+                if (index != -1) {
+                    Matter.Composite.remove(engine.world, powerUp[index]);
+                    powerUp = powerUp.slice(0, index).concat(powerUp.slice(index + 1));
+                }
                 break;
             }
             case protocol.mob.infoRequest: {
@@ -1453,7 +1541,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setFloat64(76 + color.length + stroke.length, requestedMob.health);
                     dataView.setFloat64(84 + color.length + stroke.length, requestedMob.radius);
                     dataView.setUint8(92 + color.length + stroke.length, requestedMob.seePlayer.yes ? 1 : 0);
-                    player.connection.send(dataView);
+                    newPlayer.connection.send(dataView);
                 }
                 break;
             }
@@ -1499,13 +1587,17 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
     }
     ws.onclose = () => {
         console.log('Signaling complete');
+        players.push(newPlayer);
+        if (!simulation.onTitlePage) {
+            newPlayer.spawn();
+            for (let i = 0; i < players.length - 1; i++) players[i].sync(); 
+        }
+        resolve();
         setTimeout(getNewPlayer, 0);
     }
 }));
 
 (async () => {
-    await getNewPlayer();
-
     collisionChecks = (event) => {
         const pairs = event.pairs;
         for (let i = 0, j = pairs.length; i != j; i++) {
@@ -2277,7 +2369,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
         dataView.setFloat64(9, where.y);
         dataView.setFloat64(17, radius);
         dataView.setUint8(25, textEncoder.encode(color).length);
-        for (const player of players) player.connection.send(dataView);
+        broadcast(dataView);
 
         oldExplosion(where, radius, color);
     }
@@ -2290,7 +2382,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
         dataView.setFloat64(9, angle);
         dataView.setFloat64(17, where.x);
         dataView.setFloat64(25, where.y);
-        for (const player of players) player.connection.send(dataView);
+        broadcast(dataView);
 
         oldPulse(charge, angle, where);
     }
@@ -2330,109 +2422,116 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             // player broadcast
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
-                const dataView = new DataView(new ArrayBuffer(58));
+                const dataView = new DataView(new ArrayBuffer(59));
                 dataView.setUint8(0, protocol.player.movement);
-                dataView.setFloat64(1, simulation.mouseInGame.x);
-                dataView.setFloat64(9, simulation.mouseInGame.y);
-                dataView.setUint8(17, m.onGround ? 1 : 0);
-                dataView.setFloat64(18, m.pos.x);
-                dataView.setFloat64(26, m.pos.y);
-                dataView.setFloat64(34, m.Vx);
-                dataView.setFloat64(42, m.Vy);
-                dataView.setFloat32(50, m.walk_cycle);
-                dataView.setFloat32(54, m.yOff);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat64(2, simulation.mouseInGame.x);
+                dataView.setFloat64(10, simulation.mouseInGame.y);
+                dataView.setUint8(18, m.onGround ? 1 : 0);
+                dataView.setFloat64(19, m.pos.x);
+                dataView.setFloat64(27, m.pos.y);
+                dataView.setFloat64(35, m.Vx);
+                dataView.setFloat64(43, m.Vy);
+                dataView.setFloat32(51, m.walk_cycle);
+                dataView.setFloat32(55, m.yOff);
+                broadcast(dataView);
             } else if (simulation.mouseInGame.x != oldM.mouseInGame.x || simulation.mouseInGame.y != oldM.mouseInGame.y) {
-                const dataView = new DataView(new ArrayBuffer(17));
+                const dataView = new DataView(new ArrayBuffer(19));
                 dataView.setUint8(0, protocol.player.rotation);
-                dataView.setFloat64(1, simulation.mouseInGame.x);
-                dataView.setFloat64(9, simulation.mouseInGame.y);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat64(2, simulation.mouseInGame.x);
+                dataView.setFloat64(10, simulation.mouseInGame.y);
+                broadcast(dataView);
             }
             if (m.fieldMode != oldM.fieldMode) {
-                const dataView = new DataView(new ArrayBuffer(2));
+                const dataView = new DataView(new ArrayBuffer(3));
                 dataView.setUint8(0, protocol.player.setField);
-                dataView.setUint8(1, m.fieldMode);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, m.fieldMode);
+                broadcast(dataView);
             }
             if (m.immuneCycle != oldM.immuneCycle) {
-                const dataView = new DataView(new ArrayBuffer(5));
+                const dataView = new DataView(new ArrayBuffer(6));
                 dataView.setUint8(0, protocol.player.immuneCycleUpdate);
-                dataView.setFloat32(1, m.immuneCycle);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat32(2, m.immuneCycle);
+                broadcast(dataView);
             }
             if (m.health != oldM.health) {
                 const dataView = new DataView(new ArrayBuffer(6));
                 dataView.setUint8(0, protocol.player.healthUpdate);
-                dataView.setFloat32(1, m.health);
-                dataView.setUint8(5, 1); // TODO: player id
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat32(2, m.health);
+                broadcast(dataView);
             }
             if (m.maxHealth != oldM.maxHealth) {
                 const dataView = new DataView(ArrayBuffer(6));
                 dataView.setUint8(0, protocol.player.maxHealthUpdate);
-                dataView.setFloat32(1, m.maxHealth);
-                dataView.setUint8(5, 1); // TODO: player id
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat32(2, m.maxHealth);
+                broadcast(dataView);
             }
             if (m.energy != oldM.energy) {
                 const dataView = new DataView(new ArrayBuffer(6));
                 dataView.setUint8(0, protocol.player.energyUpdate);
-                dataView.setFloat32(1, m.energy);
-                dataView.setUint8(5, 1); // TODO: player id
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat32(2, m.energy);
+                broadcast(dataView);
             }
             if (m.maxEnergy != oldM.maxEnergy) {
                 const dataView = new DataView(new ArrayBuffer(6));
                 dataView.setUint8(0, protocol.player.maxEnergyUpdate);
-                dataView.setFloat32(1, m.maxEnergy);
-                dataView.setUint8(5, 1); // TODO: player id
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat32(2, m.maxEnergy);
+                broadcast(dataView);
             }
             if (input.up != oldM.input.up || input.down != oldM.input.down || input.left != oldM.input.left || input.right != oldM.input.right || input.field != oldM.input.field || input.fire != oldM.input.fire) {
-                const dataView = new DataView(new ArrayBuffer(7));
+                const dataView = new DataView(new ArrayBuffer(8));
                 dataView.setUint8(0, protocol.player.inputs);
-                dataView.setUint8(1, input.up ? 1 : 0);
-                dataView.setUint8(2, input.down ? 1 : 0);
-                dataView.setUint8(3, input.left ? 1 : 0);
-                dataView.setUint8(4, input.right ? 1 : 0);
-                dataView.setUint8(5, input.field ? 1 : 0);
-                dataView.setUint8(6, input.fire ? 1 : 0);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, input.up ? 1 : 0);
+                dataView.setUint8(3, input.down ? 1 : 0);
+                dataView.setUint8(4, input.left ? 1 : 0);
+                dataView.setUint8(5, input.right ? 1 : 0);
+                dataView.setUint8(6, input.field ? 1 : 0);
+                dataView.setUint8(7, input.fire ? 1 : 0);
+                broadcast(dataView);
             }
             if (m.crouch != oldM.crouch) {
-                const dataView = new DataView(new ArrayBuffer(2));
+                const dataView = new DataView(new ArrayBuffer(3));
                 dataView.setUint8(0, protocol.player.toggleCrouch);
-                dataView.setUint8(1, m.crouch ? 1 : 0);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, m.crouch ? 1 : 0);
+                broadcast(dataView);
             }
             if (m.isCloak != oldM.isCloak) {
-                // toggle cloak
-                const dataView = new DataView(new ArrayBuffer(2));
+                const dataView = new DataView(new ArrayBuffer(3));
                 dataView.setUint8(0, protocol.player.toggleCloak);
-                dataView.setUint8(1, m.isCloak ? 1 : 0);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, m.isCloak ? 1 : 0);
+                broadcast(dataView);
             }
             if (m.isHolding != oldM.isHolding || m.holdingTarget?.id != oldM.holdingTarget?.id) {
                 const dataView = new DataView(new ArrayBuffer(5));
                 dataView.setUint8(0, protocol.player.holdBlock);
-                dataView.setUint8(1, m.isHolding ? 1 : 0);
-                dataView.setUint16(2, m.holdingTarget?.id || -1);
-                dataView.setUint8(4, 1); // TODO: player id
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, m.isHolding ? 1 : 0);
+                dataView.setUint16(3, m.holdingTarget?.id || -1);
+                broadcast(dataView);
             }
             if (m.throwCharge != oldM.throwCharge) {
-                const dataView = new DataView(new ArrayBuffer(7));
+                const dataView = new DataView(new ArrayBuffer(6));
                 dataView.setUint8(0, protocol.player.throwChargeUpdate);
-                dataView.setFloat32(1, m.throwCharge);
-                dataView.setUint8(5, 1); // TODO: player id
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setFloat32(2, m.throwCharge);
+                broadcast(dataView);
             }
             if (simulation.paused != oldM.paused) {
-                const dataView = new DataView(new ArrayBuffer(2));
+                const dataView = new DataView(new ArrayBuffer(3));
                 dataView.setUint8(0, protocol.player.togglePause);
-                dataView.setUint8(1, simulation.paused ? 1 : 0);
-                for (const player of players) player.connection.send(dataView);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, simulation.paused ? 1 : 0);
+                broadcast(dataView);
             }
             
             oldM = {
@@ -2448,7 +2547,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 maxEnergy: m.maxEnergy,
                 maxHealth: m.maxHealth,
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
-                onGround: false,
+                onGround: m.onGround,
                 pos: { x: m.pos.y, y: m.pos.y },
                 throwCharge: m.throwCharge,
                 Vx: m.Vx,
@@ -2478,7 +2577,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setFloat64(19, block.angle);
                     dataView.setFloat64(27, block.velocity.x);
                     dataView.setFloat64(35, block.velocity.y);
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
                 if (verticesChanged) {
                     const dataView = new DataView(new ArrayBuffer(3 + 16 * block.vertices.length));
@@ -2490,7 +2589,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                         dataView.setFloat64(index + 8, vertex.y);
                         index += 16;
                     }
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
             }
 
@@ -2499,7 +2598,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     const dataView = new DataView(new ArrayBuffer(3));
                     dataView.setUint8(0, protocol.block.delete);
                     dataView.setUint16(1, oldBlock.id);
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
             }
             
@@ -2523,7 +2622,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setFloat64(19, powerup.size);
                     dataView.setBigUint64(27, BigInt(powerup.collisionFilter.category));
                     dataView.setBigUint64(35, BigInt(powerup.collisionFilter.mask));
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
             }
 
@@ -2532,7 +2631,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     const dataView = new DataView(new ArrayBuffer(3));
                     dataView.setUint8(0, protocol.powerup.delete);
                     dataView.setUint16(1, oldPowerup.id);
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
             }
 
@@ -2561,7 +2660,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setFloat64(3, newMob.position.x);
                     dataView.setFloat64(11, newMob.position.y);
                     dataView.setFloat64(19, newMob.angle);
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
                 if (vertexChange) {
                     const dataView = new DataView(new ArrayBuffer(3 + 16 * newMob.vertices.length));
@@ -2573,7 +2672,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                         dataView.setFloat64(index + 8, vertex.y);
                         index += 16;
                     }
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
                 if (colorChange) {
                     // mob color update
@@ -2588,7 +2687,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setUint8(3, color.length);
                     dataView.setFloat32(4 + color.length, newMob.alpha || 1);
                     dataView.setUint8(8 + color.length, stroke.length);
-                    for (const player of players) player.connection.send(dataView);   
+                    broadcast(dataView);   
                 }
                 if (propertyChange) {
                     const dataView = new DataView(new ArrayBuffer(53));
@@ -2609,7 +2708,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     dataView.setFloat64(36, newMob.health);
                     dataView.setFloat64(44, newMob.radius);
                     dataView.setUint8(52, newMob.seePlayer.yes ? 1 : 0);
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
             }
 
@@ -2618,7 +2717,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                     const dataView = new DataView(new ArrayBuffer(3));
                     dataView.setUint8(0, protocol.mob.delete);
                     dataView.setUint16(1, oldMob.id);
-                    for (const player of players) player.connection.send(dataView);
+                    broadcast(dataView);
                 }
             }
 
@@ -2630,4 +2729,6 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
             };
         }})
     }
+
+    await getNewPlayer();
 })();
