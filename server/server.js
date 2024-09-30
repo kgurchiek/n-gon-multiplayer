@@ -25,8 +25,16 @@ wss.on('connection', (ws) => {
         data = data.subarray(1);
         if (id == 0) {
             if (state == 0) {
-                const id = genID();
-                sessions[id] = { ws, offer: data };
+                let id;
+                if (data[0] == 0) {
+                    id = genID();
+                    data = data.subarray(1);
+                } else {
+                    id = data.subarray(1, 9);
+                    data = data.subarray(9);
+                    if (sessions[id]) id = genID();
+                }
+                sessions[id] = { ws, offer: data, id };
                 session = sessions[id];
                 ws.send(`\x00${id}`);
                 state++;
@@ -56,8 +64,10 @@ wss.on('connection', (ws) => {
     });
 
     ws.on('close', () => {
-        if (session?.ws && session.ws.readyState == 1) session.ws.close();
-        if (session?.ws2 && session.ws2.readyState == 1) session.ws2.close();
-        delete sessions[session];
+        if (session) {
+            if (session.ws && session.ws.readyState == 1) session.ws.close();
+            if (session.ws2 && session.ws2.readyState == 1) session.ws2.close();
+            delete sessions[session.id];
+        }
     });
 });

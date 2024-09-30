@@ -47,7 +47,227 @@ const protocol = {
     }
 }
 
-let player1;
+let player1 = {
+    angle: 0,
+    bodyGradient: null,
+    calcLeg: (cycle_offset, offset) => {
+        player1.hip.x = 12 + offset;
+        player1.hip.y = 24 + offset;
+        //stepSize goes to zero if Vx is zero or not on ground (make m transition cleaner)
+        player1.stepSize = 0.8 * player1.stepSize + 0.2 * (7 * Math.sqrt(Math.min(9, Math.abs(player1.Vx))) * player1.onGround);
+        //changes to stepsize are smoothed by adding only a percent of the new value each cycle
+        const stepAngle = 0.034 * player1.walk_cycle + cycle_offset;
+        player1.foot.x = 2.2 * player1.stepSize * Math.cos(stepAngle) + offset;
+        player1.foot.y = offset + 1.2 * player1.stepSize * Math.sin(stepAngle) + player1.yOff + player1.height;
+        const Ymax = player1.yOff + player1.height;
+        if (player1.foot.y > Ymax) player1.foot.y = Ymax;
+
+        //calculate knee position as intersection of circle from hip and foot
+        const d = Math.sqrt((player1.hip.x - player1.foot.x) * (player1.hip.x - player1.foot.x) + (player1.hip.y - player1.foot.y) * (player1.hip.y - player1.foot.y));
+        const l = (player1.legLength1 * player1.legLength1 - player1.legLength2 * player1.legLength2 + d * d) / (2 * d);
+        const h = Math.sqrt(player1.legLength1 * player1.legLength1 - l * l);
+        player1.knee.x = (l / d) * (player1.foot.x - player1.hip.x) - (h / d) * (player1.foot.y - player1.hip.y) + player1.hip.x + offset;
+        player1.knee.y = (l / d) * (player1.foot.y - player1.hip.y) + (h / d) * (player1.foot.x - player1.hip.x) + player1.hip.y;
+    },
+    color: { hue: 0, sat: 0, light: 100 },
+    crouch: false,
+    drawHealthbar: () => {
+        if (player1.health < player1.maxHealth) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            const xOff = player1.pos.x - 40 * player1.maxHealth;
+            const yOff = player1.pos.y - 70;
+            ctx.fillRect(xOff, yOff, 80 * player1.maxHealth, 10);
+            ctx.fillStyle = '#09f5a6';
+            ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
+        } else if (player1.health > player1.maxHealth + 0.05 || player1.input.field) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            const xOff = player1.pos.x - 40 * player1.health;
+            const yOff = player1.pos.y - 70;
+            ctx.fillStyle = '#09f5a6';
+            ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
+        }
+    },
+    drawHold: (target) => {
+        if (target) {
+            const eye = 15;
+            const len = target.vertices.length - 1;
+            ctx.fillStyle = "rgba(110,170,200," + (0.2 + 0.4 * Math.random()) + ")";
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = "#000";
+            ctx.beginPath();
+            ctx.moveTo(
+                player1.pos.x + eye * Math.cos(player1.angle),
+                player1.pos.y + eye * Math.sin(player1.angle)
+            );
+            ctx.lineTo(target.vertices[len].x, target.vertices[len].y);
+            ctx.lineTo(target.vertices[0].x, target.vertices[0].y);
+            ctx.fill();
+            ctx.stroke();
+            for (let i = 0; i < len; i++) {
+                ctx.beginPath();
+                ctx.moveTo(
+                    player1.pos.x + eye * Math.cos(player1.angle),
+                    player1.pos.y + eye * Math.sin(player1.angle)
+                );
+                ctx.lineTo(target.vertices[i].x, target.vertices[i].y);
+                ctx.lineTo(target.vertices[i + 1].x, target.vertices[i + 1].y);
+                ctx.fill();
+                ctx.stroke();
+            }
+        }
+    },
+    drawLeg: (stroke) => {
+        if (player1.angle > -Math.PI / 2 && player1.angle < Math.PI / 2) {
+            player1.flipLegs = 1;
+        } else {
+            player1.flipLegs = -1;
+        }
+        ctx.save();
+
+        if (player1.isCloak) {
+            ctx.globalAlpha *= 2;
+            ctx.scale(player1.flipLegs, 1); //leg lines
+            ctx.beginPath();
+            ctx.moveTo(player1.hip.x, player1.hip.y);
+            ctx.lineTo(player1.knee.x, player1.knee.y);
+            ctx.lineTo(player1.foot.x, player1.foot.y);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 10;
+            ctx.stroke();
+            ctx.globalAlpha /= 2;
+        }
+
+        ctx.scale(player1.flipLegs, 1); //leg lines
+        ctx.beginPath();
+        ctx.moveTo(player1.hip.x, player1.hip.y);
+        ctx.lineTo(player1.knee.x, player1.knee.y);
+        ctx.lineTo(player1.foot.x, player1.foot.y);
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 6;
+        ctx.stroke();
+
+        //toe lines
+        if (player1.isCloak) {
+            ctx.globalAlpha *= 2;
+            ctx.beginPath();
+            ctx.moveTo(player1.foot.x, player1.foot.y);
+            ctx.lineTo(player1.foot.x - 14, player1.foot.y + 5);
+            ctx.moveTo(player1.foot.x, player1.foot.y);
+            ctx.lineTo(player1.foot.x + 14, player1.foot.y + 5);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+            ctx.globalAlpha /= 2;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(player1.foot.x, player1.foot.y);
+        ctx.lineTo(player1.foot.x - 14, player1.foot.y + 5);
+        ctx.moveTo(player1.foot.x, player1.foot.y);
+        ctx.lineTo(player1.foot.x + 14, player1.foot.y + 5);
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        if (player1.isCloak) {
+            ctx.globalAlpha *= 2;
+            //hip joint
+            ctx.beginPath();
+            ctx.arc(player1.hip.x, player1.hip.y, 9, 0, 2 * Math.PI);
+            //knee joint
+            ctx.moveTo(player1.knee.x + 5, player1.knee.y);
+            ctx.arc(player1.knee.x, player1.knee.y, 5, 0, 2 * Math.PI);
+            //foot joint
+            ctx.moveTo(player1.foot.x + 4, player1.foot.y + 1);
+            ctx.arc(player1.foot.x, player1.foot.y + 1, 4, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+            ctx.globalAlpha /= 2;
+        }
+
+        //hip joint
+        ctx.beginPath();
+        ctx.arc(player1.hip.x, player1.hip.y, 9, 0, 2 * Math.PI);
+        //knee joint
+        ctx.moveTo(player1.knee.x + 5, player1.knee.y);
+        ctx.arc(player1.knee.x, player1.knee.y, 5, 0, 2 * Math.PI);
+        //foot joint
+        ctx.moveTo(player1.foot.x + 4, player1.foot.y + 1);
+        ctx.arc(player1.foot.x, player1.foot.y + 1, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = player1.fillColor;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+    },
+    drawRegenEnergy: (bgColor = "rgba(0, 0, 0, 0.4)", range = 60) => {
+        if (player1.energy < player1.maxEnergy) {
+            // m.regenEnergy();
+            ctx.fillStyle = bgColor;
+            const xOff = player1.pos.x - player1.radius * player1.maxEnergy;
+            const yOff = player1.pos.y - 50;
+            ctx.fillRect(xOff, yOff, range * player1.maxEnergy, 10);
+            ctx.fillStyle = player1.fieldMeterColor;
+            ctx.fillRect(xOff, yOff, range * player1.energy, 10);
+        } else if (player1.energy > player1.maxEnergy + 0.05 || player1.input.field) {
+            ctx.fillStyle = bgColor;
+            const xOff = player1.pos.x - player1.radius * player1.energy;
+            const yOff = player1.pos.y - 50;
+            ctx.fillStyle = player1.fieldMeterColor;
+            ctx.fillRect(xOff, yOff, range * player1.energy, 10);
+        }
+    },
+    energy: 1,
+    fieldAngle: 0,
+    fieldArc: 0.2,
+    fieldCDcycle: 0,
+    fieldDrawRadius: 0,
+    fieldMeterColor: '#0cf',
+    fieldMode: 0,
+    fieldPhase: 0,
+    fieldPosition: { x: 0, y: 0 },
+    fieldRange: 155,
+    fillColor: null,
+    fillColorDark: null,
+    flipLegs: -1,
+    foot: { x: 0, y: 0 },
+    FxAir: 0.016,
+    health: 1,
+    height: 42,
+    hip: { x: 12, y: 24 },
+    hole: {
+        isOn: false,
+        isReady: true,
+        pos1: { x: 0, y: 0 },
+        pos2: { x: 0, y: 0 },
+        angle: 0,
+        unit: { x: 0, y: 0 },
+    },
+    immuneCycle: 0,
+    input: { up: false, down: false, left: false, right: false, field: false, fire: false },
+    isCloak: false,
+    isHolding: false,
+    knee: { x: 0, y: 0, x2: 0, y2: 0 },
+    lastFieldPosition: { x: 0, y: 0 },
+    legLength1: 55,
+    legLength2: 45,
+    mass: 5,
+    maxEnergy: 1,
+    maxHealth: 1,
+    mouseInGame: { x: 0, y: 0 },
+    onGround: false,
+    pos: { x: 0, y: 0 },
+    radius: 30,
+    stepSize: 0,
+    throwCharge: 0,
+    Vx: 0,
+    Vy: 0,
+    walk_cycle: 0,
+    yOff: 70
+};
+
 
 b.multiplayerExplosion = (where, radius, color) => {
     radius *= 1; //tech.explosiveRadius
@@ -315,11 +535,10 @@ b.multiplayerPulse = (charge, angle, where) => {
         peerRemote.onconnectionstatechange = (e) => console.log('peerRemote', 'onconnectionstatechange', e)
         peerRemote.ondatachannel = (e) => {
             // peerLocal started a data channel, so connect to it here
-            console.log('peerRemote', 'ondatachannel', e);
+            // console.log('peerRemote', 'ondatachannel', e);
             window.dcRemote = e.channel;
             window.dcRemote.onopen = function(e) {
-                console.log('dcRemote', 'onopen', e);
-                console.log('dcRemote.send("message") to send from remote');
+                // console.log('dcRemote', 'onopen', e);
             };
             window.dcRemote.onmessage = async (message) => {
                 // console.log('dcRemote', 'onmessage', message.data);
@@ -402,7 +621,6 @@ b.multiplayerPulse = (charge, angle, where) => {
                         player1.input.right = new Uint8Array(data.buffer)[4] == 1;
                         player1.input.field = new Uint8Array(data.buffer)[5] == 1;
                         player1.input.fire = new Uint8Array(data.buffer)[6] == 1;
-                        // if (!player1.input.fire) b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 1);
                         break;
                     }
                     case protocol.player.toggleCrouch: {
@@ -1236,34 +1454,34 @@ b.multiplayerPulse = (charge, angle, where) => {
 
         };
         peerRemote.onsignalingstatechange = (e) => {
-            console.log('peerRemote', 'onsignalingstatechange', peerRemote.signalingState);
+            // console.log('peerRemote', 'onsignalingstatechange', peerRemote.signalingState);
             if (peerRemote.iceGatheringState == 'complete') ws.close();
         };
         peerRemote.onicegatheringstatechange = (e) => console.log('peerRemote', 'onicegatheringstatechange', peerRemote.iceGatheringState);
         peerRemote.onicecandidate = (e) => {
             // share ICE candidates with peerLocal
-            console.log('peerRemote', 'onicecandidate', e);
+            // console.log('peerRemote', 'onicecandidate', e);
             if (e.candidate != null) ws.send(`\x01${JSON.stringify(e.candidate)}`);
         }
-        peerRemote.onnegotiationneeded = (e) => console.log('peerRemote', 'onnegotiationneeded', e);
+        // peerRemote.onnegotiationneeded = (e) => console.log('peerRemote', 'onnegotiationneeded', e);
 
         ws = new WebSocket('ws://localhost' /*'wss://n-gon.cornbread2100.com'*/);
         ws.onopen = async () => {
-            console.log('connected');
+            console.log('Connected to signaling server');
             ws.send(`\x01${prompt('Join code:')}`)
         }
         ws.onmessage = async (message) => {
-            console.log('message:', message.data, message.data[0] == '\x01')
+            // console.log('message:', message.data, message.data[0] == '\x01')
 
             if (message.data[0] == '\x00') {
                 const peerLocalOffer = new RTCSessionDescription(JSON.parse(message.data.substring(1)));
-                console.log('peerRemote', 'setRemoteDescription', peerLocalOffer);
+                // console.log('peerRemote', 'setRemoteDescription', peerLocalOffer);
                 await peerRemote.setRemoteDescription(peerLocalOffer);
 
-                console.log('peerRemote', 'setRemoteDescription');
+                // console.log('peerRemote', 'setRemoteDescription');
                 let peerRemoteAnswer = await peerRemote.createAnswer();
 
-                console.log('peerRemote', 'setLocalDescription', peerRemoteAnswer);
+                // console.log('peerRemote', 'setLocalDescription', peerRemoteAnswer);
                 await peerRemote.setLocalDescription(peerRemoteAnswer);
                 ws.send(`\x01${JSON.stringify(peerRemoteAnswer)}`);
             }
@@ -1271,7 +1489,7 @@ b.multiplayerPulse = (charge, angle, where) => {
             if (message.data[0] == '\x02') console.error(message.data.substring(1));
         }
         ws.onerror = (err) => {
-            console.error(err);
+            console.error('Error with connection to signaling server:', err);
         }
         ws.onclose = () => {
             console.log('Signaling complete');
@@ -1711,227 +1929,6 @@ b.multiplayerPulse = (charge, angle, where) => {
         }
     ]
 
-    player1 = {
-        angle: 0,
-        bodyGradient: null,
-        calcLeg: (cycle_offset, offset) => {
-            player1.hip.x = 12 + offset;
-            player1.hip.y = 24 + offset;
-            //stepSize goes to zero if Vx is zero or not on ground (make m transition cleaner)
-            player1.stepSize = 0.8 * player1.stepSize + 0.2 * (7 * Math.sqrt(Math.min(9, Math.abs(player1.Vx))) * player1.onGround);
-            //changes to stepsize are smoothed by adding only a percent of the new value each cycle
-            const stepAngle = 0.034 * player1.walk_cycle + cycle_offset;
-            player1.foot.x = 2.2 * player1.stepSize * Math.cos(stepAngle) + offset;
-            player1.foot.y = offset + 1.2 * player1.stepSize * Math.sin(stepAngle) + player1.yOff + player1.height;
-            const Ymax = player1.yOff + player1.height;
-            if (player1.foot.y > Ymax) player1.foot.y = Ymax;
-    
-            //calculate knee position as intersection of circle from hip and foot
-            const d = Math.sqrt((player1.hip.x - player1.foot.x) * (player1.hip.x - player1.foot.x) + (player1.hip.y - player1.foot.y) * (player1.hip.y - player1.foot.y));
-            const l = (player1.legLength1 * player1.legLength1 - player1.legLength2 * player1.legLength2 + d * d) / (2 * d);
-            const h = Math.sqrt(player1.legLength1 * player1.legLength1 - l * l);
-            player1.knee.x = (l / d) * (player1.foot.x - player1.hip.x) - (h / d) * (player1.foot.y - player1.hip.y) + player1.hip.x + offset;
-            player1.knee.y = (l / d) * (player1.foot.y - player1.hip.y) + (h / d) * (player1.foot.x - player1.hip.x) + player1.hip.y;
-        },
-        color: { hue: 0, sat: 0, light: 100 },
-        crouch: false,
-        drawHealthbar: () => {
-            if (player1.health < player1.maxHealth) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-                const xOff = player1.pos.x - 40 * player1.maxHealth;
-                const yOff = player1.pos.y - 70;
-                ctx.fillRect(xOff, yOff, 80 * player1.maxHealth, 10);
-                ctx.fillStyle = '#09f5a6';
-                ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
-            } else if (player1.health > player1.maxHealth + 0.05 || player1.input.field) {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-                const xOff = player1.pos.x - 40 * player1.health;
-                const yOff = player1.pos.y - 70;
-                ctx.fillStyle = '#09f5a6';
-                ctx.fillRect(xOff, yOff, 80 * player1.health, 10);
-            }
-        },
-        drawHold: (target) => {
-            if (target) {
-                const eye = 15;
-                const len = target.vertices.length - 1;
-                ctx.fillStyle = "rgba(110,170,200," + (0.2 + 0.4 * Math.random()) + ")";
-                ctx.lineWidth = 1;
-                ctx.strokeStyle = "#000";
-                ctx.beginPath();
-                ctx.moveTo(
-                    player1.pos.x + eye * Math.cos(player1.angle),
-                    player1.pos.y + eye * Math.sin(player1.angle)
-                );
-                ctx.lineTo(target.vertices[len].x, target.vertices[len].y);
-                ctx.lineTo(target.vertices[0].x, target.vertices[0].y);
-                ctx.fill();
-                ctx.stroke();
-                for (let i = 0; i < len; i++) {
-                    ctx.beginPath();
-                    ctx.moveTo(
-                        player1.pos.x + eye * Math.cos(player1.angle),
-                        player1.pos.y + eye * Math.sin(player1.angle)
-                    );
-                    ctx.lineTo(target.vertices[i].x, target.vertices[i].y);
-                    ctx.lineTo(target.vertices[i + 1].x, target.vertices[i + 1].y);
-                    ctx.fill();
-                    ctx.stroke();
-                }
-            }
-        },
-        drawLeg: (stroke) => {
-            if (player1.angle > -Math.PI / 2 && player1.angle < Math.PI / 2) {
-                player1.flipLegs = 1;
-            } else {
-                player1.flipLegs = -1;
-            }
-            ctx.save();
-
-            if (player1.isCloak) {
-                ctx.globalAlpha *= 2;
-                ctx.scale(player1.flipLegs, 1); //leg lines
-                ctx.beginPath();
-                ctx.moveTo(player1.hip.x, player1.hip.y);
-                ctx.lineTo(player1.knee.x, player1.knee.y);
-                ctx.lineTo(player1.foot.x, player1.foot.y);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 10;
-                ctx.stroke();
-                ctx.globalAlpha /= 2;
-            }
-
-            ctx.scale(player1.flipLegs, 1); //leg lines
-            ctx.beginPath();
-            ctx.moveTo(player1.hip.x, player1.hip.y);
-            ctx.lineTo(player1.knee.x, player1.knee.y);
-            ctx.lineTo(player1.foot.x, player1.foot.y);
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = 6;
-            ctx.stroke();
-
-            //toe lines
-            if (player1.isCloak) {
-                ctx.globalAlpha *= 2;
-                ctx.beginPath();
-                ctx.moveTo(player1.foot.x, player1.foot.y);
-                ctx.lineTo(player1.foot.x - 14, player1.foot.y + 5);
-                ctx.moveTo(player1.foot.x, player1.foot.y);
-                ctx.lineTo(player1.foot.x + 14, player1.foot.y + 5);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 8;
-                ctx.stroke();
-                ctx.globalAlpha /= 2;
-            }
-
-            ctx.beginPath();
-            ctx.moveTo(player1.foot.x, player1.foot.y);
-            ctx.lineTo(player1.foot.x - 14, player1.foot.y + 5);
-            ctx.moveTo(player1.foot.x, player1.foot.y);
-            ctx.lineTo(player1.foot.x + 14, player1.foot.y + 5);
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = 4;
-            ctx.stroke();
-
-            if (player1.isCloak) {
-                ctx.globalAlpha *= 2;
-                //hip joint
-                ctx.beginPath();
-                ctx.arc(player1.hip.x, player1.hip.y, 9, 0, 2 * Math.PI);
-                //knee joint
-                ctx.moveTo(player1.knee.x + 5, player1.knee.y);
-                ctx.arc(player1.knee.x, player1.knee.y, 5, 0, 2 * Math.PI);
-                //foot joint
-                ctx.moveTo(player1.foot.x + 4, player1.foot.y + 1);
-                ctx.arc(player1.foot.x, player1.foot.y + 1, 4, 0, 2 * Math.PI);
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 6;
-                ctx.stroke();
-                ctx.globalAlpha /= 2;
-            }
-
-            //hip joint
-            ctx.beginPath();
-            ctx.arc(player1.hip.x, player1.hip.y, 9, 0, 2 * Math.PI);
-            //knee joint
-            ctx.moveTo(player1.knee.x + 5, player1.knee.y);
-            ctx.arc(player1.knee.x, player1.knee.y, 5, 0, 2 * Math.PI);
-            //foot joint
-            ctx.moveTo(player1.foot.x + 4, player1.foot.y + 1);
-            ctx.arc(player1.foot.x, player1.foot.y + 1, 4, 0, 2 * Math.PI);
-            ctx.fillStyle = player1.fillColor;
-            ctx.fill();
-            ctx.strokeStyle = stroke;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.restore();
-        },
-        drawRegenEnergy: (bgColor = "rgba(0, 0, 0, 0.4)", range = 60) => {
-            if (player1.energy < player1.maxEnergy) {
-                // m.regenEnergy();
-                ctx.fillStyle = bgColor;
-                const xOff = player1.pos.x - player1.radius * player1.maxEnergy;
-                const yOff = player1.pos.y - 50;
-                ctx.fillRect(xOff, yOff, range * player1.maxEnergy, 10);
-                ctx.fillStyle = player1.fieldMeterColor;
-                ctx.fillRect(xOff, yOff, range * player1.energy, 10);
-            } else if (player1.energy > player1.maxEnergy + 0.05 || player1.input.field) {
-                ctx.fillStyle = bgColor;
-                const xOff = player1.pos.x - player1.radius * player1.energy;
-                const yOff = player1.pos.y - 50;
-                ctx.fillStyle = player1.fieldMeterColor;
-                ctx.fillRect(xOff, yOff, range * player1.energy, 10);
-            }
-        },
-        energy: 1,
-        fieldAngle: 0,
-        fieldArc: 0.2,
-        fieldCDcycle: 0,
-        fieldDrawRadius: 0,
-        fieldMeterColor: '#0cf',
-        fieldMode: 0,
-        fieldPhase: 0,
-        fieldPosition: { x: 0, y: 0 },
-        fieldRange: 155,
-        fillColor: null,
-        fillColorDark: null,
-        flipLegs: -1,
-        foot: { x: 0, y: 0 },
-        FxAir: 0.016,
-        health: 1,
-        height: 42,
-        hip: { x: 12, y: 24 },
-        hole: {
-            isOn: false,
-            isReady: true,
-            pos1: { x: 0, y: 0 },
-            pos2: { x: 0, y: 0 },
-            angle: 0,
-            unit: { x: 0, y: 0 },
-        },
-        immuneCycle: 0,
-        input: { up: false, down: false, left: false, right: false, field: false, fire: false },
-        isCloak: false,
-        isHolding: false,
-        knee: { x: 0, y: 0, x2: 0, y2: 0 },
-        lastFieldPosition: { x: 0, y: 0 },
-        legLength1: 55,
-        legLength2: 45,
-        mass: 5,
-        maxEnergy: 1,
-        maxHealth: 1,
-        mouseInGame: { x: 0, y: 0 },
-        onGround: false,
-        pos: { x: 0, y: 0 },
-        radius: 30,
-        stepSize: 0,
-        throwCharge: 0,
-        Vx: 0,
-        Vy: 0,
-        walk_cycle: 0,
-        yOff: 70
-    }
-    window.player1 = player1;
     player1.fillColor = `hsl(${player1.color.hue},${player1.color.sat}%,${player1.color.light}%)`;
     player1.fillColorDark = `hsl(${player1.color.hue},${player1.color.sat}%,${player1.color.light - 25}%)`;
     let grd = ctx.createLinearGradient(-30, 0, 30, 0);
@@ -2666,8 +2663,6 @@ b.multiplayerPulse = (charge, angle, where) => {
             
             player1.drawHealthbar();
             player1.drawRegenEnergy();
-
-            // for (const multiplayerLaser of b.multiplayerLasers) if (new Date().getTime() - multiplayerLaser.created.getTime() < 100) b.multiplayerLaser(multiplayerLaser.where, multiplayerLaser.whereEnd, multiplayerLaser.dmg, multiplayerLaser.reflections, multiplayerLaser.isThickBeam, multiplayerLaser.push);
         }})
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
@@ -2736,8 +2731,6 @@ b.multiplayerPulse = (charge, angle, where) => {
                 dataView.setUint8(5, input.field ? 1 : 0);
                 dataView.setUint8(6, input.fire ? 1 : 0);
                 dcRemote.send(dataView);
-
-                // if (input.fire == false) b.multiplayerLasers = b.multiplayerLasers.filter(a => a.id != 2);
             }
             if (m.crouch != oldM.crouch) {
                 const dataView = new DataView(new ArrayBuffer(2));
