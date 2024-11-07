@@ -20,7 +20,7 @@
 | 13 | Hold Block            | 4      | playerId (Uint8), isHolding (boolean), blockId (Uint16) |
 | 14 | Throw Charge Update   | 5      | playerId (Uint8), throwCharge (Float32) |
 | 15 | Toggle Pause          | 2      | playerId (Uint8), paused (boolean) |
-| 16 | Tech                  | 3+     | playerId (Uint8), add/remove (boolean), tech (string) |
+| 16 | Tech                  | 4      | playerId (Uint8), techId (Uint16), count (Uint8) |
 | 17 | Block Info Request    | 2      | blockId (Uint16) |
 | 18 | Block Info            | 58     | blockId (Uint16), x (Float64), y (Float64), vertices (list (8): x (Float64), y (Float64)) |
 | 19 | Block Position Update | 42     | blockId (Uint16), x (Float64), y (Float64), angle (Float64), xVelocity (Float64), yVelocity (Float64) |

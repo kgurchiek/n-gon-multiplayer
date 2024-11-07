@@ -97,7 +97,7 @@ class Player {
         this.pos = { x: 0, y: 0 };
         this.radius = 30;
         this.stepSize = 0;
-        this.tech = [];
+        this.tech = {};
         this.throwCharge = 0;
         this.Vx = 0;
         this.Vy = 0;
@@ -1129,13 +1129,10 @@ let clientId;
                     }
                     case protocol.player.tech: {
                         const player = fetchPlayer(data.getUint8(1), connection);
-                        let tech = new TextDecoder().decode(data.buffer.slice(4, 4 + data.getUint8(3)));
-                        if (data.getUint8(2) == 1) {
-                            if (!player.tech.includes(tech)) player.tech.push(tech);
-                        } else {
-                            let index = player.tech.indexOf(tech);
-                            if (index != -1) player.tech = player.tech.slice(0, index).concat(player.tech.slice(index + 1));
-                        }
+                        let name = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1)[data.getUint16(2)].name;
+                        let count = data.getUint8(4);
+                        if (player.tech[name]) player.tech[name] = count;
+                        else player.tech[name] = count;
                         break;
                     }
                     case protocol.block.info: {
@@ -2685,33 +2682,19 @@ let clientId;
                 player1.connection.send(dataView);
             }
             let newTech = [];
-            for (const currentTech of tech.tech.filter(a => a.count > 0).map(a => a.name)) {
-                let index = oldM.tech.indexOf(currentTech);
+            for (const currentTech of tech.tech.filter(a => a.count > 0)) {
+                let index = oldM.tech.findIndex(a => a.name == currentTech.name && a.count == currentTech.count);
                 if (index == -1) newTech.push(currentTech);
                 else oldM.tech = oldM.tech.slice(0, index).concat(oldM.tech.slice(index + 1));
             }
-            for (const tech of newTech) {
-                const textEncoder = new TextEncoder();
-                const name = textEncoder.encode(tech);
-                const data = new Uint8Array(new ArrayBuffer(4 + name.length));
-                data.set(name, 4);
-                const dataView = new DataView(data.buffer);
+            for (const item of newTech.concat(oldM.tech)) {
+                let sortedTech = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1);
+                let index = sortedTech.findIndex(a => a.name == item.name);
+                const dataView = new DataView(new ArrayBuffer(5));
                 dataView.setUint8(0, protocol.player.tech);
-                dataView.setUint8(1, clientId);
-                dataView.setUint8(2, 1);
-                dataView.setUint8(3, name.length);
-                player1.connection.send(dataView);
-            }
-            for (const tech of oldM.tech) {
-                const textEncoder = new TextEncoder();
-                const name = textEncoder.encode(tech);
-                const data = new Uint8Array(new ArrayBuffer(4 + name.length));
-                data.set(name, 4);
-                const dataView = new DataView(data.buffer);
-                dataView.setUint8(0, protocol.player.tech);
-                dataView.setUint8(1, clientId);
-                dataView.setUint8(2, 0);
-                dataView.setUint8(3, name.length);
+                dataView.setUint8(1, 0);
+                dataView.setUint16(2, index);
+                dataView.setUint8(4, sortedTech[index].count);
                 player1.connection.send(dataView);
             }
             
@@ -2730,7 +2713,7 @@ let clientId;
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: m.onGround,
                 pos: { x: m.pos.x, y: m.pos.y },
-                tech: tech.tech.filter(a => a.count > 0).map(a => a.name),
+                tech: tech.tech.filter(a => a.count > 0).map(a => ({ name: a.name, count: a.count })),
                 throwCharge: m.throwCharge,
                 Vx: m.Vx,
                 Vy: m.Vy,
