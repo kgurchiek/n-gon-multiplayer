@@ -17,33 +17,32 @@ const protocol = {
         toggleCloak: 12,
         holdBlock: 13,
         throwChargeUpdate: 14,
-        togglePause: 15
+        togglePause: 15,
+        tech: 16
     },
     block: {
-        infoRequest: 16,
-        info: 17,
-        positionUpdate: 18,
-        vertexUpdate: 19,
-        delete: 20
+        infoRequest: 17,
+        info: 18,
+        positionUpdate: 19,
+        vertexUpdate: 20,
+        delete: 21
     },
     powerup: {
-        infoRequest: 21,
-        info: 22,
-        update: 23,
-        delete: 24
+        infoRequest: 22,
+        info: 23,
+        update: 24,
+        delete: 25
     },
     mob: {
-        infoRequest: 25,
-        info: 26,
-        positionUpdate: 27,
-        vertexUpdate: 28,
-        colorUpdate: 29,
-        propertyUpdate: 30,
-        delete: 31
+        infoRequest: 26,
+        info: 27,
+        positionUpdate: 28,
+        vertexUpdate: 29,
+        colorUpdate: 30,
+        propertyUpdate: 31,
+        delete: 32
     },
     bullet: {
-        explosion: 32,
-        pulse: 33
     }
 }
 
@@ -98,6 +97,7 @@ class Player {
         this.pos = { x: 0, y: 0 };
         this.radius = 30;
         this.stepSize = 0;
+        this.tech = [];
         this.throwCharge = 0;
         this.Vx = 0;
         this.Vy = 0;
@@ -520,7 +520,7 @@ class Player {
 }
 let players = [];
 
-function broadcast(data, id) {
+function broadcast(data, id = 0) {
     for (const player of players) if (player.connection.readyState == 'open' && (!id || id != player.id)) player.connection.send(data);
 }
 
@@ -1447,6 +1447,18 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 broadcast(data, newPlayer.id);
                 break;
             }
+            case protocol.player.tech: {
+                let tech = new TextDecoder().decode(data.buffer.slice(4, 4 + data.getUint8(3)));
+                if (data.getUint8(2) == 1) {
+                    if (!newPlayer.tech.includes(tech)) newPlayer.tech.push(tech);
+                } else {
+                    let index = newPlayer.tech.indexOf(tech);
+                    if (index != -1) newPlayer.tech = newPlayer.tech.slice(0, index).concat(newPlayer.tech.slice(index + 1));
+                }
+                data.setUint8(1, newPlayer.id);
+                broadcast(data, newPlayer.id);
+                break;
+            }
             case protocol.block.infoRequest: {
                 let block = body.find(a => a.id == data.getUint16(1));
                 if (block != null) {
@@ -2358,35 +2370,6 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
         mob[mob.length - 1].mobType = 83;
     }
 
-    const oldExplosion = b.explosion;
-    b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
-        const textEncoder = new TextEncoder();
-        const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
-        data.set(textEncoder.encode(color), 26);
-        const dataView = new DataView(data.buffer);
-        dataView.setUint8(0, protocol.bullet.explosion);
-        dataView.setFloat64(1, where.x);
-        dataView.setFloat64(9, where.y);
-        dataView.setFloat64(17, radius);
-        dataView.setUint8(25, textEncoder.encode(color).length);
-        broadcast(dataView);
-
-        oldExplosion(where, radius, color);
-    }
-
-    const oldPulse = b.pulse;
-    b.pulse = (charge, angle = m.angle, where = m.pos) => {
-        const dataView = new DataView(new ArrayBuffer(33));
-        dataView.setUint8(0, protocol.bullet.pulse);
-        dataView.setFloat64(1, charge);
-        dataView.setFloat64(9, angle);
-        dataView.setFloat64(17, where.x);
-        dataView.setFloat64(25, where.y);
-        broadcast(dataView);
-
-        oldPulse(charge, angle, where);
-    }
-
     let oldM = {
         crouch: false,
         energy: 1,
@@ -2402,6 +2385,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
         mouseInGame: { x: 0, y: 0 },
         onGround: false,
         pos: { x: 0, y: 0 },
+        tech: [],
         throwCharge: 0,
         Vx: 0,
         Vy: 0,
@@ -2533,6 +2517,36 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 dataView.setUint8(2, simulation.paused ? 1 : 0);
                 broadcast(dataView);
             }
+            let newTech = [];
+            for (const currentTech of tech.tech.filter(a => a.count > 0).map(a => a.name)) {
+                let index = oldM.tech.indexOf(currentTech);
+                if (index == -1) newTech.push(currentTech);
+                else oldM.tech = oldM.tech.slice(0, index).concat(oldM.tech.slice(index + 1));
+            }
+            for (const tech of newTech) {
+                const textEncoder = new TextEncoder();
+                const name = textEncoder.encode(tech);
+                const data = new Uint8Array(new ArrayBuffer(4 + name.length));
+                data.set(name, 4);
+                const dataView = new DataView(data.buffer);
+                dataView.setUint8(0, protocol.player.tech);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, 1);
+                dataView.setUint8(3, name.length);
+                broadcast(dataView);
+            }
+            for (const tech of oldM.tech) {
+                const textEncoder = new TextEncoder();
+                const name = textEncoder.encode(tech);
+                const data = new Uint8Array(new ArrayBuffer(4 + name.length));
+                data.set(name, 4);
+                const dataView = new DataView(data.buffer);
+                dataView.setUint8(0, protocol.player.tech);
+                dataView.setUint8(1, 0);
+                dataView.setUint8(2, 0);
+                dataView.setUint8(3, name.length);
+                broadcast(dataView);
+            }
             
             oldM = {
                 crouch: m.crouch,
@@ -2549,6 +2563,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: m.onGround,
                 pos: { x: m.pos.y, y: m.pos.y },
+                tech: tech.tech.filter(a => a.count > 0).map(a => a.name),
                 throwCharge: m.throwCharge,
                 Vx: m.Vx,
                 Vy: m.Vy,

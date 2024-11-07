@@ -20,21 +20,20 @@
 | 13 | Hold Block            | 4      | playerId (Uint8), isHolding (boolean), blockId (Uint16) |
 | 14 | Throw Charge Update   | 5      | playerId (Uint8), throwCharge (Float32) |
 | 15 | Toggle Pause          | 2      | playerId (Uint8), paused (boolean) |
-| 16 | Block Info Request    | 2      | blockId (Uint16) |
-| 17 | Block Info            | 58     | blockId (Uint16), x (Float64), y (Float64), vertices (list (8): x (Float64), y (Float64)) |
-| 18 | Block Position Update | 42     | blockId (Uint16), x (Float64), y (Float64), angle (Float64), xVelocity (Float64), yVelocity (Float64) |
-| 19 | Block Vertex Update   | 2+     | blockId (Uint16), vertices (list (8): x (Float64), y (Float64)) |
-| 20 | Delete Block          | 2      | blockId (Uint16) |
-| 21 | Powerup Info Request  | 2      | powerupId (Uint16) |
-| 22 | Powerup Info          | 43+    | powerupId (Uint16), x (Float64), y (Float64), size (Float64), name (string), collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64) |
-| 23 | Powerup Update        | 42     | powerupId (Uint16), x (Float64), y (Float64), size (Float64), collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64) |
-| 24 | Delete Powerup        | 2      | powerupId (Uint16) |
-| 25 | Mob Info Request      | 2      | mobId (Uint16) |
-| 26 | Mob Info              | 92+    | mobId (Uint16), type (Uint8), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
-| 27 | Mob Position Update   | 26     | mobId (Uint16), x (Float64), y (Float64), angle (Float64) |
-| 28 | Mob Vertex Update     | 2+     | mobId (Uint16), vertices (list (8): x (Float64), y (Float64)) |
-| 29 | Mob Color Update      | 7+     | mobId (Uint16), color (string), alpha (Float32), stroke (string) |
-| 30 | Mob Property Update   | 52     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
-| 31 | Delete Mob            | 2      | mobId (Uint16) |
-| 32 | Explosion             | 25+    | x (Float64), y (Float64), radius (Float64), color (string) |
-| 33 | Pulse                 | 32     | charge (Float64), angle (Float64), x (Float64), y (Float64) |
+| 16 | Tech                  | 3+     | playerId (Uint8), add/remove (boolean), tech (string) |
+| 17 | Block Info Request    | 2      | blockId (Uint16) |
+| 18 | Block Info            | 58     | blockId (Uint16), x (Float64), y (Float64), vertices (list (8): x (Float64), y (Float64)) |
+| 19 | Block Position Update | 42     | blockId (Uint16), x (Float64), y (Float64), angle (Float64), xVelocity (Float64), yVelocity (Float64) |
+| 20 | Block Vertex Update   | 2+     | blockId (Uint16), vertices (list (8): x (Float64), y (Float64)) |
+| 21 | Delete Block          | 2      | blockId (Uint16) |
+| 22 | Powerup Info Request  | 2      | powerupId (Uint16) |
+| 23 | Powerup Info          | 43+    | powerupId (Uint16), x (Float64), y (Float64), size (Float64), name (string), collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64) |
+| 24 | Powerup Update        | 42     | powerupId (Uint16), x (Float64), y (Float64), size (Float64), collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64) |
+| 25 | Delete Powerup        | 2      | powerupId (Uint16) |
+| 26 | Mob Info Request      | 2      | mobId (Uint16) |
+| 27 | Mob Info              | 92+    | mobId (Uint16), type (Uint8), x (Float64), y (Float64), angle (Float64) sides (Uint8), radius (Float64), color (string), alpha (Float32), stroke (string), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
+| 28 | Mob Position Update   | 26     | mobId (Uint16), x (Float64), y (Float64), angle (Float64) |
+| 29 | Mob Vertex Update     | 2+     | mobId (Uint16), vertices (list (8): x (Float64), y (Float64)) |
+| 30 | Mob Color Update      | 7+     | mobId (Uint16), color (string), alpha (Float32), stroke (string) |
+| 31 | Mob Property Update   | 52     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
+| 32 | Delete Mob            | 2      | mobId (Uint16) |

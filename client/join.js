@@ -17,33 +17,32 @@ const protocol = {
         toggleCloak: 12,
         holdBlock: 13,
         throwChargeUpdate: 14,
-        togglePause: 15
+        togglePause: 15,
+        tech: 16
     },
     block: {
-        infoRequest: 16,
-        info: 17,
-        positionUpdate: 18,
-        vertexUpdate: 19,
-        delete: 20
+        infoRequest: 17,
+        info: 18,
+        positionUpdate: 19,
+        vertexUpdate: 20,
+        delete: 21
     },
     powerup: {
-        infoRequest: 21,
-        info: 22,
-        update: 23,
-        delete: 24
+        infoRequest: 22,
+        info: 23,
+        update: 24,
+        delete: 25
     },
     mob: {
-        infoRequest: 25,
-        info: 26,
-        positionUpdate: 27,
-        vertexUpdate: 28,
-        colorUpdate: 29,
-        propertyUpdate: 30,
-        delete: 31
+        infoRequest: 26,
+        info: 27,
+        positionUpdate: 28,
+        vertexUpdate: 29,
+        colorUpdate: 30,
+        propertyUpdate: 31,
+        delete: 32
     },
     bullet: {
-        explosion: 32,
-        pulse: 33
     }
 }
 
@@ -98,6 +97,7 @@ class Player {
         this.pos = { x: 0, y: 0 };
         this.radius = 30;
         this.stepSize = 0;
+        this.tech = [];
         this.throwCharge = 0;
         this.Vx = 0;
         this.Vy = 0;
@@ -454,260 +454,11 @@ class Player {
 let players = [];
 
 function fetchPlayer(id, connection) {
-    let player = players.find(player => player.id === id);
+    let player = players.find(player => player.id == id);
     if (player) return player;
     const dataView = new DataView(new ArrayBuffer(1));
     dataView.setUint8(0, protocol.game.syncRequest);
     connection.send(dataView.buffer);
-}
-
-b.multiplayerExplosion = (where, radius, color) => {
-    radius *= 1; //tech.explosiveRadius
-
-    let dist, sub, knock;
-    let dmg = radius * 0.019
-    // if (tech.isExplosionHarm) radius *= 1.7 //    1/sqrt(2) radius -> area
-    // if (tech.isSmallExplosion) {
-    //     // color = "rgba(255,0,30,0.7)"
-    //     radius *= 0.66
-    //     dmg *= 1.66
-    // }
-
-    /*if (tech.isExplodeRadio) { //radiation explosion
-        radius *= 1.25; //alert range
-        if (tech.isSmartRadius) radius = Math.max(Math.min(radius, Vector.magnitude(Vector.sub(where, player.position)) - 25), 1)
-        color = "rgba(25,139,170,0.25)"
-        simulation.drawList.push({ //add dmg to draw queue
-            x: where.x,
-            y: where.y,
-            radius: radius,
-            color: color,
-            time: simulation.drawTime * 2
-        });
-
-        //player damage
-        if (Vector.magnitude(Vector.sub(where, player.position)) < radius) {
-            const DRAIN = (tech.isExplosionHarm ? 0.6 : 0.45) * (tech.isRadioactiveResistance ? 0.25 : 1)
-            if (m.immuneCycle < m.cycle) m.energy -= DRAIN
-            if (m.energy < 0) {
-                m.energy = 0
-                if (simulation.dmgScale) m.damage(tech.radioactiveDamage * 0.03 * (tech.isRadioactiveResistance ? 0.25 : 1));
-            }
-        }
-
-        //mob damage and knock back with alert
-        let damageScale = 1.5; // reduce dmg for each new target to limit total AOE damage
-        for (let i = 0, len = mob.length; i < len; ++i) {
-            if (mob[i].alive && !mob[i].isShielded) {
-                sub = Vector.sub(where, mob[i].position);
-                dist = Vector.magnitude(sub) - mob[i].radius;
-                if (dist < radius) {
-                    if (mob[i].shield) dmg *= 2.5 //balancing explosion dmg to shields
-                    if (Matter.Query.ray(map, mob[i].position, where).length > 0) dmg *= 0.5 //reduce damage if a wall is in the way
-                    mobs.statusDoT(mob[i], dmg * damageScale * 0.25, 240) //apply radiation damage status effect on direct hits
-                    if (tech.isStun) mobs.statusStun(mob[i], 30)
-                    mob[i].locatePlayer();
-                    damageScale *= 0.87 //reduced damage for each additional explosion target
-                }
-            }
-        }
-    } else {*/ //normal explosions
-        // if (tech.isSmartRadius) radius = Math.max(Math.min(radius, Vector.magnitude(Vector.sub(where, player.position)) - 25), 1)
-        simulation.drawList.push({ //add dmg to draw queue
-            x: where.x,
-            y: where.y,
-            radius: radius,
-            color: color,
-            time: simulation.drawTime
-        });
-        const alertRange = 100 + radius * 2; //alert range
-        simulation.drawList.push({ //add alert to draw queue
-            x: where.x,
-            y: where.y,
-            radius: alertRange,
-            color: "rgba(100,20,0,0.03)",
-            time: simulation.drawTime
-        });
-
-        //player damage and knock back
-        if (player.immuneCycle < m.cycle) {
-            sub = Vector.sub(where, player.position);
-            dist = Vector.magnitude(sub);
-
-            if (dist < radius) {
-                if (simulation.dmgScale) {
-                    // const harm = /*tech.isExplosionHarm ? 0.067 :*/ 0.05
-                    /*if (tech.isImmuneExplosion && m.energy > 0.25) {
-                        // const mitigate = Math.min(1, Math.max(1 - m.energy * 0.5, 0))
-                        m.energy -= 0.25
-                        // m.damage(0.01 * harm); //remove 99% of the damage  1-0.99
-                        knock = Vector.mult(Vector.normalise(sub), -0.6 * player.mass * Math.max(0, Math.min(0.15 - 0.002 * player.speed, 0.15)));
-                        player.force.x = knock.x; // not +=  so crazy forces can't build up with MIRV
-                        player.force.y = knock.y - 0.3; //some extra vertical kick 
-                    } else {*/
-                        // if (simulation.dmgScale) m.damage(harm);
-                        knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * player.mass * 0.013);
-                        player.force.x += knock.x;
-                        player.force.y += knock.y;
-                    // }
-                }
-            } else if (dist < alertRange) {
-                knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * player.mass * 0.005);
-                player.force.x += knock.x;
-                player.force.y += knock.y;
-            }
-        }
-
-        //body knock backs
-        for (let i = body.length - 1; i > -1; i--) {
-            if (!body[i].isNotHoldable) {
-                sub = Vector.sub(where, body[i].position);
-                dist = Vector.magnitude(sub);
-                if (dist < radius) {
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * body[i].mass * 0.022);
-                    body[i].force.x += knock.x;
-                    body[i].force.y += knock.y;
-                    // if (tech.isBlockExplode) {
-                    //     if (body[i] === m.holdingTarget) m.drop()
-                    //     const size = 20 + 300 * Math.pow(body[i].mass, 0.25)
-                    //     const where = body[i].position
-                    //     const onLevel = level.onLevel //prevent explosions in the next level
-                    //     Matter.Composite.remove(engine.world, body[i]);
-                    //     body.splice(i, 1);
-                    //     setTimeout(() => {
-                    //         if (onLevel === level.onLevel) b.explosion(where, size); //makes bullet do explosive damage at end
-                    //     }, 250 + 300 * Math.random());
-                    // }
-                } else if (dist < alertRange) {
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * body[i].mass * 0.011);
-                    body[i].force.x += knock.x;
-                    body[i].force.y += knock.y;
-                }
-            }
-        }
-
-        //power up knock backs
-        for (let i = 0, len = powerUp.length; i < len; ++i) {
-            sub = Vector.sub(where, powerUp[i].position);
-            dist = Vector.magnitude(sub);
-            if (dist < radius) {
-                knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * powerUp[i].mass * 0.013);
-                powerUp[i].force.x += knock.x;
-                powerUp[i].force.y += knock.y;
-            } else if (dist < alertRange) {
-                knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * powerUp[i].mass * 0.007);
-                powerUp[i].force.x += knock.x;
-                powerUp[i].force.y += knock.y;
-            }
-        }
-
-        //mob damage and knock back with alert
-        let damageScale = 1.5; // reduce dmg for each new target to limit total AOE damage
-        for (let i = 0, len = mob.length; i < len; ++i) {
-            if (mob[i].alive && !mob[i].isShielded) {
-                sub = Vector.sub(where, mob[i].position);
-                dist = Vector.magnitude(sub) - mob[i].radius;
-                if (dist < radius) {
-                    if (mob[i].shield) dmg *= 2.5 //balancing explosion dmg to shields
-                    if (Matter.Query.ray(map, mob[i].position, where).length > 0) dmg *= 0.5 //reduce damage if a wall is in the way
-                    // mob[i].damage(dmg * damageScale * m.dmgScale);
-                    mob[i].locatePlayer();
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg * damageScale) * mob[i].mass * (mob[i].isBoss ? 0.003 : 0.01));
-                    /*if (tech.isStun) {
-                        mobs.statusStun(mob[i], 30)
-                    } else*/ if (!mob[i].isInvulnerable) {
-                        mob[i].force.x += knock.x;
-                        mob[i].force.y += knock.y;
-                    }
-                    radius *= 0.95 //reduced range for each additional explosion target
-                    damageScale *= 0.87 //reduced damage for each additional explosion target
-                } else if (!mob[i].seePlayer.recall && dist < alertRange) {
-                    mob[i].locatePlayer();
-                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg * damageScale) * mob[i].mass * (mob[i].isBoss ? 0 : 0.006));
-                    /*if (tech.isStun) {
-                        mobs.statusStun(mob[i], 30)
-                    } else*/ if (!mob[i].isInvulnerable) {
-                        mob[i].force.x += knock.x;
-                        mob[i].force.y += knock.y;
-                    }
-                }
-            }
-        }
-    //}
-}
-
-b.multiplayerPulse = (charge, angle, where) => {
-    let best;
-    let explosionRadius = 5.5 * charge
-    let range = 5000
-    const path = [{
-        x: where.x + 20 * Math.cos(angle),
-        y: where.y + 20 * Math.sin(angle)
-    },
-    {
-        x: where.x + range * Math.cos(angle),
-        y: where.y + range * Math.sin(angle)
-    }
-    ];
-    //check for collisions
-    best = {
-        x: null,
-        y: null,
-        dist2: Infinity,
-        who: null,
-        v1: null,
-        v2: null
-    };
-    if (!best.who) {
-        best = vertexCollision(path[0], path[1], [mob, map, body]);
-        if (best.dist2 != Infinity) { //if hitting something
-            path[path.length - 1] = {
-                x: best.x,
-                y: best.y
-            };
-        }
-    }
-    if (best.who) {
-        // b.multiplayerExplosion(path[1], explosionRadius, 'rgba(255,25,0,0.6)')
-        // const off = explosionRadius * 1.2
-        // b.multiplayerExplosion({
-        //     x: path[1].x + off * (Math.random() - 0.5),
-        //     y: path[1].y + off * (Math.random() - 0.5)
-        // }, explosionRadius, 'rgba(255,25,0,0.6)')
-        // b.multiplayerExplosion({
-        //     x: path[1].x + off * (Math.random() - 0.5),
-        //     y: path[1].y + off * (Math.random() - 0.5)
-        // }, explosionRadius, 'rgba(255,25,0,0.6)')
-    }
-    //draw laser beam
-    ctx.beginPath();
-    ctx.moveTo(path[0].x, path[0].y);
-    ctx.lineTo(path[1].x, path[1].y);
-    if (charge > 50) {
-        ctx.strokeStyle = "rgba(255,0,0,0.10)"
-        ctx.lineWidth = 70
-        ctx.stroke();
-    }
-    ctx.strokeStyle = "rgba(255,0,0,0.25)"
-    ctx.lineWidth = 20
-    ctx.stroke();
-    ctx.strokeStyle = "#f00";
-    ctx.lineWidth = 4
-    ctx.stroke();
-
-    //draw little dots along the laser path
-    const sub = Vector.sub(path[1], path[0])
-    const mag = Vector.magnitude(sub)
-    for (let i = 0, len = Math.floor(mag * 0.0005 * charge); i < len; i++) {
-        const dist = Math.random()
-        simulation.drawList.push({
-            x: path[0].x + sub.x * dist + 10 * (Math.random() - 0.5),
-            y: path[0].y + sub.y * dist + 10 * (Math.random() - 0.5),
-            radius: 1.5 + 5 * Math.random(),
-            color: "rgba(255,0,0,0.5)",
-            time: Math.floor(9 + 25 * Math.random() * Math.random())
-        });
-    }
 }
 
 const fieldData = [
@@ -1369,6 +1120,22 @@ let clientId;
                         const player = fetchPlayer(data.getUint8(1), connection);
                         if (!player) return;
                         player.throwCharge = data.getFloat32(2);
+                        break;
+                    }
+                    case protocol.player.togglePause: {
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        player.paused = data.getUint8(2) == 1;
+                        break;
+                    }
+                    case protocol.player.tech: {
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        let tech = new TextDecoder().decode(data.buffer.slice(4, 4 + data.getUint8(3)));
+                        if (data.getUint8(2) == 1) {
+                            if (!player.tech.includes(tech)) player.tech.push(tech);
+                        } else {
+                            let index = player.tech.indexOf(tech);
+                            if (index != -1) player.tech = player.tech.slice(0, index).concat(player.tech.slice(index + 1));
+                        }
                         break;
                     }
                     case protocol.block.info: {
@@ -2158,16 +1925,6 @@ let clientId;
                         }
                         break;
                     }
-                    case protocol.bullet.explosion: {
-                        // explosion
-                        b.multiplayerExplosion({ x: data.getFloat64(1), y: data.getFloat64(9) }, data.getFloat64(17), new TextDecoder().decode(data.buffer.slice(26, new Uint8Array(data.buffer)[25] + 26)));
-                        break;
-                    }
-                    case protocol.bullet.pulse: {
-                        // pulse
-                        b.multiplayerPulse(data.getFloat64(1), data.getFloat64(9), { x: data.getFloat64(17), y: data.getFloat64(25) });
-                        break;
-                    }
                 }
             };
             connection.onerror = function(e) {
@@ -2752,29 +2509,6 @@ let clientId;
     const oldOrbitalBoss = spawn.orbitalBoss;
     spawn.orbitalBoss = () => {}
 
-    b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
-        const textEncoder = new TextEncoder();
-        const data = new Uint8Array(new ArrayBuffer(26 + textEncoder.encode(color).length));
-        data.set(textEncoder.encode(color), 26);
-        const dataView = new DataView(data.buffer);
-        dataView.setUint8(0, protocol.bullet.explosion);
-        dataView.setFloat64(1, where.x);
-        dataView.setFloat64(9, where.y);
-        dataView.setFloat64(17, radius);
-        dataView.setUint8(25, textEncoder.encode(color).length);
-        player1.connection.send(dataView);
-    }
-
-    b.pulse = (charge, angle = m.angle, where = m.pos) => {
-        const dataView = new DataView(new ArrayBuffer(33));
-        dataView.setUint8(0, protocol.bullet.pulse);
-        dataView.setFloat64(1, charge);
-        dataView.setFloat64(9, angle);
-        dataView.setFloat64(17, where.x);
-        dataView.setFloat64(25, where.y);
-        player1.connection.send(dataView);
-    }
-
     let oldM = {
         crouch: false,
         energy: 1,
@@ -2790,6 +2524,7 @@ let clientId;
         mouseInGame: { x: 0, y: 0 },
         onGround: false,
         pos: { x: 0, y: 0 },
+        tech: [],
         throwCharge: 0,
         Vx: 0,
         Vy: 0,
@@ -2949,6 +2684,36 @@ let clientId;
                 dataView.setUint8(2, simulation.paused ? 1 : 0);
                 player1.connection.send(dataView);
             }
+            let newTech = [];
+            for (const currentTech of tech.tech.filter(a => a.count > 0).map(a => a.name)) {
+                let index = oldM.tech.indexOf(currentTech);
+                if (index == -1) newTech.push(currentTech);
+                else oldM.tech = oldM.tech.slice(0, index).concat(oldM.tech.slice(index + 1));
+            }
+            for (const tech of newTech) {
+                const textEncoder = new TextEncoder();
+                const name = textEncoder.encode(tech);
+                const data = new Uint8Array(new ArrayBuffer(4 + name.length));
+                data.set(name, 4);
+                const dataView = new DataView(data.buffer);
+                dataView.setUint8(0, protocol.player.tech);
+                dataView.setUint8(1, clientId);
+                dataView.setUint8(2, 1);
+                dataView.setUint8(3, name.length);
+                player1.connection.send(dataView);
+            }
+            for (const tech of oldM.tech) {
+                const textEncoder = new TextEncoder();
+                const name = textEncoder.encode(tech);
+                const data = new Uint8Array(new ArrayBuffer(4 + name.length));
+                data.set(name, 4);
+                const dataView = new DataView(data.buffer);
+                dataView.setUint8(0, protocol.player.tech);
+                dataView.setUint8(1, clientId);
+                dataView.setUint8(2, 0);
+                dataView.setUint8(3, name.length);
+                player1.connection.send(dataView);
+            }
             
             oldM = {
                 crouch: m.crouch,
@@ -2965,6 +2730,7 @@ let clientId;
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: m.onGround,
                 pos: { x: m.pos.x, y: m.pos.y },
+                tech: tech.tech.filter(a => a.count > 0).map(a => a.name),
                 throwCharge: m.throwCharge,
                 Vx: m.Vx,
                 Vy: m.Vy,
