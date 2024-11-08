@@ -939,8 +939,9 @@ let clientId;
                         Math.initialSeed = new TextDecoder().decode(data.buffer.slice(4, 4 + data.getUint8(2)));
                         Math.seed = Math.abs(Math.hash(Math.initialSeed));
                         let index = 4 + data.getUint8(3);
-                        for (let i = index; i < data.byteLength; i += 95) {
+                        for (let i = index; i < data.byteLength;) {
                             const playerId = data.getUint8(i);
+                            let techCount = data.getUint16(i + 95);    
                             if (playerId == clientId) {
                                 m.health = data.getFloat32(i + 63);
                                 m.maxHealth = data.getFloat32(i + 67);
@@ -990,7 +991,12 @@ let clientId;
                                     Matter.Body.setPosition(player.hitbox, { x: player.pos.x, y: player.pos.y + player.yOff - 24.714076782448295});
                                     Matter.Body.setVelocity(player.hitbox, { x: player.Vx, y: player.Vy }); 
                                 }
+                                for (let j = 0; j < techCount; j++) {
+                                    let playerTech = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1)[data.getUint16(i + 97 + j * 3)];
+                                    player.tech[playerTech.name] = data.getUint8(i + 99 + j * 3);
+                                }
                             }
+                            i += 97 + techCount * 3;
                         }
                         break;
                     }

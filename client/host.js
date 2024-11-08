@@ -453,7 +453,9 @@ class Player {
 
     sync() {
         const textEncoder = new TextEncoder();
-        const data = new Uint8Array(new ArrayBuffer(4 + textEncoder.encode(Math.initialSeed).length + (players.length + 1) * 95));
+        let techCount = tech.tech.filter(a => a.count > 0).length;
+        for (const player of players) techCount += Object.keys(player.tech).filter(a => a > 0).length;
+        const data = new Uint8Array(new ArrayBuffer(4 + textEncoder.encode(Math.initialSeed).length + (players.length + 1) * 97 + techCount * 3));
         data.set(textEncoder.encode(Math.initialSeed), 4);
         const dataView = new DataView(data.buffer);
         dataView.setUint8(0, protocol.game.sync);
@@ -477,6 +479,7 @@ class Player {
             mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
             onGround: m.onGround,
             pos: { x: m.pos.y, y: m.pos.y },
+            tech: {},
             throwCharge: m.throwCharge,
             Vx: m.Vx,
             Vy: m.Vy,
@@ -484,6 +487,7 @@ class Player {
             yOff: m.yOff,
             paused: simulation.paused
         }
+        for (const playerTech of tech.tech.filter(a => a.count > 0)) host.tech[playerTech.name] = playerTech.count;
         for (const player of [host].concat(players)) {
             dataView.setUint8(index, player.id);
             dataView.setFloat64(index + 1, player.pos.x);
@@ -513,7 +517,15 @@ class Player {
             dataView.setUint16(index + 88, player.holdingTarget ? player.holdingTarget.id : -1);
             dataView.setFloat32(index + 90, player.throwCharge);
             dataView.setUint8(index + 94, player.paused ? 1 : 0);
-            index += 95;
+            dataView.setUint16(index + 95, Object.values(player.tech).filter(a => a > 0).length);
+            let i = 0;
+            for (const playerTech in player.tech) {
+                let techIndex = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1).findIndex(a => a.name == playerTech);
+                dataView.setUint16(index + 97 + i * 3, techIndex);
+                dataView.setUint8(index + 99 + i * 3, player.tech[playerTech]);
+                i++;
+            }
+            index += 97 + Object.values(player.tech).filter(a => a > 0).length * 3;
         }
         this.connection.send(dataView);
     }
