@@ -1869,6 +1869,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
     spawn.bodyRect = (x, y, width, height, chance, properties) => {
         const me = body.length;
         oldBodyRect(x, y, width, height, chance, properties);
+        if (!body[me]) return;
         body[me].width = width;
         body[me].height = height;
     }
