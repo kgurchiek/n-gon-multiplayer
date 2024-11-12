@@ -455,14 +455,13 @@ class Player {
         const textEncoder = new TextEncoder();
         let techCount = tech.tech.filter(a => a.count > 0).length;
         for (const player of players) techCount += Object.keys(player.tech).filter(a => a > 0).length;
-        const data = new Uint8Array(new ArrayBuffer(4 + textEncoder.encode(Math.initialSeed).length + (players.length + 1) * 97 + techCount * 3));
-        data.set(textEncoder.encode(Math.initialSeed), 4);
-        const dataView = new DataView(data.buffer);
+        const dataView = new DataView(new ArrayBuffer(17 + (players.length + 1) * 97 + techCount * 3));
         dataView.setUint8(0, protocol.game.sync);
         dataView.setUint8(1, this.id);
         dataView.setUint8(2, simulation.difficultyMode);
-        dataView.setUint8(3, textEncoder.encode(Math.initialSeed).length);
-        let index = 4 + textEncoder.encode(Math.initialSeed).length;
+        let sortedLevels = level.playableLevels.concat(level.uniqueLevels || [], level.communityLevels || [], level.trainingLevels || []).sort(a => a > b ? 1 : -1);
+        for (let i = 0; i < 14; i++) dataView.setUint8(3 + i, (sortedLevels.indexOf(level.levels[i]) + 1 || 1) - 1);
+        let index = 17;
         let host = {
             id: 0,
             crouch: m.crouch,

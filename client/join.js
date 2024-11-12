@@ -936,9 +936,10 @@ let clientId;
                     case protocol.game.sync: {
                         clientId = data.getUint8(1);
                         simulation.difficultyMode = data.getUint8(2);
-                        Math.initialSeed = new TextDecoder().decode(data.buffer.slice(4, 4 + data.getUint8(2)));
-                        Math.seed = Math.abs(Math.hash(Math.initialSeed));
-                        let index = 4 + data.getUint8(3);
+                        level.levels = [];
+                        let sortedLevels = level.playableLevels.concat(level.uniqueLevels || [], level.communityLevels || [], level.trainingLevels || []).sort(a => a > b ? 1 : -1);
+                        for (let i = 0; i < 14; i++) level.levels.push(sortedLevels[data.getUint8(3 + i)]);
+                        let index = 17;
                         for (let i = index; i < data.byteLength;) {
                             const playerId = data.getUint8(i);
                             let techCount = data.getUint16(i + 95);    
@@ -2253,6 +2254,13 @@ let clientId;
         }
     }
 
+    const oldPopulateLevels = level.populateLevels;
+    level.populateLevels = () => {
+        const oldLevels = [...level.levels];
+        oldPopulateLevels();
+        level.levels = [...oldLevels];
+    }
+    
     const oldBodyRect = spawn.bodyRect;
     spawn.bodyRect = () => {};
     const oldBodyVertex = spawn.bodyVertex;
@@ -2547,7 +2555,7 @@ let clientId;
         
         // wait for sync
         await new Promise(async resolve => {
-            while (Math.initialSeed == null) await new Promise(res => setTimeout(res, 100));
+            while (players.length == 0) await new Promise(res => setTimeout(res, 100));
             resolve();
         })
 
