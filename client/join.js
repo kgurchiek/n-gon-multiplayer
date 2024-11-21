@@ -44,6 +44,7 @@ const protocol = {
         delete: 33
     },
     bullet: {
+        muzzleFlash: 34
     }
 }
 
@@ -329,6 +330,16 @@ class Player {
             return true;
         }
         return false;
+    }
+
+    muzzleFlash(radius = 30) {
+        simulation.drawList.push({
+            x: this.pos.x + 20 * Math.cos(this.angle),
+            y: this.pos.y + 20 * Math.sin(this.angle),
+            radius: radius,
+            color: "#fb0",
+            time: 1
+        });
     }
 
     spawn() {
@@ -1934,6 +1945,13 @@ let clientId;
                         }
                         break;
                     }
+                    case protocol.bullet.muzzleFlash: {
+                        const playerId = data.getUint8(1);
+                        if (playerId == clientId) return;
+                        const player = fetchPlayer(playerId, connection);
+                        player.muzzleFlash(data.getFloat32(2));
+                        break;
+                    }
                 }
             };
             connection.onerror = function(e) {
@@ -2060,6 +2078,16 @@ let clientId;
     spawn.bodyVertex = () => {};
     const oldPowerupSpawn = powerUps.spawn;
     powerUps.spawn = () => {};
+
+    const oldMuzzleFlash = b.muzzleFlash;
+    b.muzzleFlash = (size = 30) => {
+        oldMuzzleFlash(size);
+        const dataView = new DataView(new ArrayBuffer(6));
+        dataView.setUint8(0, protocol.bullet.muzzleFlash);
+        dataView.setUint8(1, 0);
+        dataView.setFloat32(2, size);
+        player1.connection.send(dataView);
+    }
 
     const oldMACHO = spawn.MACHO;
     spawn.MACHO = () => {}
