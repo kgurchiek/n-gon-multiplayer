@@ -464,6 +464,7 @@ class Player {
     }
 }
 let players = [];
+let techList = [];
 
 function fetchPlayer(id, connection) {
     let player = players.find(player => player.id == id);
@@ -922,9 +923,9 @@ let clientId;
                 {
                     urls: [
                         'stun:stun1.l.google.com:19302',
-                        'stun:stun2.l.google.com:19302',
-                    ],
-                },
+                        'stun:stun2.l.google.com:19302'
+                    ]
+                }
             ]
         }
         let peerRemote = new RTCPeerConnection(config);
@@ -1004,12 +1005,9 @@ let clientId;
                                     Matter.Body.setPosition(player.hitbox, { x: player.pos.x, y: player.pos.y + player.yOff - 24.714076782448295});
                                     Matter.Body.setVelocity(player.hitbox, { x: player.Vx, y: player.Vy }); 
                                 }
-                                for (let j = 0; j < techCount; j++) {
-                                    let playerTech = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1)[data.getUint16(i + 97 + j * 3)];
-                                    player.tech[playerTech.name] = data.getUint8(i + 99 + j * 3);
-                                }
+                                for (let j = 0; j < techCount; j++) player.tech[techList[data.getUint16(i + 97 + j * 10)]] = data.getFloat64(i + 99 + j * 10);
                             }
-                            i += 97 + techCount * 3;
+                            i += 97 + techCount * 10;
                         }
                         break;
                     }
@@ -1152,10 +1150,8 @@ let clientId;
                     }
                     case protocol.player.tech: {
                         const player = fetchPlayer(data.getUint8(1), connection);
-                        let name = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1)[data.getUint16(2)].name;
-                        let count = data.getUint8(4);
-                        if (player.tech[name]) player.tech[name] = count;
-                        else player.tech[name] = count;
+                        const name  = techList[data.getUint16(2)];
+                        if (name) player.tech[name] = data.getFloat64(4);
                         break;
                     }
                     case protocol.block.info: {
@@ -2369,7 +2365,6 @@ let clientId;
     const oldStartGame = simulation.startGame;
     simulation.startGame = async () => {
         // sync request
-        Math.initialSeed = null;
         const dataView = new DataView(new ArrayBuffer(1));
         dataView.setUint8(0, protocol.game.syncRequest);
         player1.connection.send(dataView);
@@ -2384,6 +2379,7 @@ let clientId;
         oldStartGame();
         simulation.difficultyMode = oldDifficulty;
         if (level.difficultyText) document.title = `n-gon: (${simulation.isCheating ? "testing" : level.difficultyText()})`;
+        for (const item in tech) if (tech[item] == null || ['boolean', 'number'].includes(typeof tech[item])) techList.push(item);
         
         const oldThrowBlock = m.throwBlock;
         m.throwBlock = () => {
@@ -2515,20 +2511,14 @@ let clientId;
                 dataView.setUint8(2, simulation.paused ? 1 : 0);
                 player1.connection.send(dataView);
             }
-            let newTech = [];
-            for (const currentTech of tech.tech.filter(a => a.count > 0)) {
-                let index = oldM.tech.findIndex(a => a.name == currentTech.name && a.count == currentTech.count);
-                if (index == -1) newTech.push(currentTech);
-                else oldM.tech = oldM.tech.slice(0, index).concat(oldM.tech.slice(index + 1));
-            }
-            for (const item of newTech.concat(oldM.tech)) {
-                let sortedTech = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1);
-                let index = sortedTech.findIndex(a => a.name == item.name);
-                const dataView = new DataView(new ArrayBuffer(5));
+            let currentTech = {};
+            const newTech = techList.filter(item => (currentTech[item] = tech[item]) != oldM.tech[item]);
+            for (const item of newTech) {
+                const dataView = new DataView(new ArrayBuffer(12));
                 dataView.setUint8(0, protocol.player.tech);
                 dataView.setUint8(1, 0);
-                dataView.setUint16(2, index);
-                dataView.setUint8(4, sortedTech[index].count);
+                dataView.setUint16(2, techList.indexOf(item));
+                dataView.setFloat64(4, tech[item]);
                 player1.connection.send(dataView);
             }
             
@@ -2547,7 +2537,7 @@ let clientId;
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: m.onGround,
                 pos: { x: m.pos.x, y: m.pos.y },
-                tech: tech.tech.filter(a => a.count > 0).map(a => ({ name: a.name, count: a.count })),
+                tech: currentTech,
                 throwCharge: m.throwCharge,
                 Vx: m.Vx,
                 Vy: m.Vy,

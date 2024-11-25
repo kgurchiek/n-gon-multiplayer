@@ -5,7 +5,7 @@
 | ID |          Name         | Length | Fields |
 | -- | --------------------- | ------ | ------ |
 | 00 | Sync Request          | 0      | |
-| 01 | Sync                  | 3+     | clientId (Uint8), difficulty (Uint8), levels (list (14): levelIndex (Uint8)), players (list (95): playerId (Uint8), x (Float64), y (Float64), mouseX (Float64), mouseY (Float64), onGround (boolean), xVelocity (Float64), yVelocity (Float64), walkCycle (Float32), yOff (Float32), fieldMode (Uint8), immuneCycle (Float32), health (Float32), maxHealth (Float32), energy (Float32), maxEnergy (Float32), up (boolean), down (boolean), left (boolean), right (boolean), field (boolean), fire (boolean), crouched (boolean), isCloak (boolean), isHolding (boolean), blockId (Uint16), throwCharge (Float32), paused (boolean), techCount (Uint16), tech (list (0+): techIndex (Uint16), count (Uint8))) |
+| 01 | Sync                  | 3+     | clientId (Uint8), difficulty (Uint8), levels (list (14): levelIndex (Uint8)), players (list (95): playerId (Uint8), x (Float64), y (Float64), mouseX (Float64), mouseY (Float64), onGround (boolean), xVelocity (Float64), yVelocity (Float64), walkCycle (Float32), yOff (Float32), fieldMode (Uint8), immuneCycle (Float32), health (Float32), maxHealth (Float32), energy (Float32), maxEnergy (Float32), up (boolean), down (boolean), left (boolean), right (boolean), field (boolean), fire (boolean), crouched (boolean), isCloak (boolean), isHolding (boolean), blockId (Uint16), throwCharge (Float32), paused (boolean), techCount (Uint16), tech (list (10): techIndex (Uint16), value (Float64))) |
 | 02 | Next Level            | 0      | |
 | 03 | Player Movement       | 58     | playerId (Uint8), mouseX (Float64), mouseY (Float64), onGround (boolean), x (Float64), y (Float64), xVelocity (Float64), yVelocity (Float64), walkCycle (Float32), yOff (Float32) |
 | 04 | Player Rotation       | 17     | playerId (Uint8), mouseX (Float64), mouseY (Float64) |
@@ -21,7 +21,7 @@
 | 14 | Hold Block            | 4      | playerId (Uint8), isHolding (boolean), blockId (Uint16) |
 | 15 | Throw Charge Update   | 5      | playerId (Uint8), throwCharge (Float32) |
 | 16 | Toggle Pause          | 2      | playerId (Uint8), paused (boolean) |
-| 17 | Tech                  | 4      | playerId (Uint8), techIndex (Uint16), count (Uint8) |
+| 17 | Tech                  | 11     | playerId (Uint8), techIndex (Uint16), value (Float64) |
 | 18 | Block Info Request    | 2      | blockId (Uint16) |
 | 19 | Block Info            | 58     | blockId (Uint16), x (Float64), y (Float64), vertices (list (8): x (Float64), y (Float64)) |
 | 20 | Block Position Update | 42     | blockId (Uint16), x (Float64), y (Float64), angle (Float64), xVelocity (Float64), yVelocity (Float64) |

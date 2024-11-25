@@ -465,9 +465,7 @@ class Player {
 
     sync() {
         const textEncoder = new TextEncoder();
-        let techCount = tech.tech.filter(a => a.count > 0).length;
-        for (const player of players) techCount += Object.keys(player.tech).filter(a => a > 0).length;
-        const dataView = new DataView(new ArrayBuffer(17 + (players.length + 1) * 97 + techCount * 3));
+        const dataView = new DataView(new ArrayBuffer(17 + (players.length + 1) * (97 + techList.length * 10)));
         dataView.setUint8(0, protocol.game.sync);
         dataView.setUint8(1, this.id);
         dataView.setUint8(2, simulation.difficultyMode);
@@ -490,7 +488,7 @@ class Player {
             mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
             onGround: m.onGround,
             pos: { x: m.pos.y, y: m.pos.y },
-            tech: {},
+            tech,
             throwCharge: m.throwCharge,
             Vx: m.Vx,
             Vy: m.Vy,
@@ -498,7 +496,6 @@ class Player {
             yOff: m.yOff,
             paused: simulation.paused
         }
-        for (const playerTech of tech.tech.filter(a => a.count > 0)) host.tech[playerTech.name] = playerTech.count;
         for (const player of [host].concat(players)) {
             dataView.setUint8(index, player.id);
             dataView.setFloat64(index + 1, player.pos.x);
@@ -528,20 +525,18 @@ class Player {
             dataView.setUint16(index + 88, player.holdingTarget ? player.holdingTarget.id : -1);
             dataView.setFloat32(index + 90, player.throwCharge);
             dataView.setUint8(index + 94, player.paused ? 1 : 0);
-            dataView.setUint16(index + 95, Object.values(player.tech).filter(a => a > 0).length);
-            let i = 0;
-            for (const playerTech in player.tech) {
-                let techIndex = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1).findIndex(a => a.name == playerTech);
-                dataView.setUint16(index + 97 + i * 3, techIndex);
-                dataView.setUint8(index + 99 + i * 3, player.tech[playerTech]);
-                i++;
+            dataView.setUint16(index + 95, techList.length);
+            for (let i = 0; i < techList.length; i++) {
+                dataView.setUint16(index + 97 + i * 10, i);
+                dataView.setFloat64(index + 99 + i * 10, tech[techList[i]]);
             }
-            index += 97 + Object.values(player.tech).filter(a => a > 0).length * 3;
+            index += 97 + techList.length * 10;
         }
         this.connection.send(dataView);
     }
 }
 let players = [];
+let techList = [];
 
 function broadcast(data, id = 0) {
     for (const player of players) if (player.connection.readyState == 'open' && (id != player.id)) player.connection.send(data);
@@ -1310,9 +1305,9 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
             {
                 urls: [
                     'stun:stun1.l.google.com:19302',
-                    'stun:stun2.l.google.com:19302',
-                ],
-            },
+                    'stun:stun2.l.google.com:19302'
+                ]
+            }
         ]
     }
     let peerLocal = new RTCPeerConnection(config);
@@ -1471,10 +1466,8 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 break;
             }
             case protocol.player.tech: {
-                let name = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1)[data.getUint16(2)].name;
-                let count = data.getUint8(4);
-                if (newPlayer.tech[name]) newPlayer.tech[name] = count;
-                else newPlayer.tech[name] = count;
+                newPlayer.tech[techList[data.getUint16(2)]] = data.getFloat64(4);
+                broadcast(data, newPlayer.id);
                 break;
             }
             case protocol.block.infoRequest: {
@@ -2219,7 +2212,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
         mouseInGame: { x: 0, y: 0 },
         onGround: false,
         pos: { x: 0, y: 0 },
-        tech: [],
+        tech: {},
         throwCharge: 0,
         Vx: 0,
         Vy: 0,
@@ -2234,7 +2227,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
     const oldStartGame = simulation.startGame;
     simulation.startGame = () => {
         oldStartGame();
-        Math.random = Math.seededRandom;
+        for (const item in tech) if (tech[item] == null || ['boolean', 'number'].includes(typeof tech[item])) techList.push(item);
 
         for (const player of players) player.spawn();
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
@@ -2351,20 +2344,14 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 dataView.setUint8(2, simulation.paused ? 1 : 0);
                 broadcast(dataView);
             }
-            let newTech = [];
-            for (const currentTech of tech.tech.filter(a => a.count > 0)) {
-                let index = oldM.tech.findIndex(a => a.name == currentTech.name && a.count == currentTech.count);
-                if (index == -1) newTech.push(currentTech);
-                else oldM.tech = oldM.tech.slice(0, index).concat(oldM.tech.slice(index + 1));
-            }
-            for (const item of newTech.concat(oldM.tech)) {
-                let sortedTech = [...(tech.tech)].sort((a, b) => a.name > b.name ? 1 : -1);
-                let index = sortedTech.findIndex(a => a.name == item.name);
-                const dataView = new DataView(new ArrayBuffer(5));
+            let currentTech = {};
+            const newTech = techList.filter(item => (currentTech[item] = tech[item]) != oldM.tech[item]);
+            for (const item of newTech) {
+                const dataView = new DataView(new ArrayBuffer(12));
                 dataView.setUint8(0, protocol.player.tech);
                 dataView.setUint8(1, 0);
-                dataView.setUint16(2, index);
-                dataView.setUint8(4, sortedTech[index].count);
+                dataView.setUint16(2, techList.indexOf(item));
+                dataView.setFloat64(4, tech[item]);
                 broadcast(dataView);
             }
             
@@ -2383,7 +2370,7 @@ const getNewPlayer = () => (new Promise(async (resolve, reject) => {
                 mouseInGame: { x: simulation.mouseInGame.x, y: simulation.mouseInGame.y },
                 onGround: m.onGround,
                 pos: { x: m.pos.y, y: m.pos.y },
-                tech: tech.tech.filter(a => a.count > 0).map(a => ({ name: a.name, count: a.count }))   ,
+                tech: currentTech,
                 throwCharge: m.throwCharge,
                 Vx: m.Vx,
                 Vy: m.Vy,
