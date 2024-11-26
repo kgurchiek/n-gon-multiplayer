@@ -1,6 +1,6 @@
 ## Protocol
-- length does not include id
-- all strings use 8-bit length prefix
+- length does not include packet id
+- all strings include an 8-bit length prefix
 
 | ID |          Name         | Length | Fields |
 | -- | --------------------- | ------ | ------ |
@@ -39,3 +39,4 @@
 | 32 | Mob Property Update   | 52     | mobId (Uint16), isShielded (boolean), isUnblockable (boolean), showHealthBar (boolean) collisionFilterCategory (BigUint64), collisionFilterMask (BigUint64), isBoss (boolean), isFinalBoss (boolean), isInvulnerable (boolean), isZombie (boolean), isGrouper (boolean), isMobBullet (boolean), recall (Float64), health (Float64), radius (Float64), seesPlayer (boolean) |
 | 33 | Delete Mob            | 2      | mobId (Uint16) |
 | 34 | Muzzle Flash          | 5      | playerId (Uint8), size (Float32) |
+| 35 | Explosion             | 26+    | playerId (Uint8), x (Float64), y (Float64), radius (Float64), color (string) |

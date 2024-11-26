@@ -44,7 +44,8 @@ const protocol = {
         delete: 33
     },
     bullet: {
-        muzzleFlash: 34
+        muzzleFlash: 34,
+        explosion: 35
     }
 }
 
@@ -283,7 +284,182 @@ class Player {
             ctx.fillRect(xOff, yOff, range * this.energy, 10);
         }
     }
-  
+
+    explosion(where, radius, color) {
+        radius *= this.tech.explosiveRadius
+
+        let dist, sub, knock;
+        let dmg = radius * 0.019
+        if (this.tech.isExplosionHarm) radius *= 1.7 //    1/sqrt(2) radius -> area
+        if (this.tech.isSmallExplosion) {
+            // color = "rgba(255,0,30,0.7)"
+            radius *= 0.7
+            dmg *= 1.7
+        }
+
+        if (this.tech.isExplodeRadio) { //radiation explosion
+            radius *= 1.25; //alert range
+            if (this.tech.isSmartRadius) radius = Math.max(Math.min(radius, Vector.magnitude(Vector.sub(where, this.position)) - 25), 1)
+            color = "rgba(25,139,170,0.25)"
+            simulation.drawList.push({ //add dmg to draw queue
+                x: where.x,
+                y: where.y,
+                radius: radius,
+                color: color,
+                time: simulation.drawTime * 2
+            });
+
+            //player damage
+            if (Vector.magnitude(Vector.sub(where, this.position)) < radius) {
+                const DRAIN = (this.tech.isExplosionHarm ? 0.6 : 0.45) * (this.tech.isRadioactiveResistance ? 0.2 : 1)
+                if (this.immuneCycle < this.cycle) this.energy -= DRAIN
+                if (this.energy < 0) {
+                    this.energy = 0
+                    if (simulation.dmgScale) this.damage(this.tech.radioactiveDamage * 0.03 * (this.tech.isRadioactiveResistance ? 0.2 : 1));
+                }
+            }
+
+            //mob damage and knock back with alert
+            let damageScale = 1.5; // reduce dmg for each new target to limit total AOE damage
+            for (let i = 0, len = mob.length; i < len; ++i) {
+                if (mob[i].alive && !mob[i].isShielded) {
+                    sub = Vector.sub(where, mob[i].position);
+                    dist = Vector.magnitude(sub) - mob[i].radius;
+                    if (dist < radius) {
+                        if (mob[i].shield) dmg *= 2.5 //balancing explosion dmg to shields
+                        if (Matter.Query.ray(map, mob[i].position, where).length > 0) dmg *= 0.5 //reduce damage if a wall is in the way
+                        mobs.statusDoT(mob[i], dmg * damageScale * 0.25, 240) //apply radiation damage status effect on direct hits
+                        if (this.tech.isStun) mobs.statusStun(mob[i], 30)
+                        mob[i].locatePlayer();
+                        damageScale *= 0.87 //reduced damage for each additional explosion target
+                    }
+                }
+            }
+        } else { //normal explosions
+            if (this.tech.isSmartRadius) radius = Math.max(Math.min(radius, Vector.magnitude(Vector.sub(where, this.position)) - 25), 1)
+            simulation.drawList.push({ //add dmg to draw queue
+                x: where.x,
+                y: where.y,
+                radius: radius,
+                color: color,
+                time: simulation.drawTime
+            });
+            const alertRange = 100 + radius * 2; //alert range
+            simulation.drawList.push({ //add alert to draw queue
+                x: where.x,
+                y: where.y,
+                radius: alertRange,
+                color: "rgba(100,20,0,0.03)",
+                time: simulation.drawTime
+            });
+
+            //player damage and knock back
+            if (this.immuneCycle < this.cycle) {
+                sub = Vector.sub(where, this.position);
+                dist = Vector.magnitude(sub);
+
+                if (dist < radius) {
+                    if (simulation.dmgScale) {
+                        const harm = this.tech.isExplosionHarm ? 0.067 : 0.05
+                        if (this.tech.isImmuneExplosion && this.energy > 0.25) {
+                            // const mitigate = Math.min(1, Math.max(1 - this.energy * 0.5, 0))
+                            this.energy -= 0.25
+                            // this.damage(0.01 * harm); //remove 99% of the damage  1-0.99
+                            knock = Vector.mult(Vector.normalise(sub), -0.6 * this.mass * Math.max(0, Math.min(0.15 - 0.002 * this.speed, 0.15)));
+                            this.force.x = knock.x; // not +=  so crazy forces can't build up with MIRV
+                            this.force.y = knock.y - 0.3; //some extra vertical kick 
+                        } else {
+                            if (simulation.dmgScale) this.damage(harm);
+                            knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * this.mass * 0.013);
+                            this.force.x += knock.x;
+                            this.force.y += knock.y;
+                        }
+                    }
+                } else if (dist < alertRange) {
+                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * this.mass * 0.005);
+                    this.force.x += knock.x;
+                    this.force.y += knock.y;
+                }
+            }
+
+            //body knock backs
+            for (let i = body.length - 1; i > -1; i--) {
+                if (!body[i].isNotHoldable) {
+                    sub = Vector.sub(where, body[i].position);
+                    dist = Vector.magnitude(sub);
+                    if (dist < radius) {
+                        knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * body[i].mass * 0.022);
+                        body[i].force.x += knock.x;
+                        body[i].force.y += knock.y;
+                        if (this.tech.isBlockExplode) {
+                            if (body[i] === this.holdingTarget) this.drop()
+                            const size = 20 + 300 * Math.pow(body[i].mass, 0.25)
+                            const where = body[i].position
+                            const onLevel = level.onLevel //prevent explosions in the next level
+                            Matter.Composite.remove(engine.world, body[i]);
+                            body.splice(i, 1);
+                            setTimeout(() => {
+                                if (onLevel === level.onLevel) b.explosion(where, size); //makes bullet do explosive damage at end
+                            }, 250 + 300 * Math.random());
+                        }
+                    } else if (dist < alertRange) {
+                        knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * body[i].mass * 0.011);
+                        body[i].force.x += knock.x;
+                        body[i].force.y += knock.y;
+                    }
+                }
+            }
+
+            //power up knock backs
+            for (let i = 0, len = powerUp.length; i < len; ++i) {
+                sub = Vector.sub(where, powerUp[i].position);
+                dist = Vector.magnitude(sub);
+                if (dist < radius) {
+                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * powerUp[i].mass * 0.013);
+                    powerUp[i].force.x += knock.x;
+                    powerUp[i].force.y += knock.y;
+                } else if (dist < alertRange) {
+                    knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg) * powerUp[i].mass * 0.007);
+                    powerUp[i].force.x += knock.x;
+                    powerUp[i].force.y += knock.y;
+                }
+            }
+
+            //mob damage and knock back with alert
+            let damageScale = 1.5; // reduce dmg for each new target to limit total AOE damage
+            for (let i = 0, len = mob.length; i < len; ++i) {
+                if (mob[i].alive && !mob[i].isShielded) {
+                    sub = Vector.sub(where, mob[i].position);
+                    dist = Vector.magnitude(sub) - mob[i].radius;
+                    if (dist < radius) {
+                        if (mob[i].shield) dmg *= 2.5 //balancing explosion dmg to shields
+                        if (Matter.Query.ray(map, mob[i].position, where).length > 0) dmg *= 0.5 //reduce damage if a wall is in the way
+                        mob[i].damage(dmg * damageScale * this.dmgScale);
+                        mob[i].locatePlayer();
+                        knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg * damageScale) * mob[i].mass * (mob[i].isBoss ? 0.003 : 0.01));
+                        if (this.tech.isStun) {
+                            mobs.statusStun(mob[i], 30)
+                        } else if (!mob[i].isInvulnerable) {
+                            mob[i].force.x += knock.x;
+                            mob[i].force.y += knock.y;
+                        }
+                        radius *= 0.95 //reduced range for each additional explosion target
+                        damageScale *= 0.87 //reduced damage for each additional explosion target
+                    } else if (!mob[i].seePlayer.recall && dist < alertRange) {
+                        mob[i].locatePlayer();
+                        knock = Vector.mult(Vector.normalise(sub), -Math.sqrt(dmg * damageScale) * mob[i].mass * (mob[i].isBoss ? 0 : 0.006));
+                        if (this.tech.isStun) {
+                            mobs.statusStun(mob[i], 30)
+                        } else if (!mob[i].isInvulnerable) {
+                            mob[i].force.x += knock.x;
+                            mob[i].force.y += knock.y;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     grabPowerUp() {
         for (let i = 0, len = powerUp.length; i < len; ++i) {
             const dxP = this.pos.x - powerUp[i].position.x;
@@ -399,7 +575,7 @@ class Player {
                     fieldData[this.fieldMode].do();
                     this.grabPowerUp();
                 }
-                if (!this.isHolding && (this.input.field || this.fieldMode == 1 || this.fieldMode == 2 || this.fieldMode == 3 || this.fieldMode == 8 || this.fieldMode == 9 || this.fieldMode == 10)) fieldData[this.fieldMode].drawField(this);
+                if (!this.isHolding && (this.input.field || [1, 2, 3, 8, 9, 10].includes(this.fieldMode))) fieldData[this.fieldMode].drawField(this);
             }
             if (this.holdingTarget) {
                 ctx.beginPath(); //draw on each valid body
@@ -963,50 +1139,49 @@ let clientId;
                                 m.displayHealth();
                                 m.energy = data.getFloat32(i + 71);
                                 m.maxEnergy = data.getFloat32(i + 75);
-                            } else {
-                                let playerIndex = players.findIndex(player => player.id == playerId);
-                                if (playerIndex == -1) {
-                                    const newPlayer = new Player(playerId);
-                                    newPlayer.spawn();
-                                    players.push(newPlayer);
-                                    playerIndex = players.length - 1;
-                                }
-                                const player = players[playerIndex];
-                                player.pos.x = data.getFloat64(i + 1);
-                                player.pos.y = data.getFloat64(i + 9);
-                                player.mouseInGame.x = data.getFloat64(i + 17);
-                                player.mouseInGame.y = data.getFloat64(i + 25);
-                                player.onGround = data.getUint8(33) == 1;
-                                player.Vx = data.getFloat64(34);
-                                player.Vy = data.getFloat64(42);
-                                player.walk_cycle = data.getFloat32(50);
-                                player.yOff = data.getFloat32(54);
-                                player.fieldMode = data.getUint8(58);
-                                player.immuneCycle = data.getFloat32(59);
-                                player.health = data.getFloat32(i + 63);
-                                player.maxHealth = data.getFloat32(i + 67);
-                                player.energy = data.getFloat32(i + 71);
-                                player.maxEnergy = data.getFloat32(i + 75);
-                                player.input.up = data.getUint8(i + 79) == 1;
-                                player.input.down = data.getUint8(i + 80) == 1;
-                                player.input.left = data.getUint8(i + 81) == 1;
-                                player.input.right = data.getUint8(i + 82) == 1;
-                                player.input.field = data.getUint8(i + 83) == 1;
-                                player.input.fire = data.getUint8(i + 84) == 1;
-                                player.crouch = data.getUint8(i + 85) == 1;
-                                player.isCloak = data.getUint8(i + 86) == 1;
-                                player.isHolding = data.getUint8(i + 87) == 1;
-                                if (player.isHolding) {
-                                    player.holdingTarget = body.find(a => a.id == data.getUint16(i + 88));
-                                    player.throwCharge = data.getFloat32(i + 90);
-                                }
-                                player.paused = data.getUint8(i + 94) == 1;
-                                if (newPlayer.hitbox != null) {
-                                    Matter.Body.setPosition(player.hitbox, { x: player.pos.x, y: player.pos.y + player.yOff - 24.714076782448295});
-                                    Matter.Body.setVelocity(player.hitbox, { x: player.Vx, y: player.Vy }); 
-                                }
-                                for (let j = 0; j < techCount; j++) player.tech[techList[data.getUint16(i + 97 + j * 10)]] = data.getFloat64(i + 99 + j * 10);
                             }
+                            let playerIndex = players.findIndex(player => player.id == playerId);
+                            if (playerIndex == -1) {
+                                const newPlayer = new Player(playerId);
+                                if (playerId != clientId) newPlayer.spawn();
+                                players.push(newPlayer);
+                                playerIndex = players.length - 1;
+                            }
+                            const player = players[playerIndex];
+                            player.pos.x = data.getFloat64(i + 1);
+                            player.pos.y = data.getFloat64(i + 9);
+                            player.mouseInGame.x = data.getFloat64(i + 17);
+                            player.mouseInGame.y = data.getFloat64(i + 25);
+                            player.onGround = data.getUint8(33) == 1;
+                            player.Vx = data.getFloat64(34);
+                            player.Vy = data.getFloat64(42);
+                            player.walk_cycle = data.getFloat32(50);
+                            player.yOff = data.getFloat32(54);
+                            player.fieldMode = data.getUint8(58);
+                            player.immuneCycle = data.getFloat32(59);
+                            player.health = data.getFloat32(i + 63);
+                            player.maxHealth = data.getFloat32(i + 67);
+                            player.energy = data.getFloat32(i + 71);
+                            player.maxEnergy = data.getFloat32(i + 75);
+                            player.input.up = data.getUint8(i + 79) == 1;
+                            player.input.down = data.getUint8(i + 80) == 1;
+                            player.input.left = data.getUint8(i + 81) == 1;
+                            player.input.right = data.getUint8(i + 82) == 1;
+                            player.input.field = data.getUint8(i + 83) == 1;
+                            player.input.fire = data.getUint8(i + 84) == 1;
+                            player.crouch = data.getUint8(i + 85) == 1;
+                            player.isCloak = data.getUint8(i + 86) == 1;
+                            player.isHolding = data.getUint8(i + 87) == 1;
+                            if (player.isHolding) {
+                                player.holdingTarget = body.find(a => a.id == data.getUint16(i + 88));
+                                player.throwCharge = data.getFloat32(i + 90);
+                            }
+                            player.paused = data.getUint8(i + 94) == 1;
+                            if (newPlayer.hitbox != null) {
+                                Matter.Body.setPosition(player.hitbox, { x: player.pos.x, y: player.pos.y + player.yOff - 24.714076782448295});
+                                Matter.Body.setVelocity(player.hitbox, { x: player.Vx, y: player.Vy }); 
+                            }
+                            for (let j = 0; j < techCount; j++) player.tech[techList[data.getUint16(i + 97 + j * 10)]] = data.getFloat64(i + 99 + j * 10);
                             i += 97 + techCount * 10;
                         }
                         break;
@@ -1062,11 +1237,10 @@ let clientId;
                             m.health = data.getFloat32(2);
                             if (m.health > m.maxHealth) m.health = m.maxHealth;
                             m.displayHealth();
-                        } else {
-                            const player = fetchPlayer(data.getUint8(1), connection);
-                            if (!player) return;
-                            player.health = data.getFloat32(2);
                         }
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        if (!player) return;
+                        player.health = data.getFloat32(2);
                         break;
                     }
                     case protocol.player.maxHealthUpdate: {
@@ -1074,29 +1248,24 @@ let clientId;
                             m.maxHealth = data.getFloat32(2);
                             if (m.health > m.maxHealth) m.health = m.maxHealth;
                             m.displayHealth();
-                        } else {
-                            const player = fetchPlayer(data.getUint8(1), connection);
-                            if (!player) return;
-                            player.maxHealth = data.getFloat32(2);
                         }
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        if (!player) return;
+                        player.maxHealth = data.getFloat32(2);
                         break;
                     }
                     case protocol.player.energyUpdate: {
                         if (data.getUint8(1) == clientId) m.energy = data.getFloat32(2);
-                        else {
-                            const player = fetchPlayer(data.getUint8(1), connection);
-                            if (!player) return;
-                            player.energy = data.getFloat32(2);
-                        }
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        if (!player) return;
+                        player.energy = data.getFloat32(2);
                         break;
                     }
                     case protocol.player.maxEnergyUpdate: {
                         if (data.getUint8(1) == clientId) m.maxEnergy = data.getFloat32(2);
-                        else {
-                            const player = fetchPlayer(data.getUint8(1), connection);
-                            if (!player) return;
-                            player.maxEnergy = data.getFloat32(2);
-                        }
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        if (!player) return;
+                        player.maxEnergy = data.getFloat32(2);
                         break;
                     }
                     case protocol.player.inputs: {
@@ -1942,10 +2111,13 @@ let clientId;
                         break;
                     }
                     case protocol.bullet.muzzleFlash: {
-                        const playerId = data.getUint8(1);
-                        if (playerId == clientId) return;
-                        const player = fetchPlayer(playerId, connection);
+                        const player = fetchPlayer(data.getUint8(1), connection);
                         player.muzzleFlash(data.getFloat32(2));
+                        break;
+                    }
+                    case protocol.bullet.explosion: {
+                        const player = fetchPlayer(data.getUint8(1), connection);
+                        player.explosion({ x: data.getFloat64(2), y: data.getFloat64(10) }, data.getFloat64(18), new TextDecoder().decode(data.buffer.slice(27, data.getUint8(26) + 27)));
                         break;
                     }
                 }
@@ -2075,13 +2247,25 @@ let clientId;
     const oldPowerupSpawn = powerUps.spawn;
     powerUps.spawn = () => {};
 
-    const oldMuzzleFlash = b.muzzleFlash;
     b.muzzleFlash = (size = 30) => {
-        oldMuzzleFlash(size);
         const dataView = new DataView(new ArrayBuffer(6));
         dataView.setUint8(0, protocol.bullet.muzzleFlash);
-        dataView.setUint8(1, 0);
+        dataView.setUint8(1, clientId);
         dataView.setFloat32(2, size);
+        player1.connection.send(dataView);
+    }
+
+    b.explosion = (where, radius, color = 'rgba(255,25,0,0.6)') => {
+        color = new TextEncoder().encode(color);
+        const data = new Uint8Array(new ArrayBuffer(27 + color.length));
+        data.set(color, 27);
+        const dataView = new DataView(data.buffer);
+        dataView.setUint8(0, protocol.bullet.explosion);
+        dataView.setUint8(1, clientId);
+        dataView.setFloat64(2, where.x);
+        dataView.setFloat64(10, where.y);
+        dataView.setFloat64(18, radius);
+        dataView.setUint8(26, color.length);
         player1.connection.send(dataView);
     }
 
@@ -2364,6 +2548,9 @@ let clientId;
 
     const oldStartGame = simulation.startGame;
     simulation.startGame = async () => {
+        oldStartGame();
+        for (const item in tech) if (tech[item] == null || ['boolean', 'number'].includes(typeof tech[item])) techList.push(item);
+
         // sync request
         const dataView = new DataView(new ArrayBuffer(1));
         dataView.setUint8(0, protocol.game.syncRequest);
@@ -2371,15 +2558,10 @@ let clientId;
         
         // wait for sync
         await new Promise(async resolve => {
-            while (players.length == 0) await new Promise(res => setTimeout(res, 100));
+            while (clientId == null) await new Promise(res => setTimeout(res, 100));
             resolve();
-        })
-
-        const oldDifficulty = simulation.difficultyMode;
-        oldStartGame();
-        simulation.difficultyMode = oldDifficulty;
-        if (level.difficultyText) document.title = `n-gon: (${simulation.isCheating ? "testing" : level.difficultyText()})`;
-        for (const item in tech) if (tech[item] == null || ['boolean', 'number'].includes(typeof tech[item])) techList.push(item);
+        });
+        if (level.difficultyText) document.title = `n-gon: (${simulation.isCheating ? 'testing' : level.difficultyText()})`;
         
         const oldThrowBlock = m.throwBlock;
         m.throwBlock = () => {
@@ -2396,7 +2578,7 @@ let clientId;
             player1.connection.send(dataView);
         }
 
-        for (const player of players) player.spawn();
+        for (const player of players) if (player.id != clientId) player.spawn();
         simulation.ephemera.push({ name: 'Broadcast', count: 0, do: () => {
             if (m.onGround != oldM.onGround || m.pos.x != oldM.pos.x || m.pos.y != oldM.pos.y || m.Vx != oldM.Vx || m.Vy != oldM.Vy || m.walk_cycle != oldM.walk_cycle || m.yOff != oldM.yOff) {
                 const dataView = new DataView(new ArrayBuffer(59));
@@ -2516,7 +2698,7 @@ let clientId;
             for (const item of newTech) {
                 const dataView = new DataView(new ArrayBuffer(12));
                 dataView.setUint8(0, protocol.player.tech);
-                dataView.setUint8(1, 0);
+                dataView.setUint8(1, clientId);
                 dataView.setUint16(2, techList.indexOf(item));
                 dataView.setFloat64(4, tech[item]);
                 player1.connection.send(dataView);
