@@ -1,3 +1,6 @@
+## Warning
+This project is still under development, it is not in a working state yet.
+
 ## Protocol
 - length does not include packet id
 - all strings include an 8-bit length prefix
